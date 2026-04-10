@@ -46,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("currentTenantId");
+        localStorage.removeItem("currentBranchId");
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
 
