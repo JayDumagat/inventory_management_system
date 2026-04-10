@@ -91,15 +91,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-60 bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-40 w-56 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-200",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0 lg:static lg:flex"
         )}
       >
         {/* Logo */}
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+        <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-primary-600 rounded flex items-center justify-center flex-shrink-0">
               <Package className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
@@ -115,7 +115,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="relative mt-3" ref={branchRef}>
               <button
                 onClick={() => { setBranchDropdownOpen((o) => !o); setBranchSearch(""); }}
-                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors text-left"
+                className="flex items-center gap-2 w-full px-2.5 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors text-left"
               >
                 <GitBranch className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                 <span className="flex-1 text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -125,10 +125,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
 
               {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
                   {/* Search */}
                   <div className="p-2 border-b border-gray-100 dark:border-gray-800">
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                       <Search className="w-3 h-3 text-gray-400 flex-shrink-0" />
                       <input
                         autoFocus
@@ -188,7 +188,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 overflow-y-auto">
           {navItems.map((item) => {
             const active = location.pathname === item.href;
             return (
@@ -197,9 +197,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors",
+                  "flex items-center gap-2.5 px-2.5 py-2 rounded text-sm font-medium mb-0.5 transition-colors",
                   active
-                    ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+                    ? "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
                 )}
               >
@@ -213,19 +213,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar overlay (mobile) */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/20 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* ── Top Header ── */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 px-4 h-14 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+        <header className="sticky top-0 z-20 flex items-center gap-3 px-4 h-12 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           {/* Hamburger (mobile) */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="lg:hidden p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
 
           {/* Page title */}
@@ -237,28 +237,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Notification bell */}
           <button
             aria-label="Notifications"
-            className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="relative p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <Bell className="w-[18px] h-[18px]" />
-            {/* Badge placeholder */}
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-500" />
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary-500" />
           </button>
 
-          {/* Help / Lifeguoy */}
+          {/* Help */}
           <button
             aria-label="Help & Support"
-            className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-1.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <LifeBuoy className="w-[18px] h-[18px]" />
+            <LifeBuoy className="w-4 h-4" />
           </button>
 
           {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((o) => !o)}
-              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <div className="w-7 h-7 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-300 font-semibold text-xs flex-shrink-0">
+              <div className="w-6 h-6 bg-primary-100 dark:bg-primary-900/40 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-300 font-semibold text-xs flex-shrink-0">
                 {userInitial}
               </div>
               <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[120px] truncate">
@@ -268,9 +267,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-1.5 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden z-50">
                 {/* User info */}
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                <div className="px-3 py-3 border-b border-gray-100 dark:border-gray-800">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{userName}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                 </div>
@@ -279,23 +278,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="py-1">
                   <button
                     onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                   >
-                    <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     Profile
                   </button>
                   <button
                     onClick={() => { setPrefsOpen(true); setProfileOpen(false); }}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                   >
-                    <SlidersHorizontal className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     Preferences
                   </button>
                   <button
                     onClick={() => { navigate("/branches"); setProfileOpen(false); }}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left"
                   >
-                    <Settings className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <Settings className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                     Settings
                   </button>
                 </div>
@@ -303,9 +302,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="border-t border-gray-100 dark:border-gray-800 py-1">
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
                   >
-                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
                     Sign out
                   </button>
                 </div>
@@ -313,18 +312,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          {/* Mobile close sidebar button (shown inside sidebar overlay) */}
+          {/* Mobile close sidebar button */}
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden fixed top-3 left-[16.5rem] z-50 p-1.5 rounded-lg bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400"
+              className="lg:hidden fixed top-3 left-[14.5rem] z-50 p-1.5 rounded bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </header>
 
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-5 overflow-auto">{children}</main>
       </div>
 
       {/* Preferences modal */}
