@@ -1,12 +1,17 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { useTenantStore } from "../stores/tenantStore";
+import { useBranchStore } from "../stores/branchStore";
 import { cn } from "../lib/utils";
 import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
-  ClipboardList, LogOut, Menu,
+  ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../api/client";
+
+interface Branch { id: string; name: string; isDefault: boolean; }
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
@@ -22,7 +27,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { currentTenant } = useTenantStore();
+  const { currentBranch, setCurrentBranch } = useBranchStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const tid = currentTenant?.id;
+
+  const { data: branches = [] } = useQuery<Branch[]>({
+    queryKey: ["branches", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/branches`).then((r) => r.data),
+    enabled: !!tid,
+  });
+
+  // Auto-select default (or first) branch when branches load or tenant changes
+  useEffect(() => {
+    if (branches.length === 0) return;
+    const isCurrentValid = currentBranch && branches.some((b) => b.id === currentBranch.id);
+    if (!isCurrentValid) {
+      const defaultBranch = branches.find((b) => b.isDefault) ?? branches[0];
+      setCurrentBranch(defaultBranch);
+    }
+  }, [branches, currentBranch, setCurrentBranch]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setBranchDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -40,16 +76,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Package className="w-4 h-4 text-white" />
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Package className="w-4 h-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {currentTenant?.name || "Inventory"}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{currentTenant?.role}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {currentTenant?.name || "Inventory"}
-            </p>
-            <p className="text-xs text-gray-500 truncate">{currentTenant?.role}</p>
-          </div>
+
+          {/* Branch switcher */}
+          {branches.length > 0 && (
+            <div className="relative mt-3" ref={dropdownRef}>
+              <button
+                onClick={() => setBranchDropdownOpen((o) => !o)}
+                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                <GitBranch className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="flex-1 text-xs font-medium text-gray-700 truncate">
+                  {currentBranch?.name ?? "Select branch"}
+                </span>
+                <ChevronDown className={cn("w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform", branchDropdownOpen && "rotate-180")} />
+              </button>
+
+              {branchDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
+                  {branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      onClick={() => { setCurrentBranch(branch); setBranchDropdownOpen(false); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <Check className={cn("w-3.5 h-3.5 flex-shrink-0", currentBranch?.id === branch.id ? "text-primary-600" : "text-transparent")} />
+                      <span className={cn("flex-1 truncate", currentBranch?.id === branch.id ? "font-semibold text-primary-700" : "text-gray-700")}>
+                        {branch.name}
+                      </span>
+                      {branch.isDefault && (
+                        <span className="text-[10px] text-gray-400 flex-shrink-0">default</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Nav */}
