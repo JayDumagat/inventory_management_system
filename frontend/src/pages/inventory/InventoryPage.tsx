@@ -91,8 +91,8 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-          <p className="text-gray-500 text-sm mt-1">Track stock levels across all branches</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Track stock levels across all branches</p>
         </div>
         <Button onClick={() => setAdjustModal(true)} className="gap-2">
           <ArrowUpDown className="w-4 h-4" /> Adjust stock
@@ -100,13 +100,13 @@ export default function InventoryPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
         {(["stock", "movements"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors capitalize ${
-              tab === t ? "border-primary-600 text-primary-600" : "border-transparent text-gray-500 hover:text-gray-700"
+              tab === t ? "border-primary-600 text-primary-600 dark:text-primary-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
             {t === "stock" ? "Stock levels" : "Stock movements"}
@@ -124,27 +124,27 @@ export default function InventoryPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">Product</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Variant</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">SKU</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Branch</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Qty</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Reorder at</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Status</th>
+                  <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Product</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Variant</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">SKU</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Qty</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Reorder at</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventory.map((item) => {
                     const low = item.reorderPoint > 0 && item.quantity <= item.reorderPoint;
                     return (
-                      <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-6 py-3 font-medium">{item.variant?.product?.name}</td>
-                        <td className="px-6 py-3">{item.variant?.name}</td>
-                        <td className="px-6 py-3 font-mono text-xs text-gray-500">{item.variant?.sku}</td>
-                        <td className="px-6 py-3 text-gray-600">{item.branch?.name}</td>
-                        <td className="px-6 py-3 font-bold">{item.quantity}</td>
-                        <td className="px-6 py-3 text-gray-500">{item.reorderPoint || "—"}</td>
+                      <tr key={item.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{item.variant?.product?.name}</td>
+                        <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{item.variant?.name}</td>
+                        <td className="px-6 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{item.variant?.sku}</td>
+                        <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{item.branch?.name}</td>
+                        <td className="px-6 py-3 font-bold text-gray-900 dark:text-white">{item.quantity}</td>
+                        <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{item.reorderPoint || "—"}</td>
                         <td className="px-6 py-3">
                           {low ? <Badge variant="danger">Low stock</Badge> : <Badge variant="success">OK</Badge>}
                         </td>
@@ -168,28 +168,28 @@ export default function InventoryPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500">Type</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Variant</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Branch</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Qty</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Before → After</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Notes</th>
-                    <th className="px-6 py-3 font-medium text-gray-500">Date</th>
+                  <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Type</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Variant</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Qty</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Before → After</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Notes</th>
+                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {movements.map((m) => (
-                    <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <tr key={m.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
                       <td className="px-6 py-3">
                         <Badge variant={movementBadge[m.type]}>{m.type}</Badge>
                       </td>
-                      <td className="px-6 py-3 text-gray-600">{m.variantId.slice(0, 8)}…</td>
-                      <td className="px-6 py-3 text-gray-600">{m.branchId.slice(0, 8)}…</td>
-                      <td className="px-6 py-3 font-bold">{m.quantity}</td>
-                      <td className="px-6 py-3 text-gray-500">{m.previousQuantity} → {m.newQuantity}</td>
-                      <td className="px-6 py-3 text-gray-500">{m.notes || "—"}</td>
-                      <td className="px-6 py-3 text-gray-500 whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
+                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{m.variantId.slice(0, 8)}…</td>
+                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{m.branchId.slice(0, 8)}…</td>
+                      <td className="px-6 py-3 font-bold text-gray-900 dark:text-white">{m.quantity}</td>
+                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{m.previousQuantity} → {m.newQuantity}</td>
+                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{m.notes || "—"}</td>
+                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

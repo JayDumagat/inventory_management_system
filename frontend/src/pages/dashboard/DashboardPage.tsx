@@ -45,17 +45,17 @@ export default function DashboardPage() {
   if (isLoading) return <PageLoader />;
 
   const stats = [
-    { label: "Total Products", value: data?.stats.totalProducts ?? 0, icon: Package, color: "text-blue-600 bg-blue-50" },
-    { label: "Orders (30d)", value: data?.stats.ordersLast30Days ?? 0, icon: ShoppingCart, color: "text-purple-600 bg-purple-50" },
-    { label: "Revenue (30d)", value: formatCurrency(data?.stats.revenueLast30Days ?? 0), icon: DollarSign, color: "text-green-600 bg-green-50" },
-    { label: "Low Stock", value: data?.stats.lowStockCount ?? 0, icon: AlertTriangle, color: "text-yellow-600 bg-yellow-50" },
+    { label: "Total Products", value: data?.stats.totalProducts ?? 0, icon: Package, color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" },
+    { label: "Orders (30d)", value: data?.stats.ordersLast30Days ?? 0, icon: ShoppingCart, color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20" },
+    { label: "Revenue (30d)", value: formatCurrency(data?.stats.revenueLast30Days ?? 0), icon: DollarSign, color: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20" },
+    { label: "Low Stock", value: data?.stats.lowStockCount ?? 0, icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20" },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Welcome back to {currentTenant?.name}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Welcome back to {currentTenant?.name}</p>
       </div>
 
       {/* Stat cards */}
@@ -90,7 +90,7 @@ export default function DashboardPage() {
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #f0f0f0)" />
                 <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
@@ -109,14 +109,14 @@ export default function DashboardPage() {
             {(data?.lowStockItems?.length ?? 0) === 0 ? (
               <p className="px-6 py-8 text-sm text-gray-400 text-center">No low stock items 🎉</p>
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {data?.lowStockItems.map((item) => (
                   <li key={item.id} className="px-6 py-3">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {item.variant?.product?.name} — {item.variant?.name}
                     </p>
-                    <p className="text-xs text-gray-500">{item.branch?.name}</p>
-                    <p className="text-xs text-red-600 font-medium mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.branch?.name}</p>
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
                       {item.quantity} left (reorder at {item.reorderPoint})
                     </p>
                   </li>
@@ -139,26 +139,26 @@ export default function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Order</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Customer</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500">Status</th>
-                    <th className="text-right px-6 py-3 font-medium text-gray-500">Total</th>
-                    <th className="text-right px-6 py-3 font-medium text-gray-500">Date</th>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Order</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
+                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-right px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
+                    <th className="text-right px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-6 py-3 font-mono text-xs font-medium">{order.orderNumber}</td>
-                      <td className="px-6 py-3 text-gray-600">{order.customerName || "—"}</td>
+                    <tr key={order.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                      <td className="px-6 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
+                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{order.customerName || "—"}</td>
                       <td className="px-6 py-3">
                         <Badge variant={statusColor[order.status] || "default"}>
                           {order.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-3 text-right font-medium">{formatCurrency(order.totalAmount)}</td>
-                      <td className="px-6 py-3 text-right text-gray-500">{formatDate(order.createdAt)}</td>
+                      <td className="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-6 py-3 text-right text-gray-500 dark:text-gray-400">{formatDate(order.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

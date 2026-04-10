@@ -59,8 +59,8 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-          <p className="text-gray-500 text-sm mt-1">{categories.length} categories</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{categories.length} categories</p>
         </div>
         <Button onClick={() => openModal()} className="gap-2">
           <Plus className="w-4 h-4" /> Add category
@@ -79,19 +79,19 @@ export default function CategoriesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Description</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Parent</th>
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Name</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Description</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Parent</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {categories.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-6 py-3 text-gray-500">{c.description || "—"}</td>
-                    <td className="px-6 py-3 text-gray-500">
+                  <tr key={c.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{c.name}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{c.description || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">
                       {c.parentId ? categories.find((p) => p.id === c.parentId)?.name || "—" : "—"}
                     </td>
                     <td className="px-6 py-3">

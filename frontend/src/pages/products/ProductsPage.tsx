@@ -101,8 +101,8 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 text-sm mt-1">{products.length} products</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Products</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{products.length} products</p>
         </div>
         <Button onClick={() => openProductModal()} className="gap-2">
           <Plus className="w-4 h-4" /> Add product
@@ -121,16 +121,16 @@ export default function ProductsPage() {
           {products.map((p) => (
             <Card key={p.id}>
               <div
-                className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                 onClick={() => setExpanded((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
               >
                 <div className="flex items-center gap-3">
                   {expanded[p.id] ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                   <div>
-                    <p className="font-medium text-gray-900">{p.name}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{p.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                       {p.category && <Badge variant="info">{p.category.name}</Badge>}
-                      <span className="text-xs text-gray-400">{p.variants.length} variant{p.variants.length !== 1 ? "s" : ""}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{p.variants.length} variant{p.variants.length !== 1 ? "s" : ""}</span>
                     </div>
                   </div>
                 </div>
@@ -145,9 +145,9 @@ export default function ProductsPage() {
               </div>
 
               {expanded[p.id] && (
-                <div className="border-t border-gray-100 px-6 py-4">
+                <div className="border-t border-gray-100 dark:border-gray-800 px-6 py-4">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium text-gray-700">Variants</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Variants</p>
                     <Button size="sm" variant="outline" onClick={() => openVariantModal(p.id)}>
                       <Plus className="w-3.5 h-3.5 mr-1" /> Add variant
                     </Button>
@@ -158,7 +158,7 @@ export default function ProductsPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-gray-500 border-b border-gray-100">
+                          <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
                             <th className="pb-2 font-medium">Name</th>
                             <th className="pb-2 font-medium">SKU</th>
                             <th className="pb-2 font-medium">Price</th>
@@ -168,11 +168,11 @@ export default function ProductsPage() {
                         </thead>
                         <tbody>
                           {p.variants.map((v) => (
-                            <tr key={v.id} className="border-b border-gray-50">
-                              <td className="py-2 font-medium">{v.name}</td>
-                              <td className="py-2 text-gray-500 font-mono text-xs">{v.sku}</td>
-                              <td className="py-2">{formatCurrency(v.price)}</td>
-                              <td className="py-2 text-gray-500">{formatCurrency(v.costPrice)}</td>
+                            <tr key={v.id} className="border-b border-gray-50 dark:border-gray-800/50">
+                              <td className="py-2 font-medium text-gray-900 dark:text-white">{v.name}</td>
+                              <td className="py-2 text-gray-500 dark:text-gray-400 font-mono text-xs">{v.sku}</td>
+                              <td className="py-2 text-gray-900 dark:text-white">{formatCurrency(v.price)}</td>
+                              <td className="py-2 text-gray-500 dark:text-gray-400">{formatCurrency(v.costPrice)}</td>
                               <td className="py-2">
                                 <div className="flex items-center gap-1 justify-end">
                                   <Button variant="ghost" size="sm" onClick={() => openVariantModal(p.id, v)}>
