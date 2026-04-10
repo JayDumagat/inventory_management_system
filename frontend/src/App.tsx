@@ -11,6 +11,7 @@ import CategoriesPage from "./pages/categories/CategoriesPage";
 import InventoryPage from "./pages/inventory/InventoryPage";
 import OrdersPage from "./pages/orders/OrdersPage";
 import AuditPage from "./pages/audit/AuditPage";
+import BranchesPage from "./pages/branches/BranchesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/branches" element={<BranchesPage />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
