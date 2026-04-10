@@ -132,8 +132,8 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
-          <p className="text-gray-500 text-sm mt-1">{orders.length} orders</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sales Orders</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{orders.length} orders</p>
         </div>
         <Button onClick={() => setCreateModal(true)} className="gap-2">
           <Plus className="w-4 h-4" /> New order
@@ -150,27 +150,27 @@ export default function OrdersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Order #</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Customer</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Branch</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Status</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Total</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Date</th>
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Order #</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr key={o.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-6 py-3 font-mono text-xs font-medium">{o.orderNumber}</td>
-                    <td className="px-6 py-3 text-gray-600">{o.customerName || "—"}</td>
-                    <td className="px-6 py-3 text-gray-600">{o.branch?.name || "—"}</td>
+                  <tr key={o.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td className="px-6 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{o.orderNumber}</td>
+                    <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{o.customerName || "—"}</td>
+                    <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{o.branch?.name || "—"}</td>
                     <td className="px-6 py-3">
                       <Badge variant={statusColor[o.status]}>{o.status}</Badge>
                     </td>
-                    <td className="px-6 py-3 font-semibold">{formatCurrency(o.totalAmount)}</td>
-                    <td className="px-6 py-3 text-gray-500">{formatDate(o.createdAt)}</td>
+                    <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{formatCurrency(o.totalAmount)}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{formatDate(o.createdAt)}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-1 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setViewOrder(o)}>
@@ -224,26 +224,26 @@ export default function OrdersPage() {
           {/* Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700">Items</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Items</p>
               <Select className="w-auto text-sm" onChange={(e) => { if (e.target.value) addItem(e.target.value); e.target.value = ""; }}>
                 <option value="">+ Add item</option>
                 {allVariants.map((v) => <option key={v.id} value={v.id}>{v.productName} — {v.name}</option>)}
               </Select>
             </div>
             {fields.length === 0 ? (
-              <p className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
                 No items added yet
               </p>
             ) : (
               <div className="space-y-2">
                 {fields.map((field, i) => (
-                  <div key={field.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                  <div key={field.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{field.productName} — {field.variantName}</p>
-                      <p className="text-xs text-gray-500">{field.sku}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{field.productName} — {field.variantName}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{field.sku}</p>
                     </div>
-                    <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-gray-200 rounded px-2 py-1 text-sm text-center" />
-                    <p className="text-sm font-medium w-20 text-right">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
+                    <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded px-2 py-1 text-sm text-center" />
+                    <p className="text-sm font-medium w-20 text-right text-gray-900 dark:text-white">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
                     <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-600">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -274,35 +274,35 @@ export default function OrdersPage() {
         <Modal open={!!viewOrder} onClose={() => setViewOrder(null)} title={`Order ${viewOrder.orderNumber}`} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-500">Status: </span><Badge variant={statusColor[viewOrder.status]}>{viewOrder.status}</Badge></div>
-              <div><span className="text-gray-500">Customer: </span>{viewOrder.customerName || "—"}</div>
-              <div><span className="text-gray-500">Branch: </span>{viewOrder.branch?.name}</div>
-              <div><span className="text-gray-500">Date: </span>{formatDate(viewOrder.createdAt)}</div>
+              <div><span className="text-gray-500 dark:text-gray-400">Status: </span><Badge variant={statusColor[viewOrder.status]}>{viewOrder.status}</Badge></div>
+              <div><span className="text-gray-500 dark:text-gray-400">Customer: </span><span className="text-gray-900 dark:text-white">{viewOrder.customerName || "—"}</span></div>
+              <div><span className="text-gray-500 dark:text-gray-400">Branch: </span><span className="text-gray-900 dark:text-white">{viewOrder.branch?.name}</span></div>
+              <div><span className="text-gray-500 dark:text-gray-400">Date: </span><span className="text-gray-900 dark:text-white">{formatDate(viewOrder.createdAt)}</span></div>
             </div>
-            <table className="w-full text-sm border rounded-lg overflow-hidden">
-              <thead className="bg-gray-50">
+            <table className="w-full text-sm border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600">Item</th>
-                  <th className="text-center px-4 py-2 font-medium text-gray-600">Qty</th>
-                  <th className="text-right px-4 py-2 font-medium text-gray-600">Unit</th>
-                  <th className="text-right px-4 py-2 font-medium text-gray-600">Total</th>
+                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Item</th>
+                  <th className="text-center px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Qty</th>
+                  <th className="text-right px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Unit</th>
+                  <th className="text-right px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {viewOrder.items.map((item) => (
-                  <tr key={item.id} className="border-t">
-                    <td className="px-4 py-2">{item.productName} — {item.variantName}<br /><span className="text-xs text-gray-400">{item.sku}</span></td>
-                    <td className="px-4 py-2 text-center">{item.quantity}</td>
+                  <tr key={item.id} className="border-t border-gray-100 dark:border-gray-800">
+                    <td className="px-4 py-2 text-gray-900 dark:text-white">{item.productName} — {item.variantName}<br /><span className="text-xs text-gray-400 dark:text-gray-500">{item.sku}</span></td>
+                    <td className="px-4 py-2 text-center text-gray-900 dark:text-white">{item.quantity}</td>
                     <td className="px-4 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
                     <td className="px-4 py-2 text-right font-medium">{formatCurrency(item.totalPrice)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t bg-gray-50">
-                <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500">Subtotal</td><td className="px-4 py-2 text-right">{formatCurrency(viewOrder.subtotal)}</td></tr>
-                {Number(viewOrder.taxAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500">Tax</td><td className="px-4 py-2 text-right">{formatCurrency(viewOrder.taxAmount)}</td></tr>}
-                {Number(viewOrder.discountAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500">Discount</td><td className="px-4 py-2 text-right text-red-600">-{formatCurrency(viewOrder.discountAmount)}</td></tr>}
-                <tr><td colSpan={3} className="px-4 py-2 text-right font-semibold">Total</td><td className="px-4 py-2 text-right font-bold text-lg">{formatCurrency(viewOrder.totalAmount)}</td></tr>
+              <tfoot className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+                <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Subtotal</td><td className="px-4 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(viewOrder.subtotal)}</td></tr>
+                {Number(viewOrder.taxAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Tax</td><td className="px-4 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(viewOrder.taxAmount)}</td></tr>}
+                {Number(viewOrder.discountAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Discount</td><td className="px-4 py-2 text-right text-red-600 dark:text-red-400">-{formatCurrency(viewOrder.discountAmount)}</td></tr>}
+                <tr><td colSpan={3} className="px-4 py-2 text-right font-semibold text-gray-900 dark:text-white">Total</td><td className="px-4 py-2 text-right font-bold text-lg text-gray-900 dark:text-white">{formatCurrency(viewOrder.totalAmount)}</td></tr>
               </tfoot>
             </table>
           </div>
@@ -312,7 +312,7 @@ export default function OrdersPage() {
       {/* Refund modal */}
       <Modal open={refundModal.open} onClose={() => setRefundModal({ open: false })} title="Process refund">
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Order: <strong>{refundModal.order?.orderNumber}</strong> — Total: {formatCurrency(refundModal.order?.totalAmount || 0)}
           </p>
           <Input label="Refund amount" type="number" step="0.01" min="0.01" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
