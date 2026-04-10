@@ -52,49 +52,49 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Welcome back to {currentTenant?.name}</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {stats.map((s) => (
           <Card key={s.label}>
-            <CardContent className="flex items-center gap-4 py-5">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${s.color}`}>
-                <s.icon className="w-6 h-6" />
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${s.color}`}>
+                <s.icon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-                <p className="text-sm text-gray-500">{s.label}</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{s.value}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{s.label}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         {/* Sales chart */}
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Sales last 7 days</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={data?.salesByDay ?? []}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--accent-500)" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="var(--accent-500)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #f0f0f0)" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} tickFormatter={(v) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e5e7eb)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2} fill="url(#colorTotal)" />
+                <Area type="monotone" dataKey="total" stroke="var(--accent-500)" strokeWidth={1.5} fill="url(#colorTotal)" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -107,11 +107,11 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             {(data?.lowStockItems?.length ?? 0) === 0 ? (
-              <p className="px-6 py-8 text-sm text-gray-400 text-center">No low stock items 🎉</p>
+              <p className="px-5 py-8 text-sm text-gray-400 text-center">No low stock items 🎉</p>
             ) : (
               <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {data?.lowStockItems.map((item) => (
-                  <li key={item.id} className="px-6 py-3">
+                  <li key={item.id} className="px-5 py-3">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {item.variant?.product?.name} — {item.variant?.name}
                     </p>
@@ -134,31 +134,31 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           {(data?.recentOrders?.length ?? 0) === 0 ? (
-            <p className="px-6 py-8 text-sm text-gray-400 text-center">No orders yet</p>
+            <p className="px-5 py-8 text-sm text-gray-400 text-center">No orders yet</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800">
-                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Order</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
-                    <th className="text-left px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                    <th className="text-right px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
-                    <th className="text-right px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Order</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Customer</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
+                    <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="px-6 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
-                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{order.customerName || "—"}</td>
-                      <td className="px-6 py-3">
+                    <tr key={order.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
+                      <td className="px-5 py-3 text-gray-600 dark:text-gray-400">{order.customerName || "—"}</td>
+                      <td className="px-5 py-3">
                         <Badge variant={statusColor[order.status] || "default"}>
                           {order.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(order.totalAmount)}</td>
-                      <td className="px-6 py-3 text-right text-gray-500 dark:text-gray-400">{formatDate(order.createdAt)}</td>
+                      <td className="px-5 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-5 py-3 text-right text-gray-500 dark:text-gray-400">{formatDate(order.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

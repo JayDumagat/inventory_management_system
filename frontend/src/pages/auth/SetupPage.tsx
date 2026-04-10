@@ -47,19 +47,19 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-8 w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center mb-3">
-            <Building2 className="w-6 h-6 text-white" />
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-8 w-full max-w-sm">
+        <div className="flex flex-col items-center mb-7">
+          <div className="w-10 h-10 bg-primary-600 rounded flex items-center justify-center mb-3">
+            <Building2 className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Set up your organization</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Set up your organization</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 text-center">
             Create your first organization to start managing inventory
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
@@ -85,7 +85,7 @@ export default function SetupPage() {
             {...register("description")}
             error={errors.description?.message}
           />
-          <Button type="submit" loading={isSubmitting} size="lg" className="mt-2">
+          <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
             Create organization
           </Button>
         </form>
