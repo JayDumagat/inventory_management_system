@@ -2,9 +2,12 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
 import * as dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
+console.log("DB_PASSWORD:", process.env.DB_PASSWORD);
 
 import authRouter from "./routes/auth";
 import tenantsRouter from "./routes/tenants";

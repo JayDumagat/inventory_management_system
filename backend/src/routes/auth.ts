@@ -43,6 +43,7 @@ function generateTokens(userId: string, email: string) {
 router.post("/register", async (req: Request, res: Response): Promise<void> => {
   try {
     const body = registerSchema.parse(req.body);
+    console.log("Registering user:", req.body);
     
     const [existing] = await db.select().from(users).where(eq(users.email, body.email));
     if (existing) {
