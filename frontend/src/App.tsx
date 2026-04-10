@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RequireAuth, RequireTenant } from "./components/RouteGuard";
-import { useThemeStore } from "./stores/themeStore";
-import { useEffect } from "react";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -18,38 +17,6 @@ import BranchesPage from "./pages/branches/BranchesPage";
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
-
-function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { mode, accent } = useThemeStore();
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    // Remove previous theme classes
-    root.classList.remove(
-      "theme-blue", "theme-violet", "theme-emerald", "theme-rose", "theme-amber", "theme-teal"
-    );
-    root.classList.add(`theme-${accent}`);
-
-    // Apply dark mode
-    const applyDark = (dark: boolean) => {
-      if (dark) root.classList.add("dark");
-      else root.classList.remove("dark");
-    };
-
-    if (mode === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      applyDark(mq.matches);
-      const handler = (e: MediaQueryListEvent) => applyDark(e.matches);
-      mq.addEventListener("change", handler);
-      return () => mq.removeEventListener("change", handler);
-    } else {
-      applyDark(mode === "dark");
-    }
-  }, [mode, accent]);
-
-  return <>{children}</>;
-}
 
 export default function App() {
   return (
