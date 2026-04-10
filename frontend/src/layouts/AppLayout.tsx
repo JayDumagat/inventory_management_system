@@ -239,7 +239,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             aria-label="Notifications"
             className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+            <Bell className="w-[18px] h-[18px]" />
             {/* Badge placeholder */}
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-500" />
           </button>
