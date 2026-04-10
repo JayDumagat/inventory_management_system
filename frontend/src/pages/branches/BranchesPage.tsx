@@ -116,8 +116,8 @@ export default function BranchesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Branches</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Branches</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {branches.length} {branches.length === 1 ? "branch" : "branches"}
           </p>
         </div>
@@ -139,13 +139,13 @@ export default function BranchesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Name</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Address</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">City</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Country</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Phone</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Default</th>
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Name</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Address</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">City</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Country</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Phone</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Default</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
@@ -154,31 +154,31 @@ export default function BranchesPage() {
                   <tr
                     key={b.id}
                     className={cn(
-                      "border-b border-gray-50 hover:bg-gray-50",
-                      currentBranch?.id === b.id && "bg-primary-50/40"
+                      "border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40",
+                      currentBranch?.id === b.id && "bg-primary-50/40 dark:bg-primary-900/10"
                     )}
                   >
-                    <td className="px-6 py-3 font-medium text-gray-900">
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">
                       <div className="flex items-center gap-2">
                         {b.name}
                         {currentBranch?.id === b.id && (
-                          <span className="text-[10px] bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-full font-medium">
+                          <span className="text-[10px] bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-1.5 py-0.5 rounded-full font-medium">
                             active
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{b.address || "—"}</td>
-                    <td className="px-6 py-3 text-gray-500">{b.city || "—"}</td>
-                    <td className="px-6 py-3 text-gray-500">{b.country || "—"}</td>
-                    <td className="px-6 py-3 text-gray-500">{b.phone || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{b.address || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{b.city || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{b.country || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{b.phone || "—"}</td>
                     <td className="px-6 py-3">
                       {b.isDefault ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        <span className="text-xs bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
                           Default
                         </span>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400 dark:text-gray-600">—</span>
                       )}
                     </td>
                     <td className="px-6 py-3">
@@ -227,7 +227,7 @@ export default function BranchesPage() {
               className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               {...form.register("isDefault")}
             />
-            <span className="text-sm font-medium text-gray-700">Set as default branch</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Set as default branch</span>
           </label>
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => setModal({ open: false })}>

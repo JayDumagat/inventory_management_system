@@ -33,8 +33,8 @@ export default function AuditPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-        <p className="text-gray-500 text-sm mt-1">Track all activity in your organization</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Audit Log</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Track all activity in your organization</p>
       </div>
 
       <Card>
@@ -46,26 +46,26 @@ export default function AuditPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500">Action</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Resource</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Resource ID</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">IP Address</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Date</th>
-                  <th className="px-6 py-3 font-medium text-gray-500">Changes</th>
+                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Action</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Resource</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Resource ID</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">IP Address</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
+                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Changes</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <tr key={log.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
                     <td className="px-6 py-3">
                       <Badge variant={actionColor[log.action] || "default"}>{log.action}</Badge>
                     </td>
-                    <td className="px-6 py-3 text-gray-700 font-medium">{log.resourceType}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-gray-400">{log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}</td>
-                    <td className="px-6 py-3 text-gray-500">{log.ipAddress || "—"}</td>
-                    <td className="px-6 py-3 text-gray-500 whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
-                    <td className="px-6 py-3 text-xs text-gray-400 max-w-xs truncate">
+                    <td className="px-6 py-3 text-gray-700 dark:text-gray-300 font-medium">{log.resourceType}</td>
+                    <td className="px-6 py-3 font-mono text-xs text-gray-400 dark:text-gray-500">{log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{log.ipAddress || "—"}</td>
+                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
+                    <td className="px-6 py-3 text-xs text-gray-400 dark:text-gray-500 max-w-xs truncate">
                       {log.newValues ? JSON.stringify(log.newValues).slice(0, 60) + "…" : "—"}
                     </td>
                   </tr>
