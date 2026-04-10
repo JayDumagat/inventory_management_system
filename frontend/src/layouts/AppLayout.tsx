@@ -154,7 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   {/* Footer actions */}
                   <div className="border-t border-gray-100">
                     <button
-                      onClick={() => { navigate("/branches"); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                      onClick={() => { navigate("/branches?create=true"); setBranchDropdownOpen(false); setBranchSearch(""); }}
                       className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors text-primary-600 font-medium"
                     >
                       <Plus className="w-3.5 h-3.5 flex-shrink-0" />

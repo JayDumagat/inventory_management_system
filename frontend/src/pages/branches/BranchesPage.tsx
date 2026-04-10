@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { useBranchStore } from "../../stores/branchStore";
@@ -39,6 +40,7 @@ export default function BranchesPage() {
   const { currentBranch, setCurrentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const [searchParams, setSearchParams] = useSearchParams();
   const [modal, setModal] = useState<{ open: boolean; branch?: Branch }>({ open: false });
 
   const { data: branches = [], isLoading } = useQuery<Branch[]>({
@@ -46,6 +48,16 @@ export default function BranchesPage() {
     queryFn: () => api.get(`/api/tenants/${tid}/branches`).then((r) => r.data),
     enabled: !!tid,
   });
+
+  // Auto-open create modal when navigated with ?create=true
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      form.reset({ isDefault: false });
+      setModal({ open: true });
+      setSearchParams({}, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
 
