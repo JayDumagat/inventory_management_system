@@ -6,8 +6,9 @@ import { cn } from "../lib/utils";
 import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
+  Search, Plus, Settings,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 
@@ -19,6 +20,7 @@ const navItems = [
   { label: "Categories", icon: Tag, href: "/categories" },
   { label: "Inventory", icon: Warehouse, href: "/inventory" },
   { label: "Sales Orders", icon: ShoppingCart, href: "/orders" },
+  { label: "Branches", icon: GitBranch, href: "/branches" },
   { label: "Audit Log", icon: ClipboardList, href: "/audit" },
 ];
 
@@ -30,6 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { currentBranch, setCurrentBranch } = useBranchStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const [branchSearch, setBranchSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const tid = currentTenant?.id;
 
@@ -59,6 +62,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const filteredBranches = useMemo(
+    () => branches.filter((b) => b.name.toLowerCase().includes(branchSearch.toLowerCase())),
+    [branches, branchSearch]
+  );
 
   const handleLogout = () => {
     logout();
@@ -93,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {branches.length > 0 && (
             <div className="relative mt-3" ref={dropdownRef}>
               <button
-                onClick={() => setBranchDropdownOpen((o) => !o)}
+                onClick={() => { setBranchDropdownOpen((o) => !o); setBranchSearch(""); }}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-left"
               >
                 <GitBranch className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -104,22 +112,62 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
 
               {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-48 overflow-y-auto">
-                  {branches.map((branch) => (
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                  {/* Search */}
+                  <div className="p-2 border-b border-gray-100">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-gray-50 border border-gray-200">
+                      <Search className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Search branches…"
+                        value={branchSearch}
+                        onChange={(e) => setBranchSearch(e.target.value)}
+                        className="flex-1 text-xs bg-transparent outline-none text-gray-700 placeholder:text-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Branch list */}
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredBranches.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-gray-400 text-center">No branches found</p>
+                    ) : (
+                      filteredBranches.map((branch) => (
+                        <button
+                          key={branch.id}
+                          onClick={() => { setCurrentBranch(branch); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <Check className={cn("w-3.5 h-3.5 flex-shrink-0", currentBranch?.id === branch.id ? "text-primary-600" : "text-transparent")} />
+                          <span className={cn("flex-1 truncate", currentBranch?.id === branch.id ? "font-semibold text-primary-700" : "text-gray-700")}>
+                            {branch.name}
+                          </span>
+                          {branch.isDefault && (
+                            <span className="text-[10px] text-gray-400 flex-shrink-0">default</span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Footer actions */}
+                  <div className="border-t border-gray-100">
                     <button
-                      key={branch.id}
-                      onClick={() => { setCurrentBranch(branch); setBranchDropdownOpen(false); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors"
+                      onClick={() => { navigate("/branches"); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors text-primary-600 font-medium"
                     >
-                      <Check className={cn("w-3.5 h-3.5 flex-shrink-0", currentBranch?.id === branch.id ? "text-primary-600" : "text-transparent")} />
-                      <span className={cn("flex-1 truncate", currentBranch?.id === branch.id ? "font-semibold text-primary-700" : "text-gray-700")}>
-                        {branch.name}
-                      </span>
-                      {branch.isDefault && (
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">default</span>
-                      )}
+                      <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                      Create branch
                     </button>
-                  ))}
+                    <button
+                      onClick={() => { navigate("/branches"); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-gray-50 transition-colors text-gray-500"
+                    >
+                      <Settings className="w-3.5 h-3.5 flex-shrink-0" />
+                      Manage branches
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
