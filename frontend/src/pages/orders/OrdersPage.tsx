@@ -12,7 +12,7 @@ import { Card, CardContent } from "../../components/ui/Card";import { Modal } fr
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
 import { formatCurrency, formatDate } from "../../lib/utils";
-import { Plus, Trash2, Eye, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Eye, RefreshCw, ShoppingCart } from "lucide-react";
 
 interface Branch { id: string; name: string; }
 interface Product { id: string; name: string; variants: { id: string; name: string; sku: string; price: string }[]; }
@@ -129,11 +129,11 @@ export default function OrdersPage() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sales Orders</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{orders.length} orders</p>
+          <h1 className="text-2xl font-bold text-ink">Sales Orders</h1>
+          <p className="text-muted text-sm mt-1">{orders.length} orders</p>
         </div>
         <Button onClick={() => setCreateModal(true)} className="gap-2">
           <Plus className="w-4 h-4" /> New order
@@ -142,35 +142,41 @@ export default function OrdersPage() {
 
       <Card>
         {orders.length === 0 ? (
-          <CardContent className="py-16 text-center">
-            <p className="text-gray-400 mb-4">No orders yet</p>
-            <Button onClick={() => setCreateModal(true)}>Create first order</Button>
+          <CardContent className="p-0">
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                <ShoppingCart className="w-7 h-7 text-primary-500" />
+              </div>
+              <h3 className="text-base font-semibold text-ink mb-1">No orders yet</h3>
+              <p className="text-sm text-muted max-w-xs mb-6">Create your first sales order to start tracking revenue</p>
+              <Button onClick={() => setCreateModal(true)}>Create first order</Button>
+            </div>
           </CardContent>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Order #</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Customer</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Total</th>
-                  <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
+                <tr className="border-b border-stroke text-left">
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Order #</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Branch</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o) => (
-                  <tr key={o.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                    <td className="px-6 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{o.orderNumber}</td>
-                    <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{o.customerName || "—"}</td>
-                    <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{o.branch?.name || "—"}</td>
+                  <tr key={o.id} className="border-b border-stroke hover:bg-hover transition-colors">
+                    <td className="px-6 py-3 font-mono text-xs font-medium text-ink">{o.orderNumber}</td>
+                    <td className="px-6 py-3 text-muted">{o.customerName || "—"}</td>
+                    <td className="px-6 py-3 text-muted">{o.branch?.name || "—"}</td>
                     <td className="px-6 py-3">
                       <Badge variant={statusColor[o.status]}>{o.status}</Badge>
                     </td>
-                    <td className="px-6 py-3 font-semibold text-gray-900 dark:text-white">{formatCurrency(o.totalAmount)}</td>
-                    <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{formatDate(o.createdAt)}</td>
+                    <td className="px-6 py-3 font-semibold text-ink">{formatCurrency(o.totalAmount)}</td>
+                    <td className="px-6 py-3 text-muted">{formatDate(o.createdAt)}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-1 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setViewOrder(o)}>
@@ -224,26 +230,26 @@ export default function OrdersPage() {
           {/* Items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Items</p>
+              <p className="text-sm font-medium text-ink">Items</p>
               <Select className="w-auto text-sm" onChange={(e) => { if (e.target.value) addItem(e.target.value); e.target.value = ""; }}>
                 <option value="">+ Add item</option>
                 {allVariants.map((v) => <option key={v.id} value={v.id}>{v.productName} — {v.name}</option>)}
               </Select>
             </div>
             {fields.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
+              <p className="text-sm text-muted border border-dashed border-stroke p-4 text-center">
                 No items added yet
               </p>
             ) : (
               <div className="space-y-2">
                 {fields.map((field, i) => (
-                  <div key={field.id} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2">
+                  <div key={field.id} className="flex items-center gap-2 bg-page border border-stroke px-3 py-2">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{field.productName} — {field.variantName}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{field.sku}</p>
+                      <p className="text-sm font-medium text-ink">{field.productName} — {field.variantName}</p>
+                      <p className="text-xs text-muted">{field.sku}</p>
                     </div>
-                    <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded px-2 py-1 text-sm text-center" />
-                    <p className="text-sm font-medium w-20 text-right text-gray-900 dark:text-white">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
+                    <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-stroke bg-panel text-ink px-2 py-1 text-sm text-center outline-none focus:border-primary-500" />
+                    <p className="text-sm font-medium w-20 text-right text-ink">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
                     <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-600">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -274,35 +280,35 @@ export default function OrdersPage() {
         <Modal open={!!viewOrder} onClose={() => setViewOrder(null)} title={`Order ${viewOrder.orderNumber}`} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-500 dark:text-gray-400">Status: </span><Badge variant={statusColor[viewOrder.status]}>{viewOrder.status}</Badge></div>
-              <div><span className="text-gray-500 dark:text-gray-400">Customer: </span><span className="text-gray-900 dark:text-white">{viewOrder.customerName || "—"}</span></div>
-              <div><span className="text-gray-500 dark:text-gray-400">Branch: </span><span className="text-gray-900 dark:text-white">{viewOrder.branch?.name}</span></div>
-              <div><span className="text-gray-500 dark:text-gray-400">Date: </span><span className="text-gray-900 dark:text-white">{formatDate(viewOrder.createdAt)}</span></div>
+              <div><span className="text-muted">Status: </span><Badge variant={statusColor[viewOrder.status]}>{viewOrder.status}</Badge></div>
+              <div><span className="text-muted">Customer: </span><span className="text-ink">{viewOrder.customerName || "—"}</span></div>
+              <div><span className="text-muted">Branch: </span><span className="text-ink">{viewOrder.branch?.name}</span></div>
+              <div><span className="text-muted">Date: </span><span className="text-ink">{formatDate(viewOrder.createdAt)}</span></div>
             </div>
-            <table className="w-full text-sm border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+            <table className="w-full text-sm border border-stroke overflow-hidden">
+              <thead className="bg-page">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Item</th>
-                  <th className="text-center px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Qty</th>
-                  <th className="text-right px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Unit</th>
-                  <th className="text-right px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Total</th>
+                  <th className="text-left px-4 py-2 font-medium text-muted">Item</th>
+                  <th className="text-center px-4 py-2 font-medium text-muted">Qty</th>
+                  <th className="text-right px-4 py-2 font-medium text-muted">Unit</th>
+                  <th className="text-right px-4 py-2 font-medium text-muted">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {viewOrder.items.map((item) => (
-                  <tr key={item.id} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="px-4 py-2 text-gray-900 dark:text-white">{item.productName} — {item.variantName}<br /><span className="text-xs text-gray-400 dark:text-gray-500">{item.sku}</span></td>
-                    <td className="px-4 py-2 text-center text-gray-900 dark:text-white">{item.quantity}</td>
-                    <td className="px-4 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
-                    <td className="px-4 py-2 text-right font-medium">{formatCurrency(item.totalPrice)}</td>
+                  <tr key={item.id} className="border-t border-stroke">
+                    <td className="px-4 py-2 text-ink">{item.productName} — {item.variantName}<br /><span className="text-xs text-muted">{item.sku}</span></td>
+                    <td className="px-4 py-2 text-center text-ink">{item.quantity}</td>
+                    <td className="px-4 py-2 text-right text-muted">{formatCurrency(item.unitPrice)}</td>
+                    <td className="px-4 py-2 text-right font-medium text-ink">{formatCurrency(item.totalPrice)}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-                <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Subtotal</td><td className="px-4 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(viewOrder.subtotal)}</td></tr>
-                {Number(viewOrder.taxAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Tax</td><td className="px-4 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(viewOrder.taxAmount)}</td></tr>}
-                {Number(viewOrder.discountAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-gray-500 dark:text-gray-400">Discount</td><td className="px-4 py-2 text-right text-red-600 dark:text-red-400">-{formatCurrency(viewOrder.discountAmount)}</td></tr>}
-                <tr><td colSpan={3} className="px-4 py-2 text-right font-semibold text-gray-900 dark:text-white">Total</td><td className="px-4 py-2 text-right font-bold text-lg text-gray-900 dark:text-white">{formatCurrency(viewOrder.totalAmount)}</td></tr>
+              <tfoot className="border-t border-stroke bg-page">
+                <tr><td colSpan={3} className="px-4 py-2 text-right text-muted">Subtotal</td><td className="px-4 py-2 text-right text-ink">{formatCurrency(viewOrder.subtotal)}</td></tr>
+                {Number(viewOrder.taxAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-muted">Tax</td><td className="px-4 py-2 text-right text-ink">{formatCurrency(viewOrder.taxAmount)}</td></tr>}
+                {Number(viewOrder.discountAmount) > 0 && <tr><td colSpan={3} className="px-4 py-2 text-right text-muted">Discount</td><td className="px-4 py-2 text-right text-red-600">-{formatCurrency(viewOrder.discountAmount)}</td></tr>}
+                <tr><td colSpan={3} className="px-4 py-2 text-right font-semibold text-ink">Total</td><td className="px-4 py-2 text-right font-bold text-lg text-ink">{formatCurrency(viewOrder.totalAmount)}</td></tr>
               </tfoot>
             </table>
           </div>
@@ -312,8 +318,8 @@ export default function OrdersPage() {
       {/* Refund modal */}
       <Modal open={refundModal.open} onClose={() => setRefundModal({ open: false })} title="Process refund">
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Order: <strong>{refundModal.order?.orderNumber}</strong> — Total: {formatCurrency(refundModal.order?.totalAmount || 0)}
+          <p className="text-sm text-muted">
+            Order: <strong className="text-ink">{refundModal.order?.orderNumber}</strong> — Total: {formatCurrency(refundModal.order?.totalAmount || 0)}
           </p>
           <Input label="Refund amount" type="number" step="0.01" min="0.01" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
           <Input label="Reason (optional)" value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />

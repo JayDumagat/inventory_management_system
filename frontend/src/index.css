@@ -2,9 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Accent color themes ─────────────────────────────────────── */
+/* ── Surface & page background variables ─────────────────────── */
+:root {
+  --page-bg:     #f9fafb;
+  --surface-bg:  #ffffff;
+  --border-clr:  #e5e7eb;
+  --text-clr:    #111827;
+  --muted-clr:   #6b7280;
+  --hover-bg:    #f3f4f6;
+}
+html.dark {
+  --page-bg:     #030712;
+  --surface-bg:  #111827;
+  --border-clr:  #1f2937;
+  --text-clr:    #f9fafb;
+  --muted-clr:   #9ca3af;
+  --hover-bg:    #1f2937;
+}
+
+/* ── Olive Garden Feast (default primary palette) ─────────────── */
 :root,
-.theme-blue {
+html.theme-olive {
+  --accent-50:  #f4f6e8;
+  --accent-100: #e6eac8;
+  --accent-200: #ccd698;
+  --accent-300: #a8b868;
+  --accent-400: #7c9242;
+  --accent-500: #606c38;
+  --accent-600: #4d562e;
+  --accent-700: #3b4222;
+  --accent-800: #2e3420;
+  --accent-900: #283618;
+}
+html.theme-olive {
+  --page-bg:    #fefae0;
+  --surface-bg: #fffef5;
+  --border-clr: #e0d9a4;
+  --text-clr:   #1a1e0e;
+  --muted-clr:  #6b6440;
+  --hover-bg:   #f6f2c8;
+}
+html.dark.theme-olive {
+  --page-bg:    #1c2110;
+  --surface-bg: #252d14;
+  --border-clr: #3a4522;
+  --text-clr:   #f0eed8;
+  --muted-clr:  #a0a070;
+  --hover-bg:   #2f3a1a;
+}
+
+/* ── Summer Ocean Breeze ─────────────────────────────────────── */
+html.theme-ocean {
+  --accent-50:  #eef6fb;
+  --accent-100: #d4eaf4;
+  --accent-200: #a8dadc;
+  --accent-300: #7ec0ce;
+  --accent-400: #5499b8;
+  --accent-500: #457b9d;
+  --accent-600: #35607e;
+  --accent-700: #284b62;
+  --accent-800: #1d3557;
+  --accent-900: #152740;
+  --page-bg:    #f1faee;
+  --surface-bg: #ffffff;
+  --border-clr: #c0dcd8;
+  --text-clr:   #1d3557;
+  --muted-clr:  #457b9d;
+  --hover-bg:   #e4f4f0;
+}
+html.dark.theme-ocean {
+  --page-bg:    #0d1e30;
+  --surface-bg: #112540;
+  --border-clr: #1d3557;
+  --text-clr:   #f1faee;
+  --muted-clr:  #a8dadc;
+  --hover-bg:   #17304a;
+}
+
+/* ── Coastal Vibes ───────────────────────────────────────────── */
+html.theme-coastal {
+  --accent-50:  #eef4fb;
+  --accent-100: #ccddf0;
+  --accent-200: #98c1d9;
+  --accent-300: #6fa8c8;
+  --accent-400: #5088b2;
+  --accent-500: #3d5a80;
+  --accent-600: #2e4568;
+  --accent-700: #213352;
+  --accent-800: #293241;
+  --accent-900: #1a2232;
+  --page-bg:    #e0fbfc;
+  --surface-bg: #f5fdfe;
+  --border-clr: #b0d8db;
+  --text-clr:   #293241;
+  --muted-clr:  #3d5a80;
+  --hover-bg:   #caf0f2;
+}
+html.dark.theme-coastal {
+  --page-bg:    #0c1920;
+  --surface-bg: #0f2230;
+  --border-clr: #1a3248;
+  --text-clr:   #e0fbfc;
+  --muted-clr:  #98c1d9;
+  --hover-bg:   #14293a;
+}
+
+/* ── Legacy accent themes (accent-only, neutral backgrounds) ─── */
+html.theme-blue {
   --accent-50:  #eff6ff;
   --accent-100: #dbeafe;
   --accent-200: #bfdbfe;
@@ -16,8 +120,7 @@
   --accent-800: #1e40af;
   --accent-900: #1e3a8a;
 }
-
-.theme-violet {
+html.theme-violet {
   --accent-50:  #f5f3ff;
   --accent-100: #ede9fe;
   --accent-200: #ddd6fe;
@@ -29,8 +132,7 @@
   --accent-800: #5b21b6;
   --accent-900: #4c1d95;
 }
-
-.theme-emerald {
+html.theme-emerald {
   --accent-50:  #ecfdf5;
   --accent-100: #d1fae5;
   --accent-200: #a7f3d0;
@@ -42,8 +144,7 @@
   --accent-800: #065f46;
   --accent-900: #064e3b;
 }
-
-.theme-rose {
+html.theme-rose {
   --accent-50:  #fff1f2;
   --accent-100: #ffe4e6;
   --accent-200: #fecdd3;
@@ -55,8 +156,7 @@
   --accent-800: #9f1239;
   --accent-900: #881337;
 }
-
-.theme-amber {
+html.theme-amber {
   --accent-50:  #fffbeb;
   --accent-100: #fef3c7;
   --accent-200: #fde68a;
@@ -68,8 +168,7 @@
   --accent-800: #92400e;
   --accent-900: #78350f;
 }
-
-.theme-teal {
+html.theme-teal {
   --accent-50:  #f0fdfa;
   --accent-100: #ccfbf1;
   --accent-200: #99f6e4;
@@ -88,16 +187,14 @@
     box-sizing: border-box;
   }
   html {
-    transition: background-color 0.15s, color 0.15s;
+    transition: background-color 0.2s, color 0.2s;
   }
   body {
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
-    @apply bg-gray-50 text-gray-900;
-  }
-  .dark body {
-    @apply bg-gray-950 text-gray-100;
+    background-color: var(--page-bg);
+    color: var(--text-clr);
   }
 }
 
