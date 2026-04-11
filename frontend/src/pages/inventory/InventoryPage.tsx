@@ -31,7 +31,7 @@ const adjustSchema = z.object({
   variantId: z.string().min(1, "Variant required"),
   branchId: z.string().min(1, "Branch required"),
   type: z.enum(["in", "out", "adjustment", "transfer", "return"]),
-  quantity: z.number().int().min(1),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
   notes: z.string().optional(),
 });
 type AdjustForm = z.infer<typeof adjustSchema>;
@@ -219,7 +219,7 @@ export default function InventoryPage() {
             <option value="transfer">Transfer (outgoing)</option>
             <option value="return">Return (customer return)</option>
           </Select>
-          <Input label="Quantity" type="number" min="1" {...form.register("quantity")} error={form.formState.errors.quantity?.message} />
+          <Input label="Quantity" type={"number"} min={1} {...form.register("quantity")} error={form.formState.errors.quantity?.message} />
           <Input label="Notes (optional)" {...form.register("notes")} />
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => setAdjustModal(false)}>Cancel</Button>

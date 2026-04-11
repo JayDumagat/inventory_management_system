@@ -13,7 +13,7 @@ const orderItemSchema = z.object({
   productName: z.string(),
   variantName: z.string(),
   sku: z.string(),
-  quantity: z.number().int().min(1),
+  quantity: z.number().min(1),
   unitPrice: z.number().min(0),
 });
 

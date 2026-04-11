@@ -5,11 +5,12 @@ import { forwardRef } from "react";
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  type?: string;
   helperText?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, helperText, id, ...props }, ref) => {
+  ({ className, label, type, error, helperText, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
     return (
       <div className="flex flex-col gap-1">
@@ -21,6 +22,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={inputId}
+          type={type}
           className={cn(
             "w-full rounded border px-3 py-2 text-sm outline-none transition-colors",
             "bg-white dark:bg-gray-900 text-gray-900 dark:text-white",

@@ -11,7 +11,7 @@ const router = Router({ mergeParams: true });
 const categorySchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  parentId: z.string().uuid().optional().nullable(),
+  parentId: z.string().optional().nullable(),
 });
 
 router.get("/", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
@@ -23,10 +23,14 @@ router.get("/", authenticate, requireTenant(), async (req: Request, res: Respons
   }
 });
 
-router.post("/", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+router.post("/", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
   try {
     const body = categorySchema.parse(req.body);
     const [cat] = await db.insert(categories).values({ ...body, tenantId: req.tenantContext!.tenantId }).returning();
+    if (!cat) {
+      res.status(500).json({ error: "Failed to create category" });
+      return;
+    }
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "create", resourceType: "category", resourceId: cat.id });
     res.status(201).json(cat);
   } catch (error) {
