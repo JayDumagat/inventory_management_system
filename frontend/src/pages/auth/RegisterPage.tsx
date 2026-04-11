@@ -42,18 +42,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-page flex items-center justify-center p-4">
+      <div className="bg-panel border border-stroke p-8 w-full max-w-sm">
         <div className="flex flex-col items-center mb-7">
-          <div className="w-10 h-10 bg-primary-600 rounded flex items-center justify-center mb-3">
+          <div className="w-10 h-10 bg-primary-600 flex items-center justify-center mb-3">
             <Package className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Create account</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Start managing your inventory today</p>
+          <h1 className="text-xl font-bold text-ink">Create account</h1>
+          <p className="text-muted text-sm mt-1">Start managing your inventory today</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -71,9 +71,9 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+        <p className="text-center text-sm text-muted mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="text-primary-600 dark:text-primary-400 font-medium hover:underline">
+          <Link to="/login" className="text-primary-600 font-medium hover:underline">
             Sign in
           </Link>
         </p>

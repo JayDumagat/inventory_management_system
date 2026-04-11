@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 interface CardProps { children: ReactNode; className?: string; }
 export function Card({ children, className }: CardProps) {
   return (
-    <div className={cn("bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700", className)}>
+    <div className={cn("bg-panel border border-stroke", className)}>
       {children}
     </div>
   );
@@ -12,12 +12,12 @@ export function Card({ children, className }: CardProps) {
 
 interface CardHeaderProps { children: ReactNode; className?: string; }
 export function CardHeader({ children, className }: CardHeaderProps) {
-  return <div className={cn("px-5 py-4 border-b border-gray-200 dark:border-gray-700", className)}>{children}</div>;
+  return <div className={cn("px-5 py-4 border-b border-stroke", className)}>{children}</div>;
 }
 
 interface CardTitleProps { children: ReactNode; className?: string; }
 export function CardTitle({ children, className }: CardTitleProps) {
-  return <h3 className={cn("text-sm font-semibold text-gray-900 dark:text-white", className)}>{children}</h3>;
+  return <h3 className={cn("text-sm font-semibold text-ink", className)}>{children}</h3>;
 }
 
 interface CardContentProps { children: ReactNode; className?: string; }

@@ -10,13 +10,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", loading, children, disabled, ...props }, ref) => {
-    const base = "inline-flex items-center justify-center font-medium rounded transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed";
+    const base = "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed";
     const variants = {
       primary: "bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500",
-      secondary: "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-gray-400",
+      secondary: "bg-stroke text-ink hover:bg-hover focus:ring-primary-400",
       danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-      ghost: "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-400",
-      outline: "border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-primary-500",
+      ghost: "text-muted hover:bg-hover hover:text-ink focus:ring-primary-400",
+      outline: "border border-stroke text-ink hover:bg-hover focus:ring-primary-500",
     };
     const sizes = {
       sm: "text-xs px-3 py-1.5 gap-1.5",
