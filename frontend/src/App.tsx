@@ -13,6 +13,9 @@ import InventoryPage from "./pages/inventory/InventoryPage";
 import OrdersPage from "./pages/orders/OrdersPage";
 import AuditPage from "./pages/audit/AuditPage";
 import BranchesPage from "./pages/branches/BranchesPage";
+import CustomersPage from "./pages/customers/CustomersPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+import SettingsPage from "./pages/settings/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -38,10 +41,13 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/customers" element={<CustomersPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/audit" element={<AuditPage />} />
               <Route path="/branches" element={<BranchesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -52,4 +58,3 @@ export default function App() {
     </QueryClientProvider>
   );
 }
-

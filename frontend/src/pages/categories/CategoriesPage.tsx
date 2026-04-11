@@ -96,8 +96,8 @@ export default function CategoriesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-ink">Categories</h1>
+          <p className="text-muted text-sm mt-1">
             {topCount} top-level · {subCount} sub-categor{subCount === 1 ? "y" : "ies"}
           </p>
         </div>
@@ -111,34 +111,34 @@ export default function CategoriesPage() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                <FolderTree className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0">
+                <FolderTree className="w-4 h-4 text-primary-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{categories.length}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+                <p className="text-lg font-bold text-ink">{categories.length}</p>
+                <p className="text-xs text-muted">Total</p>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
-                <Tag className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <div className="w-8 h-8 bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                <Tag className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{topCount}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Top-level</p>
+                <p className="text-lg font-bold text-ink">{topCount}</p>
+                <p className="text-xs text-muted">Top-level</p>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
-                <Tag className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <div className="w-8 h-8 bg-green-50 border border-green-200 flex items-center justify-center flex-shrink-0">
+                <Tag className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{subCount}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Sub-categories</p>
+                <p className="text-lg font-bold text-ink">{subCount}</p>
+                <p className="text-xs text-muted">Sub-categories</p>
               </div>
             </CardContent>
           </Card>
@@ -148,13 +148,13 @@ export default function CategoriesPage() {
       {/* Search bar */}
       {categories.length > 0 && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             type="text"
             placeholder="Search categories…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-primary-500 dark:focus:border-primary-400 focus:ring-1 focus:ring-primary-500/20"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
           />
         </div>
       )}
@@ -162,19 +162,23 @@ export default function CategoriesPage() {
       {/* Empty state */}
       {categories.length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
-              <Tag className="w-6 h-6 text-gray-400" />
+          <CardContent className="p-0">
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                <Tag className="w-7 h-7 text-primary-500" />
+              </div>
+              <h3 className="text-base font-semibold text-ink mb-1">No categories yet</h3>
+              <p className="text-sm text-muted max-w-xs mb-6">Organize your products by adding categories and subcategories</p>
+              <Button onClick={() => openModal()}>Add your first category</Button>
             </div>
-            <p className="text-gray-900 dark:text-white font-medium mb-1">No categories yet</p>
-            <p className="text-gray-400 dark:text-gray-500 text-sm mb-4">Organize your products by adding categories</p>
-            <Button onClick={() => openModal()}>Add your first category</Button>
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No categories match &ldquo;{search}&rdquo;</p>
+            <AlertCircle className="w-8 h-8 text-muted mx-auto mb-3" />
+            <p className="text-sm font-medium text-ink mb-1">No results found</p>
+            <p className="text-sm text-muted">No categories match &ldquo;{search}&rdquo;</p>
           </CardContent>
         </Card>
       ) : (
@@ -183,27 +187,27 @@ export default function CategoriesPage() {
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Name</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Description</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Parent</th>
+                <tr className="border-b border-stroke text-left">
+                  <th className="px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Name</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Description</th>
+                  <th className="px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Parent</th>
                   <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {topLevel.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                  <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                          <Tag className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+                        <div className="w-6 h-6 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0">
+                          <Tag className="w-3 h-3 text-primary-600" />
                         </div>
-                        <span className="font-medium text-gray-900 dark:text-white">{c.name}</span>
+                        <span className="font-medium text-ink">{c.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{c.description || "—"}</td>
+                    <td className="px-5 py-3 text-muted">{c.description || "—"}</td>
                     <td className="px-5 py-3">
-                      <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded">
+                      <span className="text-xs bg-stroke text-ink px-2 py-0.5">
                         Top level
                       </span>
                     </td>
@@ -215,21 +219,21 @@ export default function CategoriesPage() {
                 {subCategories.map((c) => {
                   const parent = categories.find((p) => p.id === c.parentId);
                   return (
-                    <tr key={c.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                    <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2.5 pl-5">
-                          <div className="w-6 h-6 rounded bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
-                            <Tag className="w-3 h-3 text-purple-500 dark:text-purple-400" />
+                          <div className="w-6 h-6 bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                            <Tag className="w-3 h-3 text-blue-600" />
                           </div>
-                          <span className="font-medium text-gray-900 dark:text-white">{c.name}</span>
+                          <span className="font-medium text-ink">{c.name}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{c.description || "—"}</td>
+                      <td className="px-5 py-3 text-muted">{c.description || "—"}</td>
                       <td className="px-5 py-3">
                         {parent ? (
                           <div className="flex items-center gap-1.5">
-                            <Tag className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-600 dark:text-gray-300">{parent.name}</span>
+                            <Tag className="w-3 h-3 text-muted flex-shrink-0" />
+                            <span className="text-sm text-ink">{parent.name}</span>
                           </div>
                         ) : "—"}
                       </td>
@@ -244,29 +248,29 @@ export default function CategoriesPage() {
           </div>
 
           {/* Mobile card list */}
-          <div className="sm:hidden divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="sm:hidden divide-y divide-stroke">
             {filtered.map((c) => {
               const parent = c.parentId ? categories.find((p) => p.id === c.parentId) : null;
               const isTop = !c.parentId;
               return (
                 <div key={c.id} className="px-4 py-3 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${isTop ? "bg-blue-50 dark:bg-blue-900/20" : "bg-purple-50 dark:bg-purple-900/20"}`}>
-                      <Tag className={`w-3.5 h-3.5 ${isTop ? "text-blue-500 dark:text-blue-400" : "text-purple-500 dark:text-purple-400"}`} />
+                    <div className={`w-8 h-8 border flex items-center justify-center flex-shrink-0 mt-0.5 ${isTop ? "bg-primary-50 border-primary-200" : "bg-blue-50 border-blue-200"}`}>
+                      <Tag className={`w-3.5 h-3.5 ${isTop ? "text-primary-600" : "text-blue-600"}`} />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white truncate">{c.name}</p>
+                      <p className="font-medium text-ink truncate">{c.name}</p>
                       {c.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{c.description}</p>
+                        <p className="text-xs text-muted mt-0.5 truncate">{c.description}</p>
                       )}
                       <div className="mt-1">
                         {parent ? (
                           <div className="flex items-center gap-1">
-                            <Tag className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{parent.name}</span>
+                            <Tag className="w-3 h-3 text-muted flex-shrink-0" />
+                            <span className="text-xs text-muted">{parent.name}</span>
                           </div>
                         ) : (
-                          <span className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] bg-stroke text-ink px-1.5 py-0.5">
                             Top level
                           </span>
                         )}
@@ -303,14 +307,14 @@ export default function CategoriesPage() {
       <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete category" size="sm">
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-ink">
                 Delete &ldquo;{categories.find((c) => c.id === deleteConfirm)?.name}&rdquo;?
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-muted mt-1">
                 This action cannot be undone. Products in this category will become uncategorized.
               </p>
             </div>

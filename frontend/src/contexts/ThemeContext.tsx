@@ -7,14 +7,23 @@ interface ThemeContextValue {
   timezone: string;
   currency: string;
   dateFormat: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD";
+  language: string;
+  compactMode: boolean;
   setMode: (mode: ThemeMode) => void;
   setAccent: (accent: AccentColor) => void;
   setTimezone: (timezone: string) => void;
   setCurrency: (currency: string) => void;
   setDateFormat: (format: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD") => void;
+  setLanguage: (language: string) => void;
+  setCompactMode: (compact: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+const ALL_THEMES: AccentColor[] = [
+  "olive", "ocean", "coastal",
+  "blue", "violet", "emerald", "rose", "amber", "teal",
+];
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const store = useThemeStore();
@@ -23,10 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
 
-    root.classList.remove(
-      "theme-blue", "theme-violet", "theme-emerald",
-      "theme-rose", "theme-amber", "theme-teal"
-    );
+    ALL_THEMES.forEach((t) => root.classList.remove(`theme-${t}`));
     root.classList.add(`theme-${accent}`);
 
     const applyDark = (dark: boolean) => {

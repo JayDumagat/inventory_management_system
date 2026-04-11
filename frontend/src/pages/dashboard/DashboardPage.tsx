@@ -8,7 +8,7 @@ import { formatCurrency, formatDate } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Package, ShoppingCart, DollarSign, AlertTriangle } from "lucide-react";
+import { Package, ShoppingCart, DollarSign, AlertTriangle, TrendingUp } from "lucide-react";
 
 interface DashboardStats {
   stats: {
@@ -45,17 +45,23 @@ export default function DashboardPage() {
   if (isLoading) return <PageLoader />;
 
   const stats = [
-    { label: "Total Products", value: data?.stats.totalProducts ?? 0, icon: Package, color: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" },
-    { label: "Orders (30d)", value: data?.stats.ordersLast30Days ?? 0, icon: ShoppingCart, color: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20" },
-    { label: "Revenue (30d)", value: formatCurrency(data?.stats.revenueLast30Days ?? 0), icon: DollarSign, color: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20" },
-    { label: "Low Stock", value: data?.stats.lowStockCount ?? 0, icon: AlertTriangle, color: "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20" },
+    { label: "Total Products",  value: data?.stats.totalProducts ?? 0,               icon: Package,       color: "text-primary-600 bg-primary-50 border-primary-200" },
+    { label: "Orders (30d)",    value: data?.stats.ordersLast30Days ?? 0,             icon: ShoppingCart,  color: "text-blue-600 bg-blue-50 border-blue-200" },
+    { label: "Revenue (30d)",   value: formatCurrency(data?.stats.revenueLast30Days ?? 0), icon: DollarSign, color: "text-green-600 bg-green-50 border-green-200" },
+    { label: "Low Stock Items", value: data?.stats.lowStockCount ?? 0,               icon: AlertTriangle, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
   ];
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
+          <p className="text-muted text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-stroke px-3 py-1.5">
+          <TrendingUp className="w-3.5 h-3.5" />
+          Last 30 days
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -63,12 +69,12 @@ export default function DashboardPage() {
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 py-4">
-              <div className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${s.color}`}>
+              <div className={`w-10 h-10 border flex items-center justify-center flex-shrink-0 ${s.color}`}>
                 <s.icon className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{s.value}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{s.label}</p>
+                <p className="text-xl font-bold text-ink">{s.value}</p>
+                <p className="text-xs text-muted">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -79,24 +85,31 @@ export default function DashboardPage() {
         {/* Sales chart */}
         <Card className="xl:col-span-2">
           <CardHeader>
-            <CardTitle>Sales last 7 days</CardTitle>
+            <CardTitle>Revenue — last 7 days</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={data?.salesByDay ?? []}>
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent-500)" stopOpacity={0.12} />
-                    <stop offset="95%" stopColor="var(--accent-500)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e5e7eb)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                <Area type="monotone" dataKey="total" stroke="var(--accent-500)" strokeWidth={1.5} fill="url(#colorTotal)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {(data?.salesByDay?.length ?? 0) === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-muted text-sm">
+                <TrendingUp className="w-8 h-8 mb-2 opacity-30" />
+                No sales data yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={data?.salesByDay ?? []}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--accent-500)" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="var(--accent-500)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-clr)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} stroke="var(--border-clr)" />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} stroke="var(--border-clr)" />
+                  <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+                  <Area type="monotone" dataKey="total" stroke="var(--accent-500)" strokeWidth={2} fill="url(#colorTotal)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -107,17 +120,23 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             {(data?.lowStockItems?.length ?? 0) === 0 ? (
-              <p className="px-5 py-8 text-sm text-gray-400 text-center">No low stock items 🎉</p>
+              <div className="px-5 py-10 text-center">
+                <div className="w-10 h-10 bg-green-50 border border-green-200 flex items-center justify-center mx-auto mb-3">
+                  <Package className="w-5 h-5 text-green-600" />
+                </div>
+                <p className="text-sm font-medium text-ink mb-0.5">All stocked up</p>
+                <p className="text-xs text-muted">No low stock alerts at this time</p>
+              </div>
             ) : (
-              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              <ul className="divide-y divide-stroke">
                 {data?.lowStockItems.map((item) => (
                   <li key={item.id} className="px-5 py-3">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-ink truncate">
                       {item.variant?.product?.name} — {item.variant?.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.branch?.name}</p>
-                    <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
-                      {item.quantity} left (reorder at {item.reorderPoint})
+                    <p className="text-xs text-muted">{item.branch?.name}</p>
+                    <p className="text-xs text-red-600 font-medium mt-0.5">
+                      {item.quantity} left · reorder at {item.reorderPoint}
                     </p>
                   </li>
                 ))}
@@ -134,31 +153,37 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           {(data?.recentOrders?.length ?? 0) === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">No orders yet</p>
+            <div className="px-5 py-12 text-center">
+              <div className="w-10 h-10 bg-primary-50 border border-primary-200 flex items-center justify-center mx-auto mb-3">
+                <ShoppingCart className="w-5 h-5 text-primary-500" />
+              </div>
+              <p className="text-sm font-medium text-ink mb-0.5">No orders yet</p>
+              <p className="text-xs text-muted">Orders will appear here once created</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Order</th>
-                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Customer</th>
-                    <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
-                    <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
-                    <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
+                  <tr className="border-b border-stroke">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Order</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Customer</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Total</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                      <td className="px-5 py-3 font-mono text-xs font-medium text-gray-900 dark:text-white">{order.orderNumber}</td>
-                      <td className="px-5 py-3 text-gray-600 dark:text-gray-400">{order.customerName || "—"}</td>
+                    <tr key={order.id} className="border-b border-stroke hover:bg-hover transition-colors">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-ink">{order.orderNumber}</td>
+                      <td className="px-5 py-3 text-muted">{order.customerName || "—"}</td>
                       <td className="px-5 py-3">
                         <Badge variant={statusColor[order.status] || "default"}>
                           {order.status}
                         </Badge>
                       </td>
-                      <td className="px-5 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(order.totalAmount)}</td>
-                      <td className="px-5 py-3 text-right text-gray-500 dark:text-gray-400">{formatDate(order.createdAt)}</td>
+                      <td className="px-5 py-3 text-right font-medium text-ink">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-5 py-3 text-right text-muted">{formatDate(order.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -88,11 +88,11 @@ export default function InventoryPage() {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Inventory</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Track stock levels across all branches</p>
+          <h1 className="text-2xl font-bold text-ink">Inventory</h1>
+          <p className="text-muted text-sm mt-1">Track stock levels across all branches</p>
         </div>
         <Button onClick={() => setAdjustModal(true)} className="gap-2">
           <ArrowUpDown className="w-4 h-4" /> Adjust stock
@@ -100,13 +100,15 @@ export default function InventoryPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex gap-0 border-b border-stroke">
         {(["stock", "movements"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors capitalize ${
-              tab === t ? "border-primary-600 text-primary-600 dark:text-primary-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              tab === t
+                ? "border-primary-600 text-primary-600"
+                : "border-transparent text-muted hover:text-ink"
             }`}
           >
             {t === "stock" ? "Stock levels" : "Stock movements"}
@@ -117,34 +119,41 @@ export default function InventoryPage() {
       {tab === "stock" && (
         <Card>
           {inventory.length === 0 ? (
-            <CardContent className="py-16 text-center">
-              <p className="text-gray-400">No inventory records yet. Adjust stock to get started.</p>
+            <CardContent className="p-0">
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                  <ArrowUpDown className="w-7 h-7 text-primary-500" />
+                </div>
+                <h3 className="text-base font-semibold text-ink mb-1">No inventory records yet</h3>
+                <p className="text-sm text-muted max-w-xs mb-6">Use the "Adjust stock" button to add your first inventory records</p>
+                <Button onClick={() => setAdjustModal(true)}>Adjust stock</Button>
+              </div>
             </CardContent>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Product</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Variant</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">SKU</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Qty</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Reorder at</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Status</th>
+                  <tr className="border-b border-stroke text-left">
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Variant</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">SKU</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Branch</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Qty</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Reorder at</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventory.map((item) => {
                     const low = item.reorderPoint > 0 && item.quantity <= item.reorderPoint;
                     return (
-                      <tr key={item.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{item.variant?.product?.name}</td>
-                        <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{item.variant?.name}</td>
-                        <td className="px-6 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{item.variant?.sku}</td>
-                        <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{item.branch?.name}</td>
-                        <td className="px-6 py-3 font-bold text-gray-900 dark:text-white">{item.quantity}</td>
-                        <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{item.reorderPoint || "—"}</td>
+                      <tr key={item.id} className="border-b border-stroke hover:bg-hover transition-colors">
+                        <td className="px-6 py-3 font-medium text-ink">{item.variant?.product?.name}</td>
+                        <td className="px-6 py-3 text-ink">{item.variant?.name}</td>
+                        <td className="px-6 py-3 font-mono text-xs text-muted">{item.variant?.sku}</td>
+                        <td className="px-6 py-3 text-muted">{item.branch?.name}</td>
+                        <td className="px-6 py-3 font-bold text-ink">{item.quantity}</td>
+                        <td className="px-6 py-3 text-muted">{item.reorderPoint || "—"}</td>
                         <td className="px-6 py-3">
                           {low ? <Badge variant="danger">Low stock</Badge> : <Badge variant="success">OK</Badge>}
                         </td>
@@ -161,35 +170,41 @@ export default function InventoryPage() {
       {tab === "movements" && (
         <Card>
           {movements.length === 0 ? (
-            <CardContent className="py-16 text-center">
-              <p className="text-gray-400">No stock movements yet.</p>
+            <CardContent className="p-0">
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                  <ArrowUpDown className="w-7 h-7 text-primary-500" />
+                </div>
+                <h3 className="text-base font-semibold text-ink mb-1">No stock movements yet</h3>
+                <p className="text-sm text-muted max-w-xs">Stock adjustments, transfers and returns will appear here</p>
+              </div>
             </CardContent>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800 text-left">
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Type</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Variant</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Branch</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Qty</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Before → After</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Notes</th>
-                    <th className="px-6 py-3 font-medium text-gray-500 dark:text-gray-400">Date</th>
+                  <tr className="border-b border-stroke text-left">
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Variant</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Branch</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Qty</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Before → After</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Notes</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {movements.map((m) => (
-                    <tr key={m.id} className="border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <tr key={m.id} className="border-b border-stroke hover:bg-hover transition-colors">
                       <td className="px-6 py-3">
                         <Badge variant={movementBadge[m.type]}>{m.type}</Badge>
                       </td>
-                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{m.variantId.slice(0, 8)}…</td>
-                      <td className="px-6 py-3 text-gray-600 dark:text-gray-400">{m.branchId.slice(0, 8)}…</td>
-                      <td className="px-6 py-3 font-bold text-gray-900 dark:text-white">{m.quantity}</td>
-                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{m.previousQuantity} → {m.newQuantity}</td>
-                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{m.notes || "—"}</td>
-                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
+                      <td className="px-6 py-3 text-muted">{m.variantId.slice(0, 8)}…</td>
+                      <td className="px-6 py-3 text-muted">{m.branchId.slice(0, 8)}…</td>
+                      <td className="px-6 py-3 font-bold text-ink">{m.quantity}</td>
+                      <td className="px-6 py-3 text-muted">{m.previousQuantity} → {m.newQuantity}</td>
+                      <td className="px-6 py-3 text-muted">{m.notes || "—"}</td>
+                      <td className="px-6 py-3 text-muted whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
