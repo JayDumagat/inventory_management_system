@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
-  Users, BarChart2,
+  Users, BarChart2, Ruler, FlaskConical,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ const navItems = [
   { label: "Categories",   icon: Tag,             href: "/categories", roles: null },
   { label: "Customers",    icon: Users,           href: "/customers",  roles: null },
   { label: "Inventory",    icon: Warehouse,       href: "/inventory",  roles: null },
+  { label: "Batches",      icon: FlaskConical,    href: "/batches",    roles: null },
+  { label: "Units",        icon: Ruler,           href: "/units",      roles: null },
   { label: "Sales Orders", icon: ShoppingCart,    href: "/orders",     roles: null },
   { label: "Branches",     icon: GitBranch,       href: "/branches",   roles: null },
   { label: "Staff",        icon: Users,           href: "/staff",      roles: ["owner", "admin", "manager"] },
