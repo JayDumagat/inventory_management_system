@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, timestamp, integer, decimal, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, timestamp, integer, decimal, boolean, jsonb, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Enums
@@ -69,6 +69,16 @@ export const branchStaff = pgTable("branch_staff", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Units of Measurement
+export const units = pgTable("units", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  abbreviation: text("abbreviation").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Categories
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -86,6 +96,7 @@ export const products = pgTable("products", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
+  unitId: uuid("unit_id").references(() => units.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),
   imageUrl: text("image_url"),
@@ -128,6 +139,7 @@ export const stockMovements = pgTable("stock_movements", {
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
   variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }),
   branchId: uuid("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  destinationBranchId: uuid("destination_branch_id").references(() => branches.id, { onDelete: "set null" }),
   type: stockMovementTypeEnum("type").notNull(),
   quantity: integer("quantity").notNull(),
   previousQuantity: integer("previous_quantity").notNull().default(0),
@@ -186,6 +198,40 @@ export const refunds = pgTable("refunds", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Product Batches (batch/lot tracking with expiry)
+export const productBatches = pgTable("product_batches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  variantId: uuid("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }),
+  branchId: uuid("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  batchNumber: text("batch_number").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  expiryDate: date("expiry_date"),
+  manufacturingDate: date("manufacturing_date"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Product Attributes (e.g. Color, Size)
+export const productAttributes = pgTable("product_attributes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Product Attribute Options (e.g. Red, Blue / Small, Large)
+export const productAttributeOptions = pgTable("product_attribute_options", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  attributeId: uuid("attribute_id").notNull().references(() => productAttributes.id, { onDelete: "cascade" }),
+  value: text("value").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Audit Logs
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -212,6 +258,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   categories: many(categories),
   products: many(products),
   salesOrders: many(salesOrders),
+  units: many(units),
 }));
 
 export const tenantUsersRelations = relations(tenantUsers, ({ one }) => ({
@@ -232,13 +279,16 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 export const productsRelations = relations(products, ({ one, many }) => ({
   tenant: one(tenants, { fields: [products.tenantId], references: [tenants.id] }),
   category: one(categories, { fields: [products.categoryId], references: [categories.id] }),
+  unit: one(units, { fields: [products.unitId], references: [units.id] }),
   variants: many(productVariants),
+  attributes: many(productAttributes),
 }));
 
 export const productVariantsRelations = relations(productVariants, ({ one, many }) => ({
   product: one(products, { fields: [productVariants.productId], references: [products.id] }),
   inventory: many(inventory),
   stockMovements: many(stockMovements),
+  batches: many(productBatches),
 }));
 
 export const inventoryRelations = relations(inventory, ({ one }) => ({
@@ -270,4 +320,24 @@ export const refundsRelations = relations(refunds, ({ one }) => ({
 export const branchStaffRelations = relations(branchStaff, ({ one }) => ({
   branch: one(branches, { fields: [branchStaff.branchId], references: [branches.id] }),
   tenantUser: one(tenantUsers, { fields: [branchStaff.tenantUserId], references: [tenantUsers.id] }),
+}));
+
+export const unitsRelations = relations(units, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [units.tenantId], references: [tenants.id] }),
+  products: many(products),
+}));
+
+export const productBatchesRelations = relations(productBatches, ({ one }) => ({
+  variant: one(productVariants, { fields: [productBatches.variantId], references: [productVariants.id] }),
+  branch: one(branches, { fields: [productBatches.branchId], references: [branches.id] }),
+  tenant: one(tenants, { fields: [productBatches.tenantId], references: [tenants.id] }),
+}));
+
+export const productAttributesRelations = relations(productAttributes, ({ one, many }) => ({
+  product: one(products, { fields: [productAttributes.productId], references: [products.id] }),
+  options: many(productAttributeOptions),
+}));
+
+export const productAttributeOptionsRelations = relations(productAttributeOptions, ({ one }) => ({
+  attribute: one(productAttributes, { fields: [productAttributeOptions.attributeId], references: [productAttributes.id] }),
 }));

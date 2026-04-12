@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -17,6 +18,8 @@ import auditLogsRouter from "./routes/auditLogs";
 import dashboardRouter from "./routes/dashboard";
 import staffRouter from "./routes/staff";
 import reportsRouter from "./routes/reports";
+import unitsRouter from "./routes/units";
+import batchesRouter from "./routes/batches";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,18 +33,28 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global rate limiter: 300 requests per 15 minutes per IP
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+
 // Routes
-app.use("/api/auth", authRouter);
-app.use("/api/tenants", tenantsRouter);
-app.use("/api/tenants/:tenantId/branches", branchesRouter);
-app.use("/api/tenants/:tenantId/categories", categoriesRouter);
-app.use("/api/tenants/:tenantId/products", productsRouter);
-app.use("/api/tenants/:tenantId/inventory", inventoryRouter);
-app.use("/api/tenants/:tenantId/sales-orders", salesOrdersRouter);
-app.use("/api/tenants/:tenantId/audit-logs", auditLogsRouter);
-app.use("/api/tenants/:tenantId/dashboard", dashboardRouter);
-app.use("/api/tenants/:tenantId/staff", staffRouter);
-app.use("/api/tenants/:tenantId/reports", reportsRouter);
+app.use("/api/auth", limiter, authRouter);
+app.use("/api/tenants", limiter, tenantsRouter);
+app.use("/api/tenants/:tenantId/branches", limiter, branchesRouter);
+app.use("/api/tenants/:tenantId/categories", limiter, categoriesRouter);
+app.use("/api/tenants/:tenantId/products", limiter, productsRouter);
+app.use("/api/tenants/:tenantId/inventory", limiter, inventoryRouter);
+app.use("/api/tenants/:tenantId/sales-orders", limiter, salesOrdersRouter);
+app.use("/api/tenants/:tenantId/audit-logs", limiter, auditLogsRouter);
+app.use("/api/tenants/:tenantId/dashboard", limiter, dashboardRouter);
+app.use("/api/tenants/:tenantId/staff", limiter, staffRouter);
+app.use("/api/tenants/:tenantId/reports", limiter, reportsRouter);
+app.use("/api/tenants/:tenantId/units", limiter, unitsRouter);
+app.use("/api/tenants/:tenantId/batches", limiter, batchesRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 

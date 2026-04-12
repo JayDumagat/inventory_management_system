@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { products, productVariants } from "../db/schema";
+import { products, productVariants, productAttributes, productAttributeOptions } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { authenticate, requireTenant } from "../middleware/auth";
 import { createAuditLog } from "../middleware/auditLog";
@@ -12,6 +12,7 @@ const productSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   categoryId: z.string().uuid().optional().nullable(),
+  unitId: z.string().uuid().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
 });
 
@@ -187,6 +188,127 @@ router.delete("/:productId/variants/:variantId", authenticate, requireTenant("ma
       return;
     }
     res.json({ message: "Variant deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Attribute CRUD
+// GET /api/tenants/:tenantId/products/:productId/attributes
+router.get("/:productId/attributes", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) { res.status(404).json({ error: "Product not found" }); return; }
+
+    const attrs = await db.query.productAttributes.findMany({
+      where: eq(productAttributes.productId, req.params.productId as string),
+      with: { options: true },
+      orderBy: (a, { asc }) => [asc(a.sortOrder)],
+    });
+    res.json(attrs);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/tenants/:tenantId/products/:productId/attributes
+router.post("/:productId/attributes", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) { res.status(404).json({ error: "Product not found" }); return; }
+
+    const body = z.object({
+      name: z.string().min(1),
+      sortOrder: z.number().int().optional(),
+      options: z.array(z.object({ value: z.string().min(1), sortOrder: z.number().int().optional() })).optional(),
+    }).parse(req.body);
+
+    const [attr] = await db
+      .insert(productAttributes)
+      .values({ productId: req.params.productId as string, name: body.name, sortOrder: body.sortOrder ?? 0 })
+      .returning();
+
+    if (body.options && body.options.length > 0) {
+      await db.insert(productAttributeOptions).values(
+        body.options.map((o, i) => ({ attributeId: attr.id, value: o.value, sortOrder: o.sortOrder ?? i }))
+      );
+    }
+
+    const full = await db.query.productAttributes.findFirst({
+      where: eq(productAttributes.id, attr.id),
+      with: { options: true },
+    });
+    res.status(201).json(full);
+  } catch (error) {
+    if (error instanceof z.ZodError) { res.status(400).json({ error: "Validation failed", details: error.issues }); return; }
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /api/tenants/:tenantId/products/:productId/attributes/:attributeId
+router.patch("/:productId/attributes/:attributeId", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = z.object({ name: z.string().min(1).optional(), sortOrder: z.number().int().optional() }).parse(req.body);
+    const [attr] = await db
+      .update(productAttributes)
+      .set(body)
+      .where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string)))
+      .returning();
+    if (!attr) { res.status(404).json({ error: "Attribute not found" }); return; }
+    res.json(attr);
+  } catch (error) {
+    if (error instanceof z.ZodError) { res.status(400).json({ error: "Validation failed", details: error.issues }); return; }
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/tenants/:tenantId/products/:productId/attributes/:attributeId
+router.delete("/:productId/attributes/:attributeId", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [attr] = await db
+      .delete(productAttributes)
+      .where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string)))
+      .returning();
+    if (!attr) { res.status(404).json({ error: "Attribute not found" }); return; }
+    res.json({ message: "Attribute deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/tenants/:tenantId/products/:productId/attributes/:attributeId/options
+router.post("/:productId/attributes/:attributeId/options", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const body = z.object({ value: z.string().min(1), sortOrder: z.number().int().optional() }).parse(req.body);
+    const [attr] = await db
+      .select()
+      .from(productAttributes)
+      .where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string)));
+    if (!attr) { res.status(404).json({ error: "Attribute not found" }); return; }
+
+    const [option] = await db.insert(productAttributeOptions).values({ attributeId: attr.id, value: body.value, sortOrder: body.sortOrder ?? 0 }).returning();
+    res.status(201).json(option);
+  } catch (error) {
+    if (error instanceof z.ZodError) { res.status(400).json({ error: "Validation failed", details: error.issues }); return; }
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /api/tenants/:tenantId/products/:productId/attributes/:attributeId/options/:optionId
+router.delete("/:productId/attributes/:attributeId/options/:optionId", authenticate, requireTenant("manager"), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const [option] = await db
+      .delete(productAttributeOptions)
+      .where(and(eq(productAttributeOptions.id, req.params.optionId as string), eq(productAttributeOptions.attributeId, req.params.attributeId as string)))
+      .returning();
+    if (!option) { res.status(404).json({ error: "Option not found" }); return; }
+    res.json({ message: "Option deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }

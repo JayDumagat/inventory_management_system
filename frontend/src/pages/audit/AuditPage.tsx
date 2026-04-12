@@ -11,11 +11,20 @@ interface AuditLog {
   id: string; action: string; resourceType: string; resourceId?: string;
   userId?: string; ipAddress?: string; createdAt: string;
   oldValues?: Record<string, unknown>; newValues?: Record<string, unknown>;
+  actorEmail?: string; actorFirstName?: string; actorLastName?: string;
 }
 
 const actionColor: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   create: "success", update: "info", delete: "danger", login: "default", logout: "default", other: "warning",
 };
+
+function actorName(log: AuditLog): string {
+  if (log.actorFirstName || log.actorLastName) {
+    return [log.actorFirstName, log.actorLastName].filter(Boolean).join(" ");
+  }
+  if (log.actorEmail) return log.actorEmail;
+  return "System";
+}
 
 export default function AuditPage() {
   const { currentTenant } = useTenantStore();
@@ -55,6 +64,7 @@ export default function AuditPage() {
               <thead>
                 <tr className="border-b border-stroke text-left">
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Actor</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Resource</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Resource ID</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">IP Address</th>
@@ -67,6 +77,12 @@ export default function AuditPage() {
                   <tr key={log.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-6 py-3">
                       <Badge variant={actionColor[log.action] || "default"}>{log.action}</Badge>
+                    </td>
+                    <td className="px-6 py-3">
+                      <div className="font-medium text-ink">{actorName(log)}</div>
+                      {log.actorEmail && (log.actorFirstName || log.actorLastName) && (
+                        <div className="text-xs text-muted">{log.actorEmail}</div>
+                      )}
                     </td>
                     <td className="px-6 py-3 text-ink font-medium">{log.resourceType}</td>
                     <td className="px-6 py-3 font-mono text-xs text-muted">{log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}</td>
