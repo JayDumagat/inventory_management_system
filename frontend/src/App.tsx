@@ -29,6 +29,10 @@ import TransactionsPage from "./pages/transactions/TransactionsPage";
 import POSPage from "./pages/pos/POSPage";
 import IntegrationsPage from "./pages/integrations/IntegrationsPage";
 import APIPage from "./pages/apikeys/APIPage";
+import LandingPage from "./pages/landing/LandingPage";
+import PricingPage from "./pages/pricing/PricingPage";
+import AnalyticsPage from "./pages/analytics/AnalyticsPage";
+import InvoicesPage from "./pages/invoices/InvoicesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -41,6 +45,8 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             {/* Public */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -59,10 +65,12 @@ export default function App() {
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/invoices" element={<InvoicesPage />} />
               <Route path="/audit" element={<AuditPage />} />
               <Route path="/branches" element={<BranchesPage />} />
               <Route path="/staff" element={<StaffPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/units" element={<UnitsPage />} />
               <Route path="/batches" element={<BatchesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
@@ -76,7 +84,6 @@ export default function App() {
               <Route path="/api-keys" element={<APIPage />} />
             </Route>
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
