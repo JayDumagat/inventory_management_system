@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
+import { useBranchStore } from "../../stores/branchStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -13,14 +14,13 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
 import { formatDateTime } from "../../lib/utils";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, GitBranch, AlertTriangle } from "lucide-react";
 
 interface InventoryItem {
   id: string; quantity: number; reorderPoint: number;
   variant?: { id: string; name: string; sku: string; product?: { name: string } };
   branch?: { id: string; name: string };
 }
-interface Branch { id: string; name: string; }
 interface Product { id: string; name: string; variants: { id: string; name: string; sku: string }[]; }
 interface Movement {
   id: string; type: string; quantity: number; previousQuantity: number; newQuantity: number;
@@ -29,9 +29,8 @@ interface Movement {
 
 const adjustSchema = z.object({
   variantId: z.string().min(1, "Variant required"),
-  branchId: z.string().min(1, "Branch required"),
   type: z.enum(["in", "out", "adjustment", "transfer", "return"]),
-  quantity: z.number().min(1, "Quantity must be at least 1"),
+  quantity: z.number().int().min(1),
   notes: z.string().optional(),
 });
 type AdjustForm = z.infer<typeof adjustSchema>;
@@ -42,10 +41,13 @@ const movementBadge: Record<string, "success" | "danger" | "warning" | "info" | 
 
 export default function InventoryPage() {
   const { currentTenant } = useTenantStore();
+  const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const [tab, setTab] = useState<"stock" | "movements">("stock");
   const [adjustModal, setAdjustModal] = useState(false);
+  const [adjustStep, setAdjustStep] = useState<1 | 2>(1);
+  const [selectedProductId, setSelectedProductId] = useState("");
 
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["inventory", tid],
@@ -59,12 +61,6 @@ export default function InventoryPage() {
     enabled: !!tid && tab === "movements",
   });
 
-  const { data: branches = [] } = useQuery<Branch[]>({
-    queryKey: ["branches", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/branches`).then((r) => r.data),
-    enabled: !!tid,
-  });
-
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["products", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/products`).then((r) => r.data),
@@ -73,13 +69,28 @@ export default function InventoryPage() {
 
   const form = useForm<AdjustForm>({ resolver: zodResolver(adjustSchema), defaultValues: { type: "in" } });
 
+  const closeAdjustModal = () => {
+    setAdjustModal(false);
+    form.reset({ type: "in" });
+    setAdjustStep(1);
+    setSelectedProductId("");
+  };
+
+  const goToAdjustStep2 = async () => {
+    const valid = await form.trigger(["variantId"]);
+    if (valid) setAdjustStep(2);
+  };
+
   const adjust = useMutation({
-    mutationFn: (data: AdjustForm) => api.post(`/api/tenants/${tid}/inventory/adjust`, data),
+    mutationFn: (data: AdjustForm) =>
+      api.post(`/api/tenants/${tid}/inventory/adjust`, {
+        ...data,
+        branchId: currentBranch!.id,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory", tid] });
       qc.invalidateQueries({ queryKey: ["movements", tid] });
-      setAdjustModal(false);
-      form.reset();
+      closeAdjustModal();
     },
   });
 
@@ -94,10 +105,17 @@ export default function InventoryPage() {
           <h1 className="text-2xl font-bold text-ink">Inventory</h1>
           <p className="text-muted text-sm mt-1">Track stock levels across all branches</p>
         </div>
-        <Button onClick={() => setAdjustModal(true)} className="gap-2">
+        <Button onClick={() => setAdjustModal(true)} className="gap-2" disabled={!currentBranch}>
           <ArrowUpDown className="w-4 h-4" /> Adjust stock
         </Button>
       </div>
+
+      {!currentBranch && (
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>Select a branch from the sidebar to adjust stock.</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-stroke">
@@ -126,7 +144,7 @@ export default function InventoryPage() {
                 </div>
                 <h3 className="text-base font-semibold text-ink mb-1">No inventory records yet</h3>
                 <p className="text-sm text-muted max-w-xs mb-6">Use the "Adjust stock" button to add your first inventory records</p>
-                <Button onClick={() => setAdjustModal(true)}>Adjust stock</Button>
+                <Button onClick={() => setAdjustModal(true)} disabled={!currentBranch}>Adjust stock</Button>
               </div>
             </CardContent>
           ) : (
@@ -215,32 +233,74 @@ export default function InventoryPage() {
       )}
 
       {/* Adjust modal */}
-      <Modal open={adjustModal} onClose={() => setAdjustModal(false)} title="Adjust stock">
-        <form onSubmit={form.handleSubmit((d) => adjust.mutate({ ...d, quantity: Number(d.quantity) }))} className="flex flex-col gap-4">
-          <Select label="Product variant" {...form.register("variantId")} error={form.formState.errors.variantId?.message}>
-            <option value="">Select a variant</option>
-            {allVariants.map((v) => (
-              <option key={v.id} value={v.id}>{v.productName} — {v.name} ({v.sku})</option>
-            ))}
-          </Select>
-          <Select label="Branch" {...form.register("branchId")} error={form.formState.errors.branchId?.message}>
-            <option value="">Select a branch</option>
-            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </Select>
-          <Select label="Movement type" {...form.register("type")}>
-            <option value="in">In (receive stock)</option>
-            <option value="out">Out (remove stock)</option>
-            <option value="adjustment">Adjustment (set manually)</option>
-            <option value="transfer">Transfer (outgoing)</option>
-            <option value="return">Return (customer return)</option>
-          </Select>
-          <Input label="Quantity" type={"number"} min={1} {...form.register("quantity")} error={form.formState.errors.quantity?.message} />
-          <Input label="Notes (optional)" {...form.register("notes")} />
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => setAdjustModal(false)}>Cancel</Button>
-            <Button type="submit" loading={adjust.isPending}>Apply</Button>
+      <Modal open={adjustModal} onClose={closeAdjustModal} title={adjustStep === 1 ? "Adjust stock — Select variant" : "Adjust stock — Movement details"}>
+        {/* Step indicator */}
+        <div className="flex items-center gap-1 mb-4">
+          <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${adjustStep >= 1 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>1</div>
+          <div className="flex-1 h-px bg-stroke" />
+          <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${adjustStep >= 2 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>2</div>
+        </div>
+
+        {adjustStep === 1 && (
+          <div className="flex flex-col gap-4">
+            <Select
+              label="Filter by product"
+              value={selectedProductId}
+              onChange={(e) => {
+                setSelectedProductId(e.target.value);
+                form.setValue("variantId", "");
+              }}
+            >
+              <option value="">All products</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+            <Select
+              label="Product variant *"
+              {...form.register("variantId")}
+              error={form.formState.errors.variantId?.message}
+            >
+              <option value="">Select a variant</option>
+              {(selectedProductId
+                ? products.find((p) => p.id === selectedProductId)?.variants ?? []
+                : allVariants
+              ).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {("productName" in v ? v.productName + " — " : "") + v.name} ({v.sku})
+                </option>
+              ))}
+            </Select>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={closeAdjustModal}>Cancel</Button>
+              <Button type="button" onClick={goToAdjustStep2}>Next →</Button>
+            </div>
           </div>
-        </form>
+        )}
+
+        {adjustStep === 2 && (
+          <form
+            onSubmit={form.handleSubmit((d) => adjust.mutate(d))}
+            className="flex flex-col gap-4"
+          >
+            {/* Branch info */}
+            <div className="flex items-center gap-2 bg-primary-50 border border-primary-200 px-3 py-2 text-xs text-primary-700">
+              <GitBranch className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Branch: <strong>{currentBranch?.name}</strong></span>
+            </div>
+            <Select label="Movement type" {...form.register("type")}>
+              <option value="in">In (receive stock)</option>
+              <option value="out">Out (remove stock)</option>
+              <option value="adjustment">Adjustment (set manually)</option>
+              <option value="transfer">Transfer (outgoing)</option>
+              <option value="return">Return (customer return)</option>
+            </Select>
+            <Input label="Quantity" type="number" min="1" {...form.register("quantity", { valueAsNumber: true })} error={form.formState.errors.quantity?.message} />
+            <Input label="Notes (optional)" {...form.register("notes")} />
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => setAdjustStep(1)}>← Back</Button>
+              <Button type="submit" loading={adjust.isPending}>Apply</Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

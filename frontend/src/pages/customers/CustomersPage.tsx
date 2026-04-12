@@ -47,6 +47,7 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; customer?: Customer }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<Customer | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
 
   const form = useForm<CustomerForm>({ resolver: zodResolver(schema) });
 
@@ -63,8 +64,7 @@ export default function CustomersPage() {
         : api.post(`/api/tenants/${tid}/customers`, data).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers", tid] });
-      setModal({ open: false });
-      form.reset();
+      closeModal();
     },
   });
 
@@ -75,6 +75,12 @@ export default function CustomersPage() {
       setDeleteConfirm(null);
     },
   });
+
+  const closeModal = () => {
+    setModal({ open: false });
+    form.reset();
+    setStep(1);
+  };
 
   const openModal = (customer?: Customer) => {
     form.reset(customer ? {
@@ -87,6 +93,12 @@ export default function CustomersPage() {
       notes: customer.notes || "",
     } : {});
     setModal({ open: true, customer });
+    setStep(1);
+  };
+
+  const goToStep2 = async () => {
+    const valid = await form.trigger(["name", "email", "phone"]);
+    if (valid) setStep(2);
   };
 
   const filtered = useMemo(
@@ -287,54 +299,123 @@ export default function CustomersPage() {
       {/* Add / Edit modal */}
       <Modal
         open={modal.open}
-        onClose={() => setModal({ open: false })}
-        title={modal.customer ? "Edit customer" : "Add customer"}
+        onClose={closeModal}
+        title={modal.customer ? "Edit customer" : (step === 1 ? "Add customer — Contact" : "Add customer — Location")}
         size="md"
       >
-        <form onSubmit={form.handleSubmit((d) => save.mutate(d))} className="flex flex-col gap-4">
-          <Input
-            label="Full name *"
-            placeholder="Jane Smith"
-            {...form.register("name")}
-            error={form.formState.errors.name?.message}
-          />
-          <div className="grid grid-cols-2 gap-3">
+        {modal.customer ? (
+          /* Edit mode: single-step */
+          <form onSubmit={form.handleSubmit((d) => save.mutate(d))} className="flex flex-col gap-4">
             <Input
-              label="Email"
-              type="email"
-              placeholder="jane@example.com"
-              {...form.register("email")}
-              error={form.formState.errors.email?.message}
+              label="Full name *"
+              placeholder="Jane Smith"
+              {...form.register("name")}
+              error={form.formState.errors.name?.message}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Email"
+                type="email"
+                placeholder="jane@example.com"
+                {...form.register("email")}
+                error={form.formState.errors.email?.message}
+              />
+              <Input
+                label="Phone"
+                placeholder="+1 555-000-0000"
+                {...form.register("phone")}
+              />
+            </div>
             <Input
-              label="Phone"
-              placeholder="+1 555-000-0000"
-              {...form.register("phone")}
+              label="Address"
+              placeholder="123 Main St"
+              {...form.register("address")}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="City" placeholder="New York" {...form.register("city")} />
+              <Input label="Country" placeholder="US" {...form.register("country")} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Notes (optional)</label>
+              <textarea
+                placeholder="Internal notes about this customer…"
+                rows={2}
+                {...form.register("notes")}
+                className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 resize-none"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={closeModal}>Cancel</Button>
+              <Button type="submit" loading={save.isPending}>Save</Button>
+            </div>
+          </form>
+        ) : (
+          /* Add mode: multi-step */
+          <div className="flex flex-col gap-4">
+            {/* Step indicator */}
+            <div className="flex items-center gap-1">
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${step >= 1 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>1</div>
+              <div className="flex-1 h-px bg-stroke" />
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${step >= 2 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>2</div>
+            </div>
+
+            {step === 1 && (
+              <div className="flex flex-col gap-4">
+                <Input
+                  label="Full name *"
+                  placeholder="Jane Smith"
+                  {...form.register("name")}
+                  error={form.formState.errors.name?.message}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Email"
+                    type="email"
+                    placeholder="jane@example.com"
+                    {...form.register("email")}
+                    error={form.formState.errors.email?.message}
+                  />
+                  <Input
+                    label="Phone"
+                    placeholder="+1 555-000-0000"
+                    {...form.register("phone")}
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button type="button" variant="outline" onClick={closeModal}>Cancel</Button>
+                  <Button type="button" onClick={goToStep2}>Next →</Button>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <form onSubmit={form.handleSubmit((d) => save.mutate(d))} className="flex flex-col gap-4">
+                <Input
+                  label="Address"
+                  placeholder="123 Main St"
+                  {...form.register("address")}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="City" placeholder="New York" {...form.register("city")} />
+                  <Input label="Country" placeholder="US" {...form.register("country")} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">Notes (optional)</label>
+                  <textarea
+                    placeholder="Internal notes about this customer…"
+                    rows={2}
+                    {...form.register("notes")}
+                    className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)}>← Back</Button>
+                  <Button type="submit" loading={save.isPending}>Save customer</Button>
+                </div>
+              </form>
+            )}
           </div>
-          <Input
-            label="Address"
-            placeholder="123 Main St"
-            {...form.register("address")}
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="City" placeholder="New York" {...form.register("city")} />
-            <Input label="Country" placeholder="US" {...form.register("country")} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">Notes (optional)</label>
-            <textarea
-              placeholder="Internal notes about this customer…"
-              rows={2}
-              {...form.register("notes")}
-              className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 resize-none"
-            />
-          </div>
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => setModal({ open: false })}>Cancel</Button>
-            <Button type="submit" loading={save.isPending}>Save</Button>
-          </div>
-        </form>
+        )}
       </Modal>
 
       {/* Delete confirmation */}

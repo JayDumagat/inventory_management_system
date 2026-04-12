@@ -52,6 +52,8 @@ export default function ProductsPage() {
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState<Product | null>(null);
   const [pendingDeleteVariant, setPendingDeleteVariant] = useState<{ product: Product; variant: Variant } | null>(null);
   const [search, setSearch] = useState("");
+  const [productStep, setProductStep] = useState<1 | 2>(1);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", tid],
@@ -93,14 +95,51 @@ export default function ProductsPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["products", tid] }); setPendingDeleteVariant(null); },
   });
 
+  const closeProductModal = () => {
+    setProductModal({ open: false });
+    pForm.reset();
+    vForm.reset();
+    setProductStep(1);
+  };
+
   const openProductModal = (product?: Product) => {
     pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id } : {});
+    vForm.reset();
     setProductModal({ open: true, product });
+    setProductStep(1);
   };
 
   const openVariantModal = (productId: string, variant?: Variant) => {
     vForm.reset(variant ? { name: variant.name, sku: variant.sku, price: variant.price, costPrice: variant.costPrice } : {});
     setVariantModal({ open: true, productId, variant });
+  };
+
+  const goToProductStep2 = pForm.handleSubmit(() => setProductStep(2));
+
+  const handleAddProductSubmit = async () => {
+    const pData = pForm.getValues();
+    const vData = vForm.getValues();
+    const hasVariant = !!(vData.name || vData.sku || vData.price);
+
+    if (hasVariant) {
+      const vValid = await vForm.trigger();
+      if (!vValid) return;
+    }
+
+    setIsAddingProduct(true);
+    try {
+      const productRes = await api.post(`/api/tenants/${tid}/products`, pData);
+      const productId = productRes.data.id;
+
+      if (hasVariant) {
+        await api.post(`/api/tenants/${tid}/products/${productId}/variants`, vData);
+      }
+
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      closeProductModal();
+    } finally {
+      setIsAddingProduct(false);
+    }
   };
 
   const filtered = useMemo(
@@ -294,28 +333,117 @@ export default function ProductsPage() {
       )}
 
       {/* Product modal */}
-      <Modal open={productModal.open} onClose={() => setProductModal({ open: false })} title={productModal.product ? "Edit product" : "Add product"}>
-        <form onSubmit={pForm.handleSubmit((d) => saveProduct.mutate(d))} className="flex flex-col gap-4">
-          <Input
-            label="Name"
-            placeholder="e.g. iPhone 15 Pro"
-            {...pForm.register("name")}
-            error={pForm.formState.errors.name?.message}
-          />
-          <Input
-            label="Description"
-            placeholder="Optional product description"
-            {...pForm.register("description")}
-          />
-          <Select label="Category" {...pForm.register("categoryId")}>
-            <option value="">No category</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
-          <div className="flex gap-3 justify-end pt-1">
-            <Button type="button" variant="outline" onClick={() => setProductModal({ open: false })}>Cancel</Button>
-            <Button type="submit" loading={saveProduct.isPending}>Save</Button>
+      <Modal
+        open={productModal.open}
+        onClose={closeProductModal}
+        title={productModal.product ? "Edit product" : (productStep === 1 ? "Add product — Details" : "Add product — First variant")}
+      >
+        {productModal.product ? (
+          /* Edit mode: single-step */
+          <form onSubmit={pForm.handleSubmit((d) => saveProduct.mutate(d))} className="flex flex-col gap-4">
+            <Input
+              label="Name"
+              placeholder="e.g. iPhone 15 Pro"
+              {...pForm.register("name")}
+              error={pForm.formState.errors.name?.message}
+            />
+            <Input
+              label="Description"
+              placeholder="Optional product description"
+              {...pForm.register("description")}
+            />
+            <Select label="Category" {...pForm.register("categoryId")}>
+              <option value="">No category</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+            <div className="flex gap-3 justify-end pt-1">
+              <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
+              <Button type="submit" loading={saveProduct.isPending}>Save</Button>
+            </div>
+          </form>
+        ) : (
+          /* Add mode: multi-step */
+          <div className="flex flex-col gap-4">
+            {/* Step indicator */}
+            <div className="flex items-center gap-1">
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${productStep >= 1 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>1</div>
+              <div className="flex-1 h-px bg-stroke" />
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${productStep >= 2 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>2</div>
+            </div>
+
+            {productStep === 1 && (
+              <form onSubmit={goToProductStep2} className="flex flex-col gap-4">
+                <Input
+                  label="Name *"
+                  placeholder="e.g. iPhone 15 Pro"
+                  {...pForm.register("name")}
+                  error={pForm.formState.errors.name?.message}
+                />
+                <Input
+                  label="Description"
+                  placeholder="Optional product description"
+                  {...pForm.register("description")}
+                />
+                <Select label="Category" {...pForm.register("categoryId")}>
+                  <option value="">No category</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+                <div className="flex gap-3 justify-end pt-1">
+                  <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
+                  <Button type="submit">Next →</Button>
+                </div>
+              </form>
+            )}
+
+            {productStep === 2 && (
+              <div className="flex flex-col gap-4">
+                <p className="text-xs text-muted bg-primary-50 border border-primary-200 px-3 py-2">
+                  Optionally add your first variant below. You can skip and add variants later.
+                </p>
+                <Input
+                  label="Variant name"
+                  placeholder="e.g. Default / Red / Large"
+                  {...vForm.register("name")}
+                  error={vForm.formState.errors.name?.message}
+                />
+                <Input
+                  label="SKU"
+                  placeholder="e.g. PROD-001"
+                  {...vForm.register("sku")}
+                  error={vForm.formState.errors.sku?.message}
+                  helperText="Unique identifier for this variant (min. 2 characters)"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Selling price"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    {...vForm.register("price")}
+                    error={vForm.formState.errors.price?.message}
+                  />
+                  <Input
+                    label="Cost price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    {...vForm.register("costPrice")}
+                    error={vForm.formState.errors.costPrice?.message}
+                    helperText="Optional"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-1">
+                  <Button type="button" variant="outline" onClick={() => setProductStep(1)}>← Back</Button>
+                  <Button type="button" onClick={handleAddProductSubmit} loading={isAddingProduct}>
+                    Save product
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        </form>
+        )}
       </Modal>
 
       {/* Variant modal */}
