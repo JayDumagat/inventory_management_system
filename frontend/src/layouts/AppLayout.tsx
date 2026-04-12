@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
-  Users,
+  Users, BarChart2,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,14 +17,16 @@ import { PreferencesModal } from "../components/ui/PreferencesModal";
 interface Branch { id: string; name: string; isDefault: boolean; }
 
 const navItems = [
-  { label: "Dashboard",    icon: LayoutDashboard, href: "/dashboard" },
-  { label: "Products",     icon: Package,         href: "/products" },
-  { label: "Categories",   icon: Tag,             href: "/categories" },
-  { label: "Customers",    icon: Users,           href: "/customers" },
-  { label: "Inventory",    icon: Warehouse,       href: "/inventory" },
-  { label: "Sales Orders", icon: ShoppingCart,    href: "/orders" },
-  { label: "Branches",     icon: GitBranch,       href: "/branches" },
-  { label: "Audit Log",    icon: ClipboardList,   href: "/audit" },
+  { label: "Dashboard",    icon: LayoutDashboard, href: "/dashboard",  roles: null },
+  { label: "Products",     icon: Package,         href: "/products",   roles: null },
+  { label: "Categories",   icon: Tag,             href: "/categories", roles: null },
+  { label: "Customers",    icon: Users,           href: "/customers",  roles: null },
+  { label: "Inventory",    icon: Warehouse,       href: "/inventory",  roles: null },
+  { label: "Sales Orders", icon: ShoppingCart,    href: "/orders",     roles: null },
+  { label: "Branches",     icon: GitBranch,       href: "/branches",   roles: null },
+  { label: "Staff",        icon: Users,           href: "/staff",      roles: ["owner", "admin", "manager"] },
+  { label: "Reports",      icon: BarChart2,       href: "/reports",    roles: null },
+  { label: "Audit Log",    icon: ClipboardList,   href: "/audit",      roles: null },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -83,6 +85,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "";
   const pageLabel = navItems.find((n) => n.href === location.pathname)?.label ?? currentTenant?.name;
+  const myRole = currentTenant?.role || "staff";
+  const tenantLogoUrl = (currentTenant as { logoUrl?: string })?.logoUrl;
 
   return (
     <div className="flex min-h-screen bg-page">
@@ -97,8 +101,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Logo / tenant */}
         <div className="px-4 py-4 border-b border-stroke">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-primary-600 flex items-center justify-center flex-shrink-0">
-              <Package className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {tenantLogoUrl && /^https?:\/\//i.test(tenantLogoUrl) ? (
+                <img src={tenantLogoUrl} alt={currentTenant?.name} className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              ) : (
+                <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
+                  <Package className="w-4 h-4 text-white" />
+                </div>
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-ink truncate">
@@ -184,7 +194,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-2 py-3 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.roles || item.roles.includes(myRole)).map((item) => {
             const active = location.pathname === item.href;
             return (
               <Link

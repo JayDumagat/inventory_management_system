@@ -11,10 +11,14 @@ export const auditActionEnum = pgEnum("audit_action", ["create", "update", "dele
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
   firstName: text("first_name").notNull().default(""),
   lastName: text("last_name").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
+  oauthProvider: text("oauth_provider"),
+  oauthProviderId: text("oauth_provider_id"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpiry: timestamp("password_reset_expiry"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -55,6 +59,14 @@ export const branches = pgTable("branches", {
   isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Branch Staff Assignments
+export const branchStaff = pgTable("branch_staff", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  branchId: uuid("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  tenantUserId: uuid("tenant_user_id").notNull().references(() => tenantUsers.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Categories
@@ -253,4 +265,9 @@ export const salesOrderItemsRelations = relations(salesOrderItems, ({ one }) => 
 
 export const refundsRelations = relations(refunds, ({ one }) => ({
   order: one(salesOrders, { fields: [refunds.orderId], references: [salesOrders.id] }),
+}));
+
+export const branchStaffRelations = relations(branchStaff, ({ one }) => ({
+  branch: one(branches, { fields: [branchStaff.branchId], references: [branches.id] }),
+  tenantUser: one(tenantUsers, { fields: [branchStaff.tenantUserId], references: [tenantUsers.id] }),
 }));

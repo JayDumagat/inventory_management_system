@@ -16,6 +16,8 @@ import inventoryRouter from "./routes/inventory";
 import salesOrdersRouter from "./routes/salesOrders";
 import auditLogsRouter from "./routes/auditLogs";
 import dashboardRouter from "./routes/dashboard";
+import staffRouter from "./routes/staff";
+import reportsRouter from "./routes/reports";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,6 +42,8 @@ app.use("/api/tenants/:tenantId/inventory", inventoryRouter);
 app.use("/api/tenants/:tenantId/sales-orders", salesOrdersRouter);
 app.use("/api/tenants/:tenantId/audit-logs", auditLogsRouter);
 app.use("/api/tenants/:tenantId/dashboard", dashboardRouter);
+app.use("/api/tenants/:tenantId/staff", staffRouter);
+app.use("/api/tenants/:tenantId/reports", reportsRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
@@ -48,3 +52,4 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
