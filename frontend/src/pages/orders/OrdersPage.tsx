@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
+import { useBranchStore } from "../../stores/branchStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -12,15 +13,14 @@ import { Card, CardContent } from "../../components/ui/Card";import { Modal } fr
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
 import { formatCurrency, formatDate } from "../../lib/utils";
-import { Plus, Trash2, Eye, RefreshCw, ShoppingCart } from "lucide-react";
+import { Plus, Trash2, Eye, RefreshCw, ShoppingCart, GitBranch, AlertTriangle } from "lucide-react";
 
-interface Branch { id: string; name: string; }
 interface Product { id: string; name: string; variants: { id: string; name: string; sku: string; price: string }[]; }
 interface OrderItem { id: string; productName: string; variantName: string; sku: string; quantity: number; unitPrice: string; totalPrice: string; }
 interface Order {
   id: string; orderNumber: string; status: string; totalAmount: string; subtotal: string;
   taxAmount: string; discountAmount: string; customerName?: string; customerEmail?: string;
-  createdAt: string; branch?: Branch; items: OrderItem[];
+  createdAt: string; branch?: { id: string; name: string }; items: OrderItem[];
 }
 
 const statusColor: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -38,7 +38,6 @@ const orderItemSchema = z.object({
 });
 
 const createOrderSchema = z.object({
-  branchId: z.string().min(1, "Branch required"),
   customerName: z.string().optional(),
   customerEmail: z.string().email().optional().or(z.literal("")),
   customerPhone: z.string().optional(),
@@ -52,9 +51,11 @@ type CreateOrderForm = z.infer<typeof createOrderSchema>;
 
 export default function OrdersPage() {
   const { currentTenant } = useTenantStore();
+  const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const [createModal, setCreateModal] = useState(false);
+  const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
   const [refundModal, setRefundModal] = useState<{ open: boolean; order?: Order }>({ open: false });
   const [refundAmount, setRefundAmount] = useState("");
@@ -63,12 +64,6 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["orders", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/sales-orders`).then((r) => r.data),
-    enabled: !!tid,
-  });
-
-  const { data: branches = [] } = useQuery<Branch[]>({
-    queryKey: ["branches", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/branches`).then((r) => r.data),
     enabled: !!tid,
   });
 
@@ -84,9 +79,30 @@ export default function OrdersPage() {
   });
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
+  const closeCreateModal = () => {
+    setCreateModal(false);
+    form.reset({ items: [] });
+    setCreateStep(1);
+  };
+
+  const goToOrderStep2 = async () => {
+    const valid = await form.trigger(["customerName", "customerEmail", "customerPhone"]);
+    if (valid) setCreateStep(2);
+  };
+
+  const goToOrderStep3 = () => {
+    const items = form.getValues("items");
+    if (items.length === 0) {
+      form.setError("items", { message: "At least one item is required" });
+      return;
+    }
+    setCreateStep(3);
+  };
+
   const createOrder = useMutation({
-    mutationFn: (data: CreateOrderForm) => api.post(`/api/tenants/${tid}/sales-orders`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["orders", tid] }); setCreateModal(false); form.reset(); },
+    mutationFn: (data: CreateOrderForm & { branchId: string }) =>
+      api.post(`/api/tenants/${tid}/sales-orders`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["orders", tid] }); closeCreateModal(); },
   });
 
   const updateStatus = useMutation({
@@ -135,10 +151,17 @@ export default function OrdersPage() {
           <h1 className="text-2xl font-bold text-ink">Sales Orders</h1>
           <p className="text-muted text-sm mt-1">{orders.length} orders</p>
         </div>
-        <Button onClick={() => setCreateModal(true)} className="gap-2">
+        <Button onClick={() => setCreateModal(true)} className="gap-2" disabled={!currentBranch}>
           <Plus className="w-4 h-4" /> New order
         </Button>
       </div>
+
+      {!currentBranch && (
+        <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>Select a branch from the sidebar to create a sales order.</span>
+        </div>
+      )}
 
       <Card>
         {orders.length === 0 ? (
@@ -208,71 +231,101 @@ export default function OrdersPage() {
       </Card>
 
       {/* Create order modal */}
-      <Modal open={createModal} onClose={() => setCreateModal(false)} title="New sales order" size="lg">
-        <form onSubmit={form.handleSubmit((d) => createOrder.mutate({
-            ...d,
-            taxAmount: d.taxAmount !== undefined ? Number(d.taxAmount) : undefined,
-            discountAmount: d.discountAmount !== undefined ? Number(d.discountAmount) : undefined,
-            items: d.items.map((i) => ({ ...i, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) })),
-          }))} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Select label="Branch *" {...form.register("branchId")} error={form.formState.errors.branchId?.message}>
-              <option value="">Select branch</option>
-              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </Select>
+      <Modal open={createModal} onClose={closeCreateModal} title={`New sales order — Step ${createStep} of 3`} size="lg">
+        {/* Step indicator */}
+        <div className="flex items-center gap-1 mb-4">
+          {([1, 2, 3] as const).map((s, i) => (
+            <>
+              <div key={s} className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${createStep >= s ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>{s}</div>
+              {i < 2 && <div className="flex-1 h-px bg-stroke" />}
+            </>
+          ))}
+        </div>
+
+        {/* Branch context */}
+        <div className="flex items-center gap-2 bg-primary-50 border border-primary-200 px-3 py-2 text-xs text-primary-700 mb-4">
+          <GitBranch className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Branch: <strong>{currentBranch?.name}</strong></span>
+        </div>
+
+        {createStep === 1 && (
+          <div className="flex flex-col gap-4">
             <Input label="Customer name" {...form.register("customerName")} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Customer email" type="email" {...form.register("customerEmail")} />
-            <Input label="Customer phone" {...form.register("customerPhone")} />
-          </div>
-
-          {/* Items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-ink">Items</p>
-              <Select className="w-auto text-sm" onChange={(e) => { if (e.target.value) addItem(e.target.value); e.target.value = ""; }}>
-                <option value="">+ Add item</option>
-                {allVariants.map((v) => <option key={v.id} value={v.id}>{v.productName} — {v.name}</option>)}
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Customer email" type="email" {...form.register("customerEmail")} error={form.formState.errors.customerEmail?.message} />
+              <Input label="Customer phone" {...form.register("customerPhone")} />
             </div>
-            {fields.length === 0 ? (
-              <p className="text-sm text-muted border border-dashed border-stroke p-4 text-center">
-                No items added yet
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {fields.map((field, i) => (
-                  <div key={field.id} className="flex items-center gap-2 bg-page border border-stroke px-3 py-2">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-ink">{field.productName} — {field.variantName}</p>
-                      <p className="text-xs text-muted">{field.sku}</p>
-                    </div>
-                    <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-stroke bg-panel text-ink px-2 py-1 text-sm text-center outline-none focus:border-primary-500" />
-                    <p className="text-sm font-medium w-20 text-right text-ink">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
-                    <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={closeCreateModal}>Cancel</Button>
+              <Button type="button" onClick={goToOrderStep2}>Next →</Button>
+            </div>
+          </div>
+        )}
+
+        {createStep === 2 && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-ink">Items</p>
+                <Select className="w-auto text-sm" onChange={(e) => { if (e.target.value) addItem(e.target.value); e.target.value = ""; }}>
+                  <option value="">+ Add item</option>
+                  {allVariants.map((v) => <option key={v.id} value={v.id}>{v.productName} — {v.name}</option>)}
+                </Select>
               </div>
-            )}
-            {form.formState.errors.items && (
-              <p className="text-xs text-red-600 mt-1">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>
-            )}
+              {fields.length === 0 ? (
+                <p className="text-sm text-muted border border-dashed border-stroke p-4 text-center">
+                  No items added yet. Use the dropdown above to add items.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {fields.map((field, i) => (
+                    <div key={field.id} className="flex items-center gap-2 bg-page border border-stroke px-3 py-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-ink">{field.productName} — {field.variantName}</p>
+                        <p className="text-xs text-muted">{field.sku}</p>
+                      </div>
+                      <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-stroke bg-panel text-ink px-2 py-1 text-sm text-center outline-none focus:border-primary-500" />
+                      <p className="text-sm font-medium w-20 text-right text-ink">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
+                      <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {form.formState.errors.items && (
+                <p className="text-xs text-red-600 mt-1">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateStep(1)}>← Back</Button>
+              <Button type="button" onClick={goToOrderStep3}>Next →</Button>
+            </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Tax amount" type="number" step="0.01" min="0" {...form.register("taxAmount")} />
-            <Input label="Discount amount" type="number" step="0.01" min="0" {...form.register("discountAmount")} />
-          </div>
-          <Input label="Notes" {...form.register("notes")} />
-
-          <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => setCreateModal(false)}>Cancel</Button>
-            <Button type="submit" loading={createOrder.isPending}>Create order</Button>
-          </div>
-        </form>
+        {createStep === 3 && (
+          <form
+            onSubmit={form.handleSubmit((d) => createOrder.mutate({
+              ...d,
+              branchId: currentBranch!.id,
+              taxAmount: d.taxAmount !== undefined ? Number(d.taxAmount) : undefined,
+              discountAmount: d.discountAmount !== undefined ? Number(d.discountAmount) : undefined,
+              items: d.items.map((i) => ({ ...i, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) })),
+            }))}
+            className="flex flex-col gap-4"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Tax amount" type="number" step="0.01" min="0" {...form.register("taxAmount")} />
+              <Input label="Discount amount" type="number" step="0.01" min="0" {...form.register("discountAmount")} />
+            </div>
+            <Input label="Notes" {...form.register("notes")} />
+            <div className="flex gap-3 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateStep(2)}>← Back</Button>
+              <Button type="submit" loading={createOrder.isPending}>Create order</Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* View order modal */}
