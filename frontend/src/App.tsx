@@ -23,6 +23,12 @@ import ReportsPage from "./pages/reports/ReportsPage";
 import UnitsPage from "./pages/units/UnitsPage";
 import BatchesPage from "./pages/batches/BatchesPage";
 import OrganizationPage from "./pages/organization/OrganizationPage";
+import SuppliersPage from "./pages/suppliers/SuppliersPage";
+import PurchaseOrdersPage from "./pages/purchases/PurchaseOrdersPage";
+import TransactionsPage from "./pages/transactions/TransactionsPage";
+import POSPage from "./pages/pos/POSPage";
+import IntegrationsPage from "./pages/integrations/IntegrationsPage";
+import APIPage from "./pages/apikeys/APIPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -62,6 +68,12 @@ export default function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/organization" element={<OrganizationPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/pos" element={<POSPage />} />
+              <Route path="/integrations" element={<IntegrationsPage />} />
+              <Route path="/api-keys" element={<APIPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
