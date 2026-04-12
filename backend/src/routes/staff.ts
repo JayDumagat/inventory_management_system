@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import argon2 from "argon2";
+import crypto from "crypto";
 import { db } from "../db";
 import { users, tenantUsers, branches, branchStaff } from "../db/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -73,7 +74,7 @@ router.post("/", authenticate, requireTenant("admin"), async (req: Request, res:
     let [user] = await db.select().from(users).where(eq(users.email, body.email));
     if (!user) {
       // Create a placeholder user (they can set password via forgot-password)
-      const tempHash = await argon2.hash(crypto.randomUUID ? crypto.randomUUID() : Math.random().toString());
+      const tempHash = await argon2.hash(crypto.randomBytes(32).toString("hex"));
       [user] = await db.insert(users).values({
         email: body.email,
         passwordHash: tempHash,

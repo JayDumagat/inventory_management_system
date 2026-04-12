@@ -131,7 +131,7 @@ export default function SettingsPage() {
               value={orgLogo}
               onChange={(e) => setOrgLogo(e.target.value)}
             />
-            {orgLogo && (
+            {orgLogo && /^https?:\/\//i.test(orgLogo) && (
               <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
                 <img
                   src={orgLogo}

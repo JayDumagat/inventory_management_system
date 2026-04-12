@@ -169,7 +169,7 @@ export default function OnboardingPage() {
                 onChange={(e) => { form.register("logoUrl").onChange(e); setLogoPreview(e.target.value); }}
                 error={form.formState.errors.logoUrl?.message}
               />
-              {logoPreview && (
+              {logoPreview && /^https?:\/\//i.test(logoPreview) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
                   <img
                     src={logoPreview}

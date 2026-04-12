@@ -102,7 +102,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="px-4 py-4 border-b border-stroke">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {tenantLogoUrl ? (
+              {tenantLogoUrl && /^https?:\/\//i.test(tenantLogoUrl) ? (
                 <img src={tenantLogoUrl} alt={currentTenant?.name} className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">

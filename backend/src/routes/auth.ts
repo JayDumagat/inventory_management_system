@@ -266,25 +266,27 @@ router.post("/oauth/google", async (req: Request, res: Response): Promise<void> 
   try {
     const { credential } = z.object({ credential: z.string().min(1) }).parse(req.body);
 
-    // Decode the Google JWT payload (header.payload.signature)
+    // Decode the Google JWT (header.payload.signature)
     const parts = credential.split(".");
     if (parts.length !== 3) {
       res.status(400).json({ error: "Invalid Google credential" });
       return;
     }
 
-    let payload: { sub: string; email: string; given_name?: string; family_name?: string; aud: string; iss: string; exp: number };
+    let header: { kid?: string; alg?: string };
+    let payload: { sub: string; email: string; email_verified?: boolean; given_name?: string; family_name?: string; aud: string | string[]; iss: string; exp: number };
     try {
-      const decoded = Buffer.from(parts[1], "base64url").toString("utf-8");
-      payload = JSON.parse(decoded);
+      header = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf-8"));
+      payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8"));
     } catch {
       res.status(400).json({ error: "Invalid Google credential format" });
       return;
     }
 
-    // Basic validation of claims
+    // Validate basic claims before fetching public keys
     const expectedAud = process.env.GOOGLE_CLIENT_ID;
-    if (expectedAud && payload.aud !== expectedAud) {
+    const audList = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (expectedAud && !audList.includes(expectedAud)) {
       res.status(400).json({ error: "Invalid audience" });
       return;
     }
@@ -295,6 +297,33 @@ router.post("/oauth/google", async (req: Request, res: Response): Promise<void> 
     if (payload.exp < Math.floor(Date.now() / 1000)) {
       res.status(400).json({ error: "Google credential expired" });
       return;
+    }
+
+    // Verify JWT signature using Google's public keys
+    if (expectedAud) {
+      try {
+        const jwksRes = await fetch("https://www.googleapis.com/oauth2/v3/certs");
+        const jwks = await jwksRes.json() as { keys: Array<{ kid: string; n: string; e: string; alg: string; use: string }> };
+        const key = jwks.keys.find((k) => k.kid === header.kid);
+        if (!key) {
+          res.status(400).json({ error: "Google public key not found" });
+          return;
+        }
+        const { createPublicKey, createVerify } = await import("crypto");
+        const pubKey = createPublicKey({ key: { kty: "RSA", n: key.n, e: key.e }, format: "jwk" });
+        const signingInput = `${parts[0]}.${parts[1]}`;
+        const signature = Buffer.from(parts[2], "base64url");
+        const verify = createVerify("RSA-SHA256");
+        verify.update(signingInput);
+        if (!verify.verify(pubKey, signature)) {
+          res.status(400).json({ error: "Google credential signature invalid" });
+          return;
+        }
+      } catch (verifyErr) {
+        console.error("Google JWT verification error:", verifyErr);
+        res.status(400).json({ error: "Could not verify Google credential" });
+        return;
+      }
     }
 
     const { sub: googleId, email, given_name: firstName = "", family_name: lastName = "" } = payload;
