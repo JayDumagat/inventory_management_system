@@ -13,23 +13,28 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
 import { formatCurrency } from "../../lib/utils";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X } from "lucide-react";
 
-interface Variant { id: string; name: string; sku: string; price: string; costPrice: string; isActive: boolean; }
+interface Variant { id: string; name: string; sku: string; barcode?: string | null; price: string; costPrice: string; isActive: boolean; }
 interface Category { id: string; name: string; }
+interface Unit { id: string; name: string; abbreviation: string; }
+interface AttributeOption { id: string; value: string; sortOrder: number; }
+interface Attribute { id: string; name: string; sortOrder: number; options: AttributeOption[]; }
 interface Product {
   id: string; name: string; description?: string; isActive: boolean;
-  category?: Category; variants: Variant[];
+  category?: Category; unit?: Unit; variants: Variant[];
 }
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   categoryId: z.string().optional(),
+  unitId: z.string().optional(),
 });
 const variantSchema = z.object({
   name: z.string().min(1, "Name is required"),
   sku: z.string().min(2, "SKU must be at least 2 characters"),
+  barcode: z.string().optional(),
   price: z.string()
     .min(1, "Price is required")
     .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Price must be greater than 0" }),
@@ -48,12 +53,20 @@ export default function ProductsPage() {
 
   const [productModal, setProductModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [variantModal, setVariantModal] = useState<{ open: boolean; productId?: string; variant?: Variant }>({ open: false });
+  const [attrModal, setAttrModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState<Product | null>(null);
   const [pendingDeleteVariant, setPendingDeleteVariant] = useState<{ product: Product; variant: Variant } | null>(null);
   const [search, setSearch] = useState("");
   const [productStep, setProductStep] = useState<1 | 2>(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+
+  // Attribute management state
+  const [attrProductId, setAttrProductId] = useState<string | null>(null);
+  const [attrList, setAttrList] = useState<Attribute[]>([]);
+  const [newAttrName, setNewAttrName] = useState("");
+  const [newOptionValues, setNewOptionValues] = useState<Record<string, string>>({});
+  const [attrLoading, setAttrLoading] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", tid],
@@ -64,6 +77,12 @@ export default function ProductsPage() {
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/categories`).then((r) => r.data),
+    enabled: !!tid,
+  });
+
+  const { data: units = [] } = useQuery<Unit[]>({
+    queryKey: ["units", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/units`).then((r) => r.data),
     enabled: !!tid,
   });
 
@@ -103,15 +122,27 @@ export default function ProductsPage() {
   };
 
   const openProductModal = (product?: Product) => {
-    pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id } : {});
+    pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id, unitId: product.unit?.id } : {});
     vForm.reset();
     setProductModal({ open: true, product });
     setProductStep(1);
   };
 
   const openVariantModal = (productId: string, variant?: Variant) => {
-    vForm.reset(variant ? { name: variant.name, sku: variant.sku, price: variant.price, costPrice: variant.costPrice } : {});
+    vForm.reset(variant ? { name: variant.name, sku: variant.sku, barcode: variant.barcode ?? "", price: variant.price, costPrice: variant.costPrice } : {});
     setVariantModal({ open: true, productId, variant });
+  };
+
+  const openAttrModal = async (product: Product) => {
+    setAttrProductId(product.id);
+    setAttrModal({ open: true, product });
+    setAttrLoading(true);
+    try {
+      const res = await api.get(`/api/tenants/${tid}/products/${product.id}/attributes`);
+      setAttrList(res.data);
+    } finally {
+      setAttrLoading(false);
+    }
   };
 
   const goToProductStep2 = pForm.handleSubmit(() => setProductStep(2));
@@ -227,6 +258,7 @@ export default function ProductsPage() {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {p.category && <Badge variant="info">{p.category.name}</Badge>}
+                      {p.unit && <Badge variant="default">{p.unit.abbreviation}</Badge>}
                       <span className="text-xs text-muted">
                         {p.variants.length} variant{p.variants.length !== 1 ? "s" : ""}
                       </span>
@@ -248,9 +280,14 @@ export default function ProductsPage() {
                 <div className="border-t border-stroke">
                   <div className="flex items-center justify-between px-4 sm:px-6 py-3">
                     <p className="text-sm font-medium text-ink">Variants</p>
-                    <Button size="sm" variant="outline" onClick={() => openVariantModal(p.id)}>
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add variant
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openAttrModal(p)}>
+                        <SlidersHorizontal className="w-3.5 h-3.5 mr-1" /> Attributes
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openVariantModal(p.id)}>
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Add variant
+                      </Button>
+                    </div>
                   </div>
 
                   {p.variants.length === 0 ? (
@@ -356,6 +393,10 @@ export default function ProductsPage() {
               <option value="">No category</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
+            <Select label="Unit of measurement" {...pForm.register("unitId")}>
+              <option value="">No unit</option>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
+            </Select>
             <div className="flex gap-3 justify-end pt-1">
               <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
               <Button type="submit" loading={saveProduct.isPending}>Save</Button>
@@ -387,6 +428,10 @@ export default function ProductsPage() {
                 <Select label="Category" {...pForm.register("categoryId")}>
                   <option value="">No category</option>
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+                <Select label="Unit of measurement" {...pForm.register("unitId")}>
+                  <option value="">No unit</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
                 </Select>
                 <div className="flex gap-3 justify-end pt-1">
                   <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
@@ -446,7 +491,6 @@ export default function ProductsPage() {
         )}
       </Modal>
 
-      {/* Variant modal */}
       <Modal open={variantModal.open} onClose={() => setVariantModal({ open: false })} title={variantModal.variant ? "Edit variant" : "Add variant"}>
         <form onSubmit={vForm.handleSubmit((d) => saveVariant.mutate(d))} className="flex flex-col gap-4">
           <Input
@@ -461,6 +505,11 @@ export default function ProductsPage() {
             {...vForm.register("sku")}
             error={vForm.formState.errors.sku?.message}
             helperText="Unique identifier for this variant (min. 2 characters)"
+          />
+          <Input
+            label="Barcode (optional)"
+            placeholder="e.g. 012345678901"
+            {...vForm.register("barcode")}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -488,6 +537,97 @@ export default function ProductsPage() {
             <Button type="submit" loading={saveVariant.isPending}>Save</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Attributes modal */}
+      <Modal open={attrModal.open} onClose={() => { setAttrModal({ open: false }); setAttrList([]); setNewAttrName(""); setNewOptionValues({}); }} title={`Attributes — ${attrModal.product?.name}`} size="lg">
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-muted">Define attributes (e.g. Color, Size) and their options. Variants will use these to specify attribute values.</p>
+          {attrLoading ? (
+            <div className="py-6 text-center text-sm text-muted">Loading…</div>
+          ) : (
+            <>
+              {attrList.map((attr) => (
+                <div key={attr.id} className="border border-stroke p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm text-ink">{attr.name}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => {
+                        await api.delete(`/api/tenants/${tid}/products/${attrProductId}/attributes/${attr.id}`);
+                        setAttrList((prev) => prev.filter((a) => a.id !== attr.id));
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {attr.options.map((opt) => (
+                      <span key={opt.id} className="inline-flex items-center gap-1 text-xs bg-stroke px-2 py-0.5 text-ink">
+                        {opt.value}
+                        <button
+                          type="button"
+                          className="text-muted hover:text-red-500"
+                          onClick={async () => {
+                            await api.delete(`/api/tenants/${tid}/products/${attrProductId}/attributes/${attr.id}/options/${opt.id}`);
+                            setAttrList((prev) => prev.map((a) => a.id === attr.id ? { ...a, options: a.options.filter((o) => o.id !== opt.id) } : a));
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <form
+                      className="inline-flex items-center gap-1"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const val = (newOptionValues[attr.id] ?? "").trim();
+                        if (!val) return;
+                        const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/attributes/${attr.id}/options`, { value: val });
+                        setAttrList((prev) => prev.map((a) => a.id === attr.id ? { ...a, options: [...a.options, res.data] } : a));
+                        setNewOptionValues((prev) => ({ ...prev, [attr.id]: "" }));
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={newOptionValues[attr.id] ?? ""}
+                        onChange={(e) => setNewOptionValues((prev) => ({ ...prev, [attr.id]: e.target.value }))}
+                        placeholder="Add option…"
+                        className="text-xs border border-stroke px-2 py-0.5 bg-panel text-ink outline-none focus:border-primary-500 w-24"
+                      />
+                      <Button size="sm" variant="outline" type="submit"><Plus className="w-3 h-3" /></Button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+              {/* Add new attribute */}
+              <form
+                className="flex items-center gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const name = newAttrName.trim();
+                  if (!name) return;
+                  const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/attributes`, { name });
+                  setAttrList((prev) => [...prev, { ...res.data, options: res.data.options ?? [] }]);
+                  setNewAttrName("");
+                }}
+              >
+                <input
+                  type="text"
+                  value={newAttrName}
+                  onChange={(e) => setNewAttrName(e.target.value)}
+                  placeholder="New attribute name (e.g. Color)"
+                  className="flex-1 text-sm border border-stroke px-3 py-1.5 bg-panel text-ink outline-none focus:border-primary-500"
+                />
+                <Button type="submit" size="sm"><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
+              </form>
+            </>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => { setAttrModal({ open: false }); setAttrList([]); setNewAttrName(""); setNewOptionValues({}); }}>Done</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Delete product confirmation */}

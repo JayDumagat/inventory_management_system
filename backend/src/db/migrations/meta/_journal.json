@@ -8,6 +8,13 @@
       "when": 1775742269811,
       "tag": "0000_melted_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775989118540,
+      "tag": "0001_opposite_shadowcat",
+      "breakpoints": true
     }
   ]
 }
