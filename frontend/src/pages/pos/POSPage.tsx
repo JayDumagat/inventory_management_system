@@ -5,11 +5,12 @@ import { useTenantStore } from "../../stores/tenantStore";
 import { useBranchStore } from "../../stores/branchStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
 import { formatCurrency } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 interface Product {
   id: string;
@@ -54,6 +55,7 @@ export default function POSPage() {
   const [receiptModal, setReceiptModal] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<Receipt | null>(null);
   const [customerName, setCustomerName] = useState("");
+  const toast = useToast();
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", tid],
@@ -97,7 +99,9 @@ export default function POSPage() {
       setCheckoutModal(false);
       setReceiptModal(true);
       qc.invalidateQueries({ queryKey: ["orders", tid] });
+      toast.success("Order completed");
     },
+    onError: () => toast.error("Failed to process order"),
   });
 
   const allVariants = useMemo(
@@ -159,7 +163,14 @@ export default function POSPage() {
     });
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <Skeleton className="h-7 w-40" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  </div>
+);
 
   return (
     <div className="flex flex-col lg:flex-row gap-5 h-full">
