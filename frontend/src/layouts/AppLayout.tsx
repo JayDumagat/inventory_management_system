@@ -8,6 +8,7 @@ import {
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
   Users, BarChart2, Ruler, Building2, AlertTriangle, ArrowRightLeft,
+  Truck, ShoppingBag, CreditCard, Plug, Code,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -37,18 +38,24 @@ function relativeTime(date: string): string {
 }
 
 const navItems = [
-  { label: "Dashboard",    icon: LayoutDashboard, href: "/dashboard",     roles: null },
-  { label: "Products",     icon: Package,         href: "/products",      roles: null },
-  { label: "Categories",   icon: Tag,             href: "/categories",    roles: null },
-  { label: "Customers",    icon: Users,           href: "/customers",     roles: null },
-  { label: "Inventory",    icon: Warehouse,       href: "/inventory",     roles: null },
-  { label: "Units",        icon: Ruler,           href: "/units",         roles: null },
-  { label: "Sales Orders", icon: ShoppingCart,    href: "/orders",        roles: null },
-  { label: "Branches",     icon: GitBranch,       href: "/branches",      roles: null },
-  { label: "Staff",        icon: Users,           href: "/staff",         roles: ["owner", "admin", "manager"] },
-  { label: "Reports",      icon: BarChart2,       href: "/reports",       roles: null },
-  { label: "Audit Log",    icon: ClipboardList,   href: "/audit",         roles: null },
-  { label: "Organization", icon: Building2,       href: "/organization",  roles: ["owner", "admin", "manager"] },
+  { label: "Dashboard",       icon: LayoutDashboard, href: "/dashboard",       roles: null },
+  { label: "POS",             icon: CreditCard,      href: "/pos",             roles: null },
+  { label: "Products",        icon: Package,         href: "/products",        roles: null },
+  { label: "Categories",      icon: Tag,             href: "/categories",      roles: null },
+  { label: "Customers",       icon: Users,           href: "/customers",       roles: null },
+  { label: "Inventory",       icon: Warehouse,       href: "/inventory",       roles: null },
+  { label: "Units",           icon: Ruler,           href: "/units",           roles: null },
+  { label: "Sales Orders",    icon: ShoppingCart,    href: "/orders",          roles: null },
+  { label: "Suppliers",       icon: Truck,           href: "/suppliers",       roles: null },
+  { label: "Purchase Orders", icon: ShoppingBag,     href: "/purchase-orders", roles: null },
+  { label: "Transactions",    icon: ArrowRightLeft,  href: "/transactions",    roles: null },
+  { label: "Branches",        icon: GitBranch,       href: "/branches",        roles: null },
+  { label: "Staff",           icon: Users,           href: "/staff",           roles: ["owner", "admin", "manager"] },
+  { label: "Reports",         icon: BarChart2,       href: "/reports",         roles: null },
+  { label: "Audit Log",       icon: ClipboardList,   href: "/audit",           roles: null },
+  { label: "Integrations",    icon: Plug,            href: "/integrations",    roles: ["owner", "admin"] },
+  { label: "API",             icon: Code,            href: "/api-keys",        roles: ["owner", "admin"] },
+  { label: "Organization",    icon: Building2,       href: "/organization",    roles: ["owner", "admin", "manager"] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
