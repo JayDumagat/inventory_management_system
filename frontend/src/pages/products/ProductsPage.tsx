@@ -11,8 +11,9 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { formatCurrency } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X } from "lucide-react";
 
 interface Variant { id: string; name: string; sku: string; barcode?: string | null; price: string; costPrice: string; isActive: boolean; }
@@ -51,6 +52,7 @@ export default function ProductsPage() {
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const toast = useToast();
 
   const [productModal, setProductModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [variantModal, setVariantModal] = useState<{ open: boolean; productId?: string; variant?: Variant }>({ open: false });
@@ -94,25 +96,47 @@ export default function ProductsPage() {
     mutationFn: (data: ProductForm) => productModal.product
       ? api.patch(`/api/tenants/${tid}/products/${productModal.product.id}`, data)
       : api.post(`/api/tenants/${tid}/products`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["products", tid] }); setProductModal({ open: false }); pForm.reset(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      setProductModal({ open: false });
+      pForm.reset();
+      toast.success(productModal.product ? "Product updated" : "Product created");
+    },
+    onError: () => toast.error("Failed to save product"),
   });
 
   const doDeleteProduct = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/products/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["products", tid] }); setPendingDeleteProduct(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      setPendingDeleteProduct(null);
+      toast.success("Product deleted");
+    },
+    onError: () => toast.error("Failed to delete product"),
   });
 
   const saveVariant = useMutation({
     mutationFn: (data: VariantForm) => variantModal.variant
       ? api.patch(`/api/tenants/${tid}/products/${variantModal.productId}/variants/${variantModal.variant.id}`, data)
       : api.post(`/api/tenants/${tid}/products/${variantModal.productId}/variants`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["products", tid] }); setVariantModal({ open: false }); vForm.reset(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      setVariantModal({ open: false });
+      vForm.reset();
+      toast.success(variantModal.variant ? "Variant updated" : "Variant created");
+    },
+    onError: () => toast.error("Failed to save variant"),
   });
 
   const doDeleteVariant = useMutation({
     mutationFn: ({ pid, vid }: { pid: string; vid: string }) =>
       api.delete(`/api/tenants/${tid}/products/${pid}/variants/${vid}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["products", tid] }); setPendingDeleteVariant(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      setPendingDeleteVariant(null);
+      toast.success("Variant deleted");
+    },
+    onError: () => toast.error("Failed to delete variant"),
   });
 
   const closeProductModal = () => {
@@ -183,7 +207,16 @@ export default function ProductsPage() {
     [products, search]
   );
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  );
 
   return (
     <div className="space-y-5">

@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { inventory, stockMovements, productVariants, products } from "../db/schema";
+import { inventory, stockMovements, productVariants, products, branches } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { authenticate, requireTenant } from "../middleware/auth";
 import { createAuditLog } from "../middleware/auditLog";
+import { cacheGet, cacheSet, cacheDelPattern } from "../lib/redis";
+import { appEvents } from "../lib/events";
 
 const router = Router({ mergeParams: true });
 
@@ -36,6 +38,15 @@ const transferSchema = z.object({
 // GET /api/tenants/:tenantId/inventory - list all inventory
 router.get("/", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
   try {
+    const tenantId = req.tenantContext!.tenantId;
+    const cacheKey = `inventory:${tenantId}:list`;
+
+    const cached = await cacheGet<object[]>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     const list = await db.query.inventory.findMany({
       with: {
         variant: { with: { product: true } },
@@ -43,7 +54,8 @@ router.get("/", authenticate, requireTenant(), async (req: Request, res: Respons
       },
     });
     // Filter by tenant through product.tenantId
-    const filtered = list.filter(item => item.variant?.product?.tenantId === req.tenantContext!.tenantId);
+    const filtered = list.filter(item => item.variant?.product?.tenantId === tenantId);
+    await cacheSet(cacheKey, filtered, 30);
     res.json(filtered);
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -101,7 +113,42 @@ router.post("/adjust", authenticate, requireTenant("manager"), async (req: Reque
     }).returning();
     
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "inventory", resourceId: inv.id });
-    
+
+    // Emit stock movement event
+    appEvents.emit("inventory.stock_movement", {
+      tenantId: req.tenantContext!.tenantId,
+      variantId: body.variantId,
+      branchId: body.branchId,
+      type: body.type,
+      quantity: body.quantity,
+      referenceId: body.referenceId,
+    });
+
+    // Check for low stock and emit event
+    if (inv.reorderPoint && inv.quantity <= inv.reorderPoint) {
+      const variant = await db.query.productVariants.findFirst({
+        where: eq(productVariants.id, body.variantId),
+        with: { product: true },
+      });
+      const branch = await db.query.branches.findFirst({ where: eq(branches.id, body.branchId) });
+      if (variant?.product) {
+        appEvents.emit("inventory.low_stock", {
+          tenantId: req.tenantContext!.tenantId,
+          variantId: body.variantId,
+          productName: variant.product.name,
+          variantName: variant.name,
+          sku: variant.sku,
+          branchId: body.branchId,
+          branchName: branch?.name ?? body.branchId,
+          quantity: inv.quantity,
+          reorderPoint: inv.reorderPoint,
+        });
+      }
+    }
+
+    // Invalidate inventory cache
+    await cacheDelPattern(`inventory:${req.tenantContext!.tenantId}:*`);
+
     res.json({ inventory: inv, movement });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -136,7 +183,17 @@ router.put("/set", authenticate, requireTenant("manager"), async (req: Request, 
       newQuantity: body.quantity,
       createdBy: req.user!.id,
     });
-    
+
+    appEvents.emit("inventory.stock_movement", {
+      tenantId: req.tenantContext!.tenantId,
+      variantId: body.variantId,
+      branchId: body.branchId,
+      type: "adjustment",
+      quantity: Math.abs(body.quantity - previousQty),
+    });
+
+    await cacheDelPattern(`inventory:${req.tenantContext!.tenantId}:*`);
+
     res.json(inv);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -260,6 +317,16 @@ router.post("/transfer", authenticate, requireTenant("manager"), async (req: Req
       resourceType: "inventory_transfer",
       newValues: { variantId: body.variantId, fromBranchId: body.fromBranchId, toBranchId: body.toBranchId, quantity: body.quantity },
     });
+
+    appEvents.emit("inventory.stock_movement", {
+      tenantId: req.tenantContext!.tenantId,
+      variantId: body.variantId,
+      branchId: body.fromBranchId,
+      type: "transfer",
+      quantity: body.quantity,
+    });
+
+    await cacheDelPattern(`inventory:${req.tenantContext!.tenantId}:*`);
 
     res.json({ source: srcInv, destination: dstInv });
   } catch (error) {

@@ -3,12 +3,23 @@ import { db } from "../db";
 import { salesOrders, inventory, products } from "../db/schema";
 import { eq, desc, gte, sql, and } from "drizzle-orm";
 import { authenticate, requireTenant } from "../middleware/auth";
+import { cacheGet, cacheSet } from "../lib/redis";
 
 const router = Router({ mergeParams: true });
+
+const DASHBOARD_TTL = 60; // seconds
 
 router.get("/stats", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
   try {
     const tenantId = req.tenantContext!.tenantId;
+    const cacheKey = `dashboard:${tenantId}:stats`;
+
+    const cached = await cacheGet<object>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -53,17 +64,21 @@ router.get("/stats", authenticate, requireTenant(), async (req: Request, res: Re
       .groupBy(sql`DATE(created_at)`)
       .orderBy(sql`DATE(created_at)`);
 
-    res.json({
+    const tenantLowStock = lowStockItems.filter(i => i.variant?.product?.tenantId === tenantId);
+    const result = {
       stats: {
         totalProducts: Number(productCount?.count ?? 0),
         ordersLast30Days: Number(orderCount?.count ?? 0),
         revenueLast30Days: Number(orderCount?.total ?? 0),
-        lowStockCount: lowStockItems.filter(i => i.variant?.product?.tenantId === tenantId).length,
+        lowStockCount: tenantLowStock.length,
       },
       recentOrders,
       salesByDay,
-      lowStockItems: lowStockItems.filter(i => i.variant?.product?.tenantId === tenantId),
-    });
+      lowStockItems: tenantLowStock,
+    };
+
+    await cacheSet(cacheKey, result, DASHBOARD_TTL);
+    res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
