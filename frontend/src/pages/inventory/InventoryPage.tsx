@@ -13,8 +13,8 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
-import { formatDateTime } from "../../lib/utils";
-import { ArrowUpDown, GitBranch, AlertTriangle, ArrowRightLeft, Search } from "lucide-react";
+import { formatDateTime, formatDate } from "../../lib/utils";
+import { ArrowUpDown, GitBranch, AlertTriangle, ArrowRightLeft, Search, Plus, Pencil, Trash2, FlaskConical } from "lucide-react";
 
 interface InventoryItem {
   id: string; quantity: number; reorderPoint: number;
@@ -26,6 +26,18 @@ interface Branch { id: string; name: string; isDefault: boolean; }
 interface Movement {
   id: string; type: string; quantity: number; previousQuantity: number; newQuantity: number;
   notes?: string; createdAt: string; variantId: string; branchId: string;
+  destinationBranchId?: string | null;
+}
+
+interface Batch {
+  id: string;
+  batchNumber: string;
+  quantity: number;
+  expiryDate?: string | null;
+  manufacturingDate?: string | null;
+  notes?: string | null;
+  variant?: { id: string; name: string; sku: string; product?: { name: string } };
+  branch?: { id: string; name: string };
 }
 
 const adjustSchema = z.object({
@@ -48,16 +60,41 @@ type TransferForm = z.infer<typeof transferSchema>;
 const barcodeSchema = z.object({ code: z.string().min(1) });
 type BarcodeForm = z.infer<typeof barcodeSchema>;
 
+const batchSchema = z.object({
+  variantId: z.string().min(1, "Variant required"),
+  branchId: z.string().min(1, "Branch required"),
+  batchNumber: z.string().min(1, "Batch number required"),
+  quantity: z.number().int().min(0),
+  expiryDate: z.string().optional(),
+  manufacturingDate: z.string().optional(),
+  notes: z.string().optional(),
+});
+type BatchForm = z.infer<typeof batchSchema>;
+
 const movementBadge: Record<string, "success" | "danger" | "warning" | "info" | "default"> = {
   in: "success", out: "danger", adjustment: "warning", transfer: "info", return: "default",
 };
+
+function isExpiringSoon(expiryDate?: string | null): boolean {
+  if (!expiryDate) return false;
+  const diff = new Date(expiryDate).getTime() - Date.now();
+  return diff > 0 && diff < 30 * 24 * 60 * 60 * 1000;
+}
+
+function isExpired(expiryDate?: string | null): boolean {
+  if (!expiryDate) return false;
+  return new Date(expiryDate).getTime() < Date.now();
+}
 
 export default function InventoryPage() {
   const { currentTenant } = useTenantStore();
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
-  const [tab, setTab] = useState<"stock" | "movements">("stock");
+  const myRole = currentTenant?.role || "staff";
+  const canManage = ["owner", "admin", "manager"].includes(myRole);
+
+  const [tab, setTab] = useState<"stock" | "movements" | "batches" | "transfers">("stock");
   const [adjustModal, setAdjustModal] = useState(false);
   const [adjustStep, setAdjustStep] = useState<1 | 2>(1);
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -68,6 +105,11 @@ export default function InventoryPage() {
   const [barcodeResult, setBarcodeResult] = useState<{ name?: string; sku?: string; barcode?: string } | null>(null);
   const [barcodeError, setBarcodeError] = useState("");
 
+  // Batch state
+  const [batchModal, setBatchModal] = useState<{ open: boolean; batch?: Batch }>({ open: false });
+  const [pendingDeleteBatch, setPendingDeleteBatch] = useState<Batch | null>(null);
+  const [batchSelectedProductId, setBatchSelectedProductId] = useState("");
+
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["inventory", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/inventory`).then((r) => r.data),
@@ -77,7 +119,7 @@ export default function InventoryPage() {
   const { data: movements = [] } = useQuery<Movement[]>({
     queryKey: ["movements", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/inventory/movements`).then((r) => r.data),
-    enabled: !!tid && tab === "movements",
+    enabled: !!tid && (tab === "movements" || tab === "transfers"),
   });
 
   const { data: products = [] } = useQuery<Product[]>({
@@ -92,9 +134,16 @@ export default function InventoryPage() {
     enabled: !!tid,
   });
 
+  const { data: batches = [] } = useQuery<Batch[]>({
+    queryKey: ["batches", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/batches`).then((r) => r.data),
+    enabled: !!tid && tab === "batches",
+  });
+
   const form = useForm<AdjustForm>({ resolver: zodResolver(adjustSchema), defaultValues: { type: "in" } });
   const tForm = useForm<TransferForm>({ resolver: zodResolver(transferSchema), defaultValues: { quantity: 1 } });
   const bForm = useForm<BarcodeForm>({ resolver: zodResolver(barcodeSchema) });
+  const batchForm = useForm<BatchForm>({ resolver: zodResolver(batchSchema), defaultValues: { quantity: 0 } });
 
   const closeAdjustModal = () => {
     setAdjustModal(false);
@@ -156,7 +205,48 @@ export default function InventoryPage() {
     },
   });
 
+  const saveBatch = useMutation({
+    mutationFn: (data: BatchForm) =>
+      batchModal.batch
+        ? api.patch(`/api/tenants/${tid}/batches/${batchModal.batch.id}`, data)
+        : api.post(`/api/tenants/${tid}/batches`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["batches", tid] });
+      setBatchModal({ open: false });
+      batchForm.reset({ quantity: 0 });
+      setBatchSelectedProductId("");
+    },
+  });
+
+  const doDeleteBatch = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/batches/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["batches", tid] });
+      setPendingDeleteBatch(null);
+    },
+  });
+
+  const openCreateBatch = () => {
+    setBatchModal({ open: true });
+    batchForm.reset({ quantity: 0 });
+    setBatchSelectedProductId("");
+  };
+
+  const openEditBatch = (batch: Batch) => {
+    setBatchModal({ open: true, batch });
+    batchForm.reset({
+      variantId: batch.variant?.id ?? "",
+      branchId: batch.branch?.id ?? "",
+      batchNumber: batch.batchNumber,
+      quantity: batch.quantity,
+      expiryDate: batch.expiryDate ?? undefined,
+      manufacturingDate: batch.manufacturingDate ?? undefined,
+      notes: batch.notes ?? undefined,
+    });
+  };
+
   const allVariants = products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name })));
+  const transferMovements = movements.filter((m) => m.type === "transfer");
 
   if (isLoading) return <PageLoader />;
 
@@ -189,17 +279,22 @@ export default function InventoryPage() {
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-stroke">
-        {(["stock", "movements"] as const).map((t) => (
+        {([
+          { value: "stock", label: "Stock levels" },
+          { value: "movements", label: "Transactions" },
+          { value: "batches", label: "Batches" },
+          { value: "transfers", label: "Transfers" },
+        ] as const).map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors capitalize ${
-              tab === t
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === t.value
                 ? "border-primary-600 text-primary-600"
                 : "border-transparent text-muted hover:text-ink"
             }`}
           >
-            {t === "stock" ? "Stock levels" : "Stock movements"}
+            {t.label}
           </button>
         ))}
       </div>
@@ -295,6 +390,140 @@ export default function InventoryPage() {
                       <td className="px-6 py-3 text-muted whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {tab === "batches" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            {canManage && (
+              <Button onClick={openCreateBatch} className="gap-2">
+                <Plus className="w-4 h-4" /> Add batch
+              </Button>
+            )}
+          </div>
+          <Card>
+            {batches.length === 0 ? (
+              <CardContent className="p-0">
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                  <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                    <FlaskConical className="w-7 h-7 text-primary-500" />
+                  </div>
+                  <h3 className="text-base font-semibold text-ink mb-1">No batches yet</h3>
+                  <p className="text-sm text-muted max-w-xs mb-6">Track product batches and expiry dates to manage perishable inventory</p>
+                  {canManage && <Button onClick={openCreateBatch}>Add your first batch</Button>}
+                </div>
+              </CardContent>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stroke text-left">
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Batch #</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Product / Variant</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Branch</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Qty</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Mfg Date</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Expiry Date</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                      {canManage && <th className="px-6 py-3" />}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batches.map((b) => {
+                      const expired = isExpired(b.expiryDate);
+                      const expiringSoon = !expired && isExpiringSoon(b.expiryDate);
+                      return (
+                        <tr key={b.id} className="border-b border-stroke hover:bg-hover transition-colors">
+                          <td className="px-6 py-3 font-mono text-xs text-ink font-medium">{b.batchNumber}</td>
+                          <td className="px-6 py-3">
+                            <div className="text-ink font-medium">{b.variant?.product?.name}</div>
+                            <div className="text-xs text-muted">{b.variant?.name} · {b.variant?.sku}</div>
+                          </td>
+                          <td className="px-6 py-3 text-muted">{b.branch?.name}</td>
+                          <td className="px-6 py-3 font-bold text-ink">{b.quantity}</td>
+                          <td className="px-6 py-3 text-muted">{b.manufacturingDate ? formatDate(b.manufacturingDate) : "—"}</td>
+                          <td className="px-6 py-3 text-muted">{b.expiryDate ? formatDate(b.expiryDate) : "—"}</td>
+                          <td className="px-6 py-3">
+                            {expired ? (
+                              <Badge variant="danger">Expired</Badge>
+                            ) : expiringSoon ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-0.5">
+                                <AlertTriangle className="w-3 h-3" /> Expiring soon
+                              </span>
+                            ) : b.expiryDate ? (
+                              <Badge variant="success">OK</Badge>
+                            ) : (
+                              <span className="text-xs text-muted">—</span>
+                            )}
+                          </td>
+                          {canManage && (
+                            <td className="px-6 py-3">
+                              <div className="flex items-center gap-1 justify-end">
+                                <Button variant="ghost" size="sm" onClick={() => openEditBatch(b)}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setPendingDeleteBatch(b)}>
+                                  <Trash2 className="w-4 h-4 text-red-400" />
+                                </Button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {tab === "transfers" && (
+        <Card>
+          {transferMovements.length === 0 ? (
+            <CardContent className="p-0">
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
+                  <ArrowRightLeft className="w-7 h-7 text-primary-500" />
+                </div>
+                <h3 className="text-base font-semibold text-ink mb-1">No transfers yet</h3>
+                <p className="text-sm text-muted max-w-xs">Inter-branch stock transfers will appear here</p>
+              </div>
+            </CardContent>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-stroke text-left">
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Product / Variant</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">From Branch</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">To Branch</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transferMovements.map((m) => {
+                    const fromBranch = branches.find((b) => b.id === m.branchId);
+                    const toBranch = branches.find((b) => b.id === m.destinationBranchId);
+                    return (
+                      <tr key={m.id} className="border-b border-stroke hover:bg-hover transition-colors">
+                        <td className="px-6 py-3 text-muted whitespace-nowrap">{formatDateTime(m.createdAt)}</td>
+                        <td className="px-6 py-3 text-muted font-mono text-xs">{m.variantId.slice(0, 8)}…</td>
+                        <td className="px-6 py-3 text-muted">{fromBranch?.name ?? m.branchId.slice(0, 8)}</td>
+                        <td className="px-6 py-3 text-muted">{toBranch?.name ?? (m.destinationBranchId ? m.destinationBranchId.slice(0, 8) : "—")}</td>
+                        <td className="px-6 py-3 font-bold text-ink">{m.quantity}</td>
+                        <td className="px-6 py-3 text-muted">{m.notes || "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -478,6 +707,85 @@ export default function InventoryPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Batch create/edit modal */}
+      <Modal
+        open={batchModal.open}
+        onClose={() => { setBatchModal({ open: false }); batchForm.reset({ quantity: 0 }); setBatchSelectedProductId(""); }}
+        title={batchModal.batch ? "Edit batch" : "Add batch"}
+      >
+        <form onSubmit={batchForm.handleSubmit((d) => saveBatch.mutate(d))} className="flex flex-col gap-4">
+          {saveBatch.isError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+              {(saveBatch.error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Save failed"}
+            </div>
+          )}
+          {!batchModal.batch && (
+            <Select
+              label="Filter by product"
+              value={batchSelectedProductId}
+              onChange={(e) => {
+                setBatchSelectedProductId(e.target.value);
+                batchForm.setValue("variantId", "");
+              }}
+            >
+              <option value="">All products</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+          )}
+          {!batchModal.batch && (
+            <Select
+              label="Variant *"
+              {...batchForm.register("variantId")}
+              error={batchForm.formState.errors.variantId?.message}
+            >
+              <option value="">Select variant</option>
+              {(batchSelectedProductId
+                ? products.find((p) => p.id === batchSelectedProductId)?.variants ?? []
+                : allVariants
+              ).map((v) => (
+                <option key={v.id} value={v.id}>
+                  {("productName" in v ? v.productName + " — " : "") + v.name} ({v.sku})
+                </option>
+              ))}
+            </Select>
+          )}
+          {!batchModal.batch && (
+            <Select
+              label="Branch *"
+              {...batchForm.register("branchId")}
+              error={batchForm.formState.errors.branchId?.message}
+            >
+              <option value="">Select branch</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+          )}
+          <Input label="Batch number *" placeholder="e.g. BATCH-2024-001" {...batchForm.register("batchNumber")} error={batchForm.formState.errors.batchNumber?.message} />
+          <Input label="Quantity" type="number" min="0" {...batchForm.register("quantity", { valueAsNumber: true })} error={batchForm.formState.errors.quantity?.message} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Manufacturing date" type="date" {...batchForm.register("manufacturingDate")} />
+            <Input label="Expiry date" type="date" {...batchForm.register("expiryDate")} />
+          </div>
+          <Input label="Notes (optional)" {...batchForm.register("notes")} />
+          <div className="flex gap-3 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={() => { setBatchModal({ open: false }); batchForm.reset({ quantity: 0 }); setBatchSelectedProductId(""); }}>Cancel</Button>
+            <Button type="submit" loading={saveBatch.isPending}>{batchModal.batch ? "Save" : "Create"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Batch delete confirm */}
+      <Modal open={!!pendingDeleteBatch} onClose={() => setPendingDeleteBatch(null)} title="Delete batch" size="sm">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-ink">
+            Delete batch <strong>{pendingDeleteBatch?.batchNumber}</strong>? This cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setPendingDeleteBatch(null)}>Cancel</Button>
+            <Button variant="danger" loading={doDeleteBatch.isPending} onClick={() => pendingDeleteBatch && doDeleteBatch.mutate(pendingDeleteBatch.id)}>Delete</Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
