@@ -1,0 +1,102 @@
+import * as Minio from "minio";
+
+let minioClient: Minio.Client | null = null;
+let bucketEnsured = false;
+
+const DEFAULT_BUCKET = process.env.MINIO_BUCKET || "inventory-files";
+
+function getMinioClient(): Minio.Client | null {
+  if (minioClient) return minioClient;
+
+  const endpoint = process.env.MINIO_ENDPOINT;
+  if (!endpoint) return null;
+
+  try {
+    minioClient = new Minio.Client({
+      endPoint: endpoint,
+      port: parseInt(process.env.MINIO_PORT || "9000", 10),
+      useSSL: process.env.MINIO_USE_SSL === "true",
+      accessKey: process.env.MINIO_ACCESS_KEY || "minioadmin",
+      secretKey: process.env.MINIO_SECRET_KEY || "minioadmin123",
+    });
+    console.log("[MinIO] Client created");
+    return minioClient;
+  } catch (err) {
+    console.error("[MinIO] Failed to create client:", err);
+    return null;
+  }
+}
+
+async function ensureBucket(client: Minio.Client, bucket: string): Promise<void> {
+  if (bucketEnsured) return;
+  try {
+    const exists = await client.bucketExists(bucket);
+    if (!exists) {
+      await client.makeBucket(bucket);
+      console.log(`[MinIO] Created bucket: ${bucket}`);
+    }
+    bucketEnsured = true;
+  } catch (err) {
+    console.error("[MinIO] Bucket setup error:", err);
+  }
+}
+
+export async function uploadFile(
+  objectName: string,
+  buffer: Buffer,
+  mimeType: string,
+  bucket = DEFAULT_BUCKET
+): Promise<string | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    await ensureBucket(client, bucket);
+    await client.putObject(bucket, objectName, buffer, buffer.length, {
+      "Content-Type": mimeType,
+    });
+    return objectName;
+  } catch (err) {
+    console.error("[MinIO] Upload error:", err);
+    return null;
+  }
+}
+
+export async function getPresignedUrl(
+  objectName: string,
+  bucket = DEFAULT_BUCKET,
+  expirySeconds = 3600
+): Promise<string | null> {
+  const client = getMinioClient();
+  if (!client) return null;
+  try {
+    const url = await client.presignedGetObject(bucket, objectName, expirySeconds);
+    return url;
+  } catch (err) {
+    console.error("[MinIO] Presign error:", err);
+    return null;
+  }
+}
+
+export async function deleteFile(
+  objectName: string,
+  bucket = DEFAULT_BUCKET
+): Promise<boolean> {
+  const client = getMinioClient();
+  if (!client) return false;
+  try {
+    await client.removeObject(bucket, objectName);
+    return true;
+  } catch (err) {
+    console.error("[MinIO] Delete error:", err);
+    return false;
+  }
+}
+
+export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): string {
+  const endpoint = process.env.MINIO_ENDPOINT || "localhost";
+  const port = process.env.MINIO_PORT || "9000";
+  const protocol = process.env.MINIO_USE_SSL === "true" ? "https" : "http";
+  return `${protocol}://${endpoint}:${port}/${bucket}/${objectName}`;
+}
+
+export { getMinioClient, DEFAULT_BUCKET };

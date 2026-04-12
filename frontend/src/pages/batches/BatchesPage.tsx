@@ -11,9 +11,10 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, FlaskConical, AlertTriangle } from "lucide-react";
 import { formatDate } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 interface Batch {
   id: string;
@@ -57,6 +58,7 @@ export default function BatchesPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const [modal, setModal] = useState<{ open: boolean; batch?: Batch }>({ open: false });
   const [pendingDelete, setPendingDelete] = useState<Batch | null>(null);
@@ -92,7 +94,9 @@ export default function BatchesPage() {
       setModal({ open: false });
       form.reset({ quantity: 0 });
       setSelectedProductId("");
+      toast.success("Batch saved");
     },
+    onError: () => toast.error("Failed to save batch"),
   });
 
   const doDelete = useMutation({
@@ -100,7 +104,9 @@ export default function BatchesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["batches", tid] });
       setPendingDelete(null);
+      toast.success("Batch deleted");
     },
+    onError: () => toast.error("Failed to delete batch"),
   });
 
   const openCreate = () => {
@@ -124,7 +130,17 @@ export default function BatchesPage() {
 
   const allVariants = products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id })));
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">
