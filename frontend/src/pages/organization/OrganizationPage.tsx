@@ -62,6 +62,17 @@ type InviteForm = z.infer<typeof inviteSchema>;
 
 type Tab = "general" | "personalization" | "subscriptions" | "team" | "notifications" | "security";
 
+function sanitizeImageUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
+}
+
 const TABS: { value: Tab; label: string; icon: typeof Building2 }[] = [
   { value: "general",         label: "General",         icon: Building2 },
   { value: "personalization", label: "Personalization", icon: Palette },
@@ -262,10 +273,10 @@ export default function OrganizationPage() {
                 value={orgLogo}
                 onChange={(e) => setOrgLogo(e.target.value)}
               />
-              {orgLogo && /^https?:\/\//i.test(orgLogo) && (
+              {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
                   <img
-                    src={orgLogo}
+                    src={sanitizeImageUrl(orgLogo)}
                     alt="Logo preview"
                     className="w-10 h-10 object-contain flex-shrink-0"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -300,10 +311,10 @@ export default function OrganizationPage() {
                 value={orgLogo}
                 onChange={(e) => setOrgLogo(e.target.value)}
               />
-              {orgLogo && /^https?:\/\//i.test(orgLogo) && (
+              {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
                   <img
-                    src={orgLogo}
+                    src={sanitizeImageUrl(orgLogo)}
                     alt="Logo preview"
                     className="w-10 h-10 object-contain flex-shrink-0"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
