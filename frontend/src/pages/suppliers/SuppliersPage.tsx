@@ -9,8 +9,9 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 import {
   Truck, Plus, Pencil, Trash2, Search, AlertCircle,
   Mail, Phone, Globe, MapPin,
@@ -51,6 +52,7 @@ export default function SuppliersPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; supplier?: Supplier }>({ open: false });
@@ -69,12 +71,14 @@ export default function SuppliersPage() {
       modal.supplier
         ? api.patch(`/api/tenants/${tid}/suppliers/${modal.supplier.id}`, data).then((r) => r.data)
         : api.post(`/api/tenants/${tid}/suppliers`, data).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers", tid] }); closeModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers", tid] }); closeModal(); toast.success("Supplier saved"); },
+    onError: () => toast.error("Failed to save supplier"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/suppliers/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers", tid] }); setDeleteConfirm(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["suppliers", tid] }); setDeleteConfirm(null); toast.success("Supplier deleted"); },
+    onError: () => toast.error("Failed to delete supplier"),
   });
 
   const closeModal = () => { setModal({ open: false }); form.reset(); };
@@ -104,7 +108,17 @@ export default function SuppliersPage() {
     [suppliers, search]
   );
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

@@ -9,8 +9,9 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, Ruler } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface Unit { id: string; name: string; abbreviation: string; createdAt: string; }
 
@@ -26,6 +27,7 @@ export default function UnitsPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const [modal, setModal] = useState<{ open: boolean; unit?: Unit }>({ open: false });
   const [pendingDelete, setPendingDelete] = useState<Unit | null>(null);
@@ -47,7 +49,9 @@ export default function UnitsPage() {
       qc.invalidateQueries({ queryKey: ["units", tid] });
       setModal({ open: false });
       form.reset();
+      toast.success("Unit saved");
     },
+    onError: () => toast.error("Failed to save unit"),
   });
 
   const doDelete = useMutation({
@@ -55,7 +59,9 @@ export default function UnitsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["units", tid] });
       setPendingDelete(null);
+      toast.success("Unit deleted");
     },
+    onError: () => toast.error("Failed to delete unit"),
   });
 
   const openEdit = (unit: Unit) => {
@@ -68,7 +74,17 @@ export default function UnitsPage() {
     form.reset({ name: "", abbreviation: "" });
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">
