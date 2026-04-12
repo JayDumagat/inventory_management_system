@@ -46,13 +46,14 @@ const LANGUAGES = [
 ];
 
 export default function SettingsPage() {
-  const { currentTenant } = useTenantStore();
+  const { currentTenant, setCurrentTenant } = useTenantStore();
   const qc = useQueryClient();
   const theme = useTheme();
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
   const [orgName, setOrgName] = useState(currentTenant?.name || "");
   const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
+  const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
   const [savingOrg, setSavingOrg] = useState(false);
   const [dangerConfirm, setDangerConfirm] = useState("");
 
@@ -61,7 +62,12 @@ export default function SettingsPage() {
     setSavingOrg(true);
     setOrgError("");
     try {
-      await api.patch(`/api/tenants/${currentTenant.id}`, { name: orgName, description: orgDesc });
+      const { data: updated } = await api.patch(`/api/tenants/${currentTenant.id}`, {
+        name: orgName,
+        description: orgDesc,
+        logoUrl: orgLogo || undefined,
+      });
+      setCurrentTenant({ ...currentTenant, name: updated.name, ...(updated.logoUrl && { logoUrl: updated.logoUrl }) });
       qc.invalidateQueries({ queryKey: ["tenants"] });
       setOrgSuccess(true);
       setTimeout(() => setOrgSuccess(false), 3000);
@@ -118,6 +124,25 @@ export default function SettingsPage() {
             value={orgDesc}
             onChange={(e) => setOrgDesc(e.target.value)}
           />
+          <div className="flex flex-col gap-2">
+            <Input
+              label="Logo URL (optional)"
+              placeholder="https://example.com/logo.png"
+              value={orgLogo}
+              onChange={(e) => setOrgLogo(e.target.value)}
+            />
+            {orgLogo && (
+              <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
+                <img
+                  src={orgLogo}
+                  alt="Logo preview"
+                  className="w-10 h-10 object-contain flex-shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <span className="text-xs text-muted">Logo preview</span>
+              </div>
+            )}
+          </div>
           <div className="flex justify-end">
             <Button onClick={handleSaveOrg} loading={savingOrg}>Save organization</Button>
           </div>

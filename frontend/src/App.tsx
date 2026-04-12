@@ -5,7 +5,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
-import SetupPage from "./pages/auth/SetupPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import OnboardingPage from "./pages/auth/OnboardingPage";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import CategoriesPage from "./pages/categories/CategoriesPage";
@@ -16,6 +18,8 @@ import BranchesPage from "./pages/branches/BranchesPage";
 import CustomersPage from "./pages/customers/CustomersPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import StaffPage from "./pages/staff/StaffPage";
+import ReportsPage from "./pages/reports/ReportsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -30,10 +34,12 @@ export default function App() {
             {/* Public */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Auth required but no tenant yet */}
             <Route element={<RequireAuth />}>
-              <Route path="/setup" element={<SetupPage />} />
+              <Route path="/setup" element={<OnboardingPage />} />
             </Route>
 
             {/* Auth + tenant required */}
@@ -46,6 +52,8 @@ export default function App() {
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/audit" element={<AuditPage />} />
               <Route path="/branches" element={<BranchesPage />} />
+              <Route path="/staff" element={<StaffPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>

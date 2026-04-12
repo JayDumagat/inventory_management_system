@@ -5,8 +5,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Package } from "lucide-react";
+import { api } from "../../api/client";
 
 const schema = z.object({
   firstName: z.string().min(1, "First name required"),
@@ -21,10 +22,15 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const register = useAuthStore((s) => s.register);
+  const setAuthData = useAuthStore((s) => s.setTokens);
   const [error, setError] = useState("");
+  const [oauthLoading, setOauthLoading] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
   const { register: rf, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -41,6 +47,45 @@ export default function RegisterPage() {
     }
   };
 
+  const handleGoogleCredential = async (credential: string) => {
+    try {
+      setOauthLoading(true);
+      setError("");
+      const { data } = await api.post("/api/auth/oauth/google", { credential });
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      setAuthData(data.accessToken, data.refreshToken);
+      useAuthStore.setState({ user: data.user, isAuthenticated: true });
+      navigate("/setup");
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Google sign-up failed");
+    } finally {
+      setOauthLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !googleBtnRef.current) return;
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => {
+      window.google?.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (resp: { credential: string }) => handleGoogleCredential(resp.credential),
+      });
+      window.google?.accounts.id.renderButton(googleBtnRef.current!, {
+        theme: "outline",
+        size: "large",
+        width: googleBtnRef.current!.offsetWidth,
+        text: "signup_with",
+      });
+    };
+    document.body.appendChild(script);
+    return () => { document.body.removeChild(script); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="min-h-screen bg-page flex items-center justify-center p-4">
       <div className="bg-panel border border-stroke p-8 w-full max-w-sm">
@@ -56,6 +101,21 @@ export default function RegisterPage() {
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
           </div>
+        )}
+
+        {GOOGLE_CLIENT_ID && (
+          <>
+            {oauthLoading ? (
+              <div className="flex items-center justify-center h-10 text-xs text-muted mb-4">Signing up…</div>
+            ) : (
+              <div ref={googleBtnRef} className="w-full mb-4" />
+            )}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-stroke" />
+              <span className="text-xs text-muted">or sign up with email</span>
+              <div className="flex-1 h-px bg-stroke" />
+            </div>
+          </>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
