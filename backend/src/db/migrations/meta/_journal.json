@@ -15,6 +15,13 @@
       "when": 1775989118540,
       "tag": "0001_opposite_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775991192393,
+      "tag": "0002_cuddly_hex",
+      "breakpoints": true
     }
   ]
 }
