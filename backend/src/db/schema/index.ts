@@ -1,5 +1,5 @@
 import { pgTable, pgEnum, uuid, text, timestamp, integer, decimal, boolean, jsonb, date } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // Enums
 export const tenantUserRoleEnum = pgEnum("tenant_user_role", ["owner", "admin", "manager", "staff"]);
@@ -8,6 +8,8 @@ export const salesOrderStatusEnum = pgEnum("sales_order_status", ["draft", "conf
 export const auditActionEnum = pgEnum("audit_action", ["create", "update", "delete", "login", "logout", "other"]);
 export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "ordered", "partial", "received", "cancelled"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["sale", "purchase", "expense", "refund", "adjustment", "other"]);
+export const productTypeEnum = pgEnum("product_type", ["physical", "digital", "service", "bundle"]);
+export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "overdue", "cancelled"]);
 
 // Users table (global, not tenant-scoped)
 export const users = pgTable("users", {
@@ -32,6 +34,8 @@ export const tenants = pgTable("tenants", {
   slug: text("slug").notNull().unique(),
   description: text("description"),
   logoUrl: text("logo_url"),
+  plan: text("plan").notNull().default("free"),
+  planExpiresAt: timestamp("plan_expires_at"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -44,6 +48,7 @@ export const tenantUsers = pgTable("tenant_users", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: tenantUserRoleEnum("role").notNull().default("staff"),
   isActive: boolean("is_active").notNull().default(true),
+  allowedPages: jsonb("allowed_pages").$type<string[]>().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -101,6 +106,7 @@ export const products = pgTable("products", {
   unitId: uuid("unit_id").references(() => units.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),
+  type: productTypeEnum("type").notNull().default("physical"),
   imageUrl: text("image_url"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -343,6 +349,41 @@ export const apiKeys = pgTable("api_keys", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Invoices
+export const invoices = pgTable("invoices", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  orderId: uuid("order_id").references(() => salesOrders.id, { onDelete: "set null" }),
+  branchId: uuid("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  invoiceNumber: text("invoice_number").notNull(),
+  status: invoiceStatusEnum("status").notNull().default("draft"),
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
+  customerAddress: text("customer_address"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default("0"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  dueDate: date("due_date"),
+  paidAt: timestamp("paid_at"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Invoice Items
+export const invoiceItems = pgTable("invoice_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  invoiceId: uuid("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   tenantUsers: many(tenantUsers),
@@ -360,6 +401,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   transactions: many(transactions),
   integrations: many(integrations),
   apiKeys: many(apiKeys),
+  invoices: many(invoices),
 }));
 
 export const tenantUsersRelations = relations(tenantUsers, ({ one }) => ({
@@ -471,4 +513,15 @@ export const integrationsRelations = relations(integrations, ({ one }) => ({
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   tenant: one(tenants, { fields: [apiKeys.tenantId], references: [tenants.id] }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [invoices.tenantId], references: [tenants.id] }),
+  order: one(salesOrders, { fields: [invoices.orderId], references: [salesOrders.id] }),
+  branch: one(branches, { fields: [invoices.branchId], references: [branches.id] }),
+  items: many(invoiceItems),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+  invoice: one(invoices, { fields: [invoiceItems.invoiceId], references: [invoices.id] }),
 }));

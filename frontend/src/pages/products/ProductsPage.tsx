@@ -21,7 +21,7 @@ interface Unit { id: string; name: string; abbreviation: string; }
 interface AttributeOption { id: string; value: string; sortOrder: number; }
 interface Attribute { id: string; name: string; sortOrder: number; options: AttributeOption[]; }
 interface Product {
-  id: string; name: string; description?: string; isActive: boolean;
+  id: string; name: string; description?: string; isActive: boolean; type?: string;
   category?: Category; unit?: Unit; variants: Variant[];
 }
 
@@ -30,6 +30,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().optional(),
   unitId: z.string().optional(),
+  type: z.enum(["physical", "digital", "service", "bundle"]).optional().default("physical"),
 });
 const variantSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -122,7 +123,7 @@ export default function ProductsPage() {
   };
 
   const openProductModal = (product?: Product) => {
-    pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id, unitId: product.unit?.id } : {});
+    pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id, unitId: product.unit?.id, type: (product.type as "physical" | "digital" | "service" | "bundle") ?? "physical" } : { type: "physical" });
     vForm.reset();
     setProductModal({ open: true, product });
     setProductStep(1);
@@ -255,6 +256,11 @@ export default function ProductsPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-ink">{p.name}</p>
                       {!p.isActive && <Badge variant="warning">Inactive</Badge>}
+                      {p.type && p.type !== "physical" && (
+                        <Badge variant={p.type === "digital" ? "info" : p.type === "service" ? "success" : "default"}>
+                          {p.type}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {p.category && <Badge variant="info">{p.category.name}</Badge>}
@@ -397,6 +403,12 @@ export default function ProductsPage() {
               <option value="">No unit</option>
               {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
             </Select>
+            <Select label="Product Type" {...pForm.register("type")}>
+              <option value="physical">Physical</option>
+              <option value="digital">Digital</option>
+              <option value="service">Service</option>
+              <option value="bundle">Bundle</option>
+            </Select>
             <div className="flex gap-3 justify-end pt-1">
               <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
               <Button type="submit" loading={saveProduct.isPending}>Save</Button>
@@ -432,6 +444,12 @@ export default function ProductsPage() {
                 <Select label="Unit of measurement" {...pForm.register("unitId")}>
                   <option value="">No unit</option>
                   {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.abbreviation})</option>)}
+                </Select>
+                <Select label="Product Type" {...pForm.register("type")}>
+                  <option value="physical">Physical</option>
+                  <option value="digital">Digital</option>
+                  <option value="service">Service</option>
+                  <option value="bundle">Bundle</option>
                 </Select>
                 <div className="flex gap-3 justify-end pt-1">
                   <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>

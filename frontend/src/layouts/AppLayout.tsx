@@ -8,7 +8,7 @@ import {
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
   Users, BarChart2, Ruler, Building2, AlertTriangle, ArrowRightLeft,
-  Truck, ShoppingBag, CreditCard, Plug, Code,
+  Truck, ShoppingBag, CreditCard, Plug, Code, TrendingUp, FileText,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -46,12 +46,14 @@ const navItems = [
   { label: "Inventory",       icon: Warehouse,       href: "/inventory",       roles: null },
   { label: "Units",           icon: Ruler,           href: "/units",           roles: null },
   { label: "Sales Orders",    icon: ShoppingCart,    href: "/orders",          roles: null },
+  { label: "Invoices",        icon: FileText,        href: "/invoices",        roles: null },
   { label: "Suppliers",       icon: Truck,           href: "/suppliers",       roles: null },
   { label: "Purchase Orders", icon: ShoppingBag,     href: "/purchase-orders", roles: null },
   { label: "Transactions",    icon: ArrowRightLeft,  href: "/transactions",    roles: null },
   { label: "Branches",        icon: GitBranch,       href: "/branches",        roles: null },
   { label: "Staff",           icon: Users,           href: "/staff",           roles: ["owner", "admin", "manager"] },
   { label: "Reports",         icon: BarChart2,       href: "/reports",         roles: null },
+  { label: "Analytics",       icon: TrendingUp,      href: "/analytics",       roles: null },
   { label: "Audit Log",       icon: ClipboardList,   href: "/audit",           roles: null },
   { label: "Integrations",    icon: Plug,            href: "/integrations",    roles: ["owner", "admin"] },
   { label: "API",             icon: Code,            href: "/api-keys",        roles: ["owner", "admin"] },
@@ -128,15 +130,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pageLabel = navItems.find((n) => n.href === location.pathname)?.label ?? currentTenant?.name;
   const myRole = currentTenant?.role || "staff";
   const tenantLogoUrl = (currentTenant as { logoUrl?: string })?.logoUrl;
+  const allowedPages = (currentTenant as { allowedPages?: string[] })?.allowedPages;
+
+  const visibleNavItems = useMemo(() => navItems.filter((item) => {
+    if (item.roles && !item.roles.includes(myRole)) return false;
+    if (myRole === "staff" && allowedPages && allowedPages.length > 0) {
+      return allowedPages.includes(item.href);
+    }
+    return true;
+  }), [myRole, allowedPages]);
 
   return (
-    <div className="flex min-h-screen bg-page">
+    <div className="flex h-screen overflow-hidden bg-page">
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-56 bg-panel border-r border-stroke flex flex-col transition-transform duration-200",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0 lg:static lg:flex"
+          "lg:translate-x-0 lg:static lg:flex lg:h-full"
         )}
       >
         {/* Logo / tenant */}
@@ -234,8 +245,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 overflow-y-auto">
-          {navItems.filter((item) => !item.roles || item.roles.includes(myRole)).map((item) => {
+        <nav className="flex-1 px-2 py-3 overflow-y-auto sidebar-scroll">
+          {visibleNavItems.map((item) => {
             const active = location.pathname === item.href;
             return (
               <Link
@@ -274,7 +285,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
         <header className="sticky top-0 z-20 flex items-center gap-3 px-4 h-12 bg-panel border-b border-stroke">
           <button
@@ -397,7 +408,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
-        <main className="flex-1 p-5 overflow-auto">{children}</main>
+        <main className="flex-1 p-5 overflow-y-auto">{children}</main>
       </div>
 
       <PreferencesModal open={prefsOpen} onClose={() => setPrefsOpen(false)} />

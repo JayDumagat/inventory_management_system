@@ -15,7 +15,9 @@ const createTenantSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal("")),
 });
 
-const updateTenantSchema = createTenantSchema.partial();
+const updateTenantSchema = createTenantSchema.partial().extend({
+  plan: z.enum(["free", "pro", "enterprise"]).optional(),
+});
 
 // GET /api/tenants - list user's tenants
 router.get("/", authenticate, async (req: Request, res: Response): Promise<void> => {

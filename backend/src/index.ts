@@ -25,6 +25,7 @@ import suppliersRouter from "./routes/suppliers";
 import purchaseOrdersRouter from "./routes/purchaseOrders";
 import transactionsRouter from "./routes/transactions";
 import integrationsRouter from "./routes/integrations";
+import invoicesRouter from "./routes/invoices";
 import apiKeysRouter from "./routes/apiKeys";
 
 const app = express();
@@ -67,6 +68,7 @@ app.use("/api/tenants/:tenantId/purchase-orders", limiter, purchaseOrdersRouter)
 app.use("/api/tenants/:tenantId/transactions", limiter, transactionsRouter);
 app.use("/api/tenants/:tenantId/integrations", limiter, integrationsRouter);
 app.use("/api/tenants/:tenantId/api-keys", limiter, apiKeysRouter);
+app.use("/api/tenants/:tenantId/invoices", limiter, invoicesRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
