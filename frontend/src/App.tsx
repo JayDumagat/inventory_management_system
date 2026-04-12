@@ -22,6 +22,7 @@ import StaffPage from "./pages/staff/StaffPage";
 import ReportsPage from "./pages/reports/ReportsPage";
 import UnitsPage from "./pages/units/UnitsPage";
 import BatchesPage from "./pages/batches/BatchesPage";
+import OrganizationPage from "./pages/organization/OrganizationPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/batches" element={<BatchesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/organization" element={<OrganizationPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

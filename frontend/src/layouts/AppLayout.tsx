@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
-  Users, BarChart2, Ruler, FlaskConical,
+  Users, BarChart2, Ruler, Building2, AlertTriangle, ArrowRightLeft,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,19 +16,39 @@ import { PreferencesModal } from "../components/ui/PreferencesModal";
 
 interface Branch { id: string; name: string; isDefault: boolean; }
 
+interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+  resourceType: string;
+  resourceId?: string;
+}
+
+function relativeTime(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 const navItems = [
-  { label: "Dashboard",    icon: LayoutDashboard, href: "/dashboard",  roles: null },
-  { label: "Products",     icon: Package,         href: "/products",   roles: null },
-  { label: "Categories",   icon: Tag,             href: "/categories", roles: null },
-  { label: "Customers",    icon: Users,           href: "/customers",  roles: null },
-  { label: "Inventory",    icon: Warehouse,       href: "/inventory",  roles: null },
-  { label: "Batches",      icon: FlaskConical,    href: "/batches",    roles: null },
-  { label: "Units",        icon: Ruler,           href: "/units",      roles: null },
-  { label: "Sales Orders", icon: ShoppingCart,    href: "/orders",     roles: null },
-  { label: "Branches",     icon: GitBranch,       href: "/branches",   roles: null },
-  { label: "Staff",        icon: Users,           href: "/staff",      roles: ["owner", "admin", "manager"] },
-  { label: "Reports",      icon: BarChart2,       href: "/reports",    roles: null },
-  { label: "Audit Log",    icon: ClipboardList,   href: "/audit",      roles: null },
+  { label: "Dashboard",    icon: LayoutDashboard, href: "/dashboard",     roles: null },
+  { label: "Products",     icon: Package,         href: "/products",      roles: null },
+  { label: "Categories",   icon: Tag,             href: "/categories",    roles: null },
+  { label: "Customers",    icon: Users,           href: "/customers",     roles: null },
+  { label: "Inventory",    icon: Warehouse,       href: "/inventory",     roles: null },
+  { label: "Units",        icon: Ruler,           href: "/units",         roles: null },
+  { label: "Sales Orders", icon: ShoppingCart,    href: "/orders",        roles: null },
+  { label: "Branches",     icon: GitBranch,       href: "/branches",      roles: null },
+  { label: "Staff",        icon: Users,           href: "/staff",         roles: ["owner", "admin", "manager"] },
+  { label: "Reports",      icon: BarChart2,       href: "/reports",       roles: null },
+  { label: "Audit Log",    icon: ClipboardList,   href: "/audit",         roles: null },
+  { label: "Organization", icon: Building2,       href: "/organization",  roles: ["owner", "admin", "manager"] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -42,14 +62,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [branchSearch, setBranchSearch] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const tid = currentTenant?.id;
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["branches", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/branches`).then((r) => r.data),
     enabled: !!tid,
+  });
+
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["notifications", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/notifications`).then((r) => r.data),
+    enabled: !!tid,
+    refetchInterval: 60_000,
   });
 
   useEffect(() => {
@@ -68,6 +97,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -249,13 +281,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1" />
 
-          <button
-            aria-label="Notifications"
-            className="relative p-1.5 text-muted hover:bg-hover transition-colors"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-500" />
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              aria-label="Notifications"
+              onClick={() => setNotifOpen((o) => !o)}
+              className="relative p-1.5 text-muted hover:bg-hover transition-colors"
+            >
+              <Bell className="w-4 h-4" />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-full mt-0 w-80 bg-panel border border-stroke overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-stroke">
+                  <p className="text-sm font-semibold text-ink">Notifications</p>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-muted">No notifications</div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.map((n) => {
+                      const Icon = n.type === "low_stock" ? AlertTriangle : n.type === "transfer" ? ArrowRightLeft : Bell;
+                      const iconColor = n.type === "low_stock" ? "text-yellow-500" : n.type === "transfer" ? "text-blue-500" : "text-muted";
+                      return (
+                        <div key={n.id} className="flex items-start gap-3 px-4 py-3 border-b border-stroke last:border-0 hover:bg-hover transition-colors">
+                          <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${iconColor}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-ink leading-snug">{n.message}</p>
+                            <p className="text-[10px] text-muted mt-0.5">{relativeTime(n.createdAt)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>

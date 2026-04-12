@@ -20,6 +20,7 @@ import staffRouter from "./routes/staff";
 import reportsRouter from "./routes/reports";
 import unitsRouter from "./routes/units";
 import batchesRouter from "./routes/batches";
+import notificationsRouter from "./routes/notifications";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,7 @@ app.use("/api/tenants/:tenantId/staff", limiter, staffRouter);
 app.use("/api/tenants/:tenantId/reports", limiter, reportsRouter);
 app.use("/api/tenants/:tenantId/units", limiter, unitsRouter);
 app.use("/api/tenants/:tenantId/batches", limiter, batchesRouter);
+app.use("/api/tenants/:tenantId/notifications", limiter, notificationsRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
