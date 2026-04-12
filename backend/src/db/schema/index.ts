@@ -6,6 +6,8 @@ export const tenantUserRoleEnum = pgEnum("tenant_user_role", ["owner", "admin", 
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["in", "out", "transfer", "adjustment", "return"]);
 export const salesOrderStatusEnum = pgEnum("sales_order_status", ["draft", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"]);
 export const auditActionEnum = pgEnum("audit_action", ["create", "update", "delete", "login", "logout", "other"]);
+export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "ordered", "partial", "received", "cancelled"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["sale", "purchase", "expense", "refund", "adjustment", "other"]);
 
 // Users table (global, not tenant-scoped)
 export const users = pgTable("users", {
@@ -247,6 +249,100 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Suppliers
+export const suppliers = pgTable("suppliers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  address: text("address"),
+  city: text("city"),
+  country: text("country"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Purchase Orders
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+  branchId: uuid("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  orderNumber: text("order_number").notNull(),
+  status: purchaseOrderStatusEnum("status").notNull().default("draft"),
+  notes: text("notes"),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull().default("0"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  expectedDate: date("expected_date"),
+  receivedAt: timestamp("received_at"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Purchase Order Items
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  purchaseOrderId: uuid("purchase_order_id").notNull().references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  variantId: uuid("variant_id").references(() => productVariants.id, { onDelete: "set null" }),
+  productName: text("product_name").notNull(),
+  variantName: text("variant_name").notNull(),
+  sku: text("sku").notNull(),
+  quantity: integer("quantity").notNull(),
+  receivedQuantity: integer("received_quantity").notNull().default(0),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).notNull(),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Transactions
+export const transactions = pgTable("transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  branchId: uuid("branch_id").references(() => branches.id, { onDelete: "set null" }),
+  type: transactionTypeEnum("type").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  referenceType: text("reference_type"),
+  referenceId: text("reference_id"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Integrations
+export const integrations = pgTable("integrations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  config: jsonb("config").default({}),
+  webhookUrl: text("webhook_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// API Keys
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  keyHash: text("key_hash").notNull(),
+  keyPrefix: text("key_prefix").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   tenantUsers: many(tenantUsers),
@@ -259,6 +355,11 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   products: many(products),
   salesOrders: many(salesOrders),
   units: many(units),
+  suppliers: many(suppliers),
+  purchaseOrders: many(purchaseOrders),
+  transactions: many(transactions),
+  integrations: many(integrations),
+  apiKeys: many(apiKeys),
 }));
 
 export const tenantUsersRelations = relations(tenantUsers, ({ one }) => ({
@@ -340,4 +441,34 @@ export const productAttributesRelations = relations(productAttributes, ({ one, m
 
 export const productAttributeOptionsRelations = relations(productAttributeOptions, ({ one }) => ({
   attribute: one(productAttributes, { fields: [productAttributeOptions.attributeId], references: [productAttributes.id] }),
+}));
+
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [suppliers.tenantId], references: [tenants.id] }),
+  purchaseOrders: many(purchaseOrders),
+}));
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [purchaseOrders.tenantId], references: [tenants.id] }),
+  supplier: one(suppliers, { fields: [purchaseOrders.supplierId], references: [suppliers.id] }),
+  branch: one(branches, { fields: [purchaseOrders.branchId], references: [branches.id] }),
+  items: many(purchaseOrderItems),
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, { fields: [purchaseOrderItems.purchaseOrderId], references: [purchaseOrders.id] }),
+  variant: one(productVariants, { fields: [purchaseOrderItems.variantId], references: [productVariants.id] }),
+}));
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  tenant: one(tenants, { fields: [transactions.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [transactions.branchId], references: [branches.id] }),
+}));
+
+export const integrationsRelations = relations(integrations, ({ one }) => ({
+  tenant: one(tenants, { fields: [integrations.tenantId], references: [tenants.id] }),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  tenant: one(tenants, { fields: [apiKeys.tenantId], references: [tenants.id] }),
 }));

@@ -21,6 +21,11 @@ import reportsRouter from "./routes/reports";
 import unitsRouter from "./routes/units";
 import batchesRouter from "./routes/batches";
 import notificationsRouter from "./routes/notifications";
+import suppliersRouter from "./routes/suppliers";
+import purchaseOrdersRouter from "./routes/purchaseOrders";
+import transactionsRouter from "./routes/transactions";
+import integrationsRouter from "./routes/integrations";
+import apiKeysRouter from "./routes/apiKeys";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -57,6 +62,11 @@ app.use("/api/tenants/:tenantId/reports", limiter, reportsRouter);
 app.use("/api/tenants/:tenantId/units", limiter, unitsRouter);
 app.use("/api/tenants/:tenantId/batches", limiter, batchesRouter);
 app.use("/api/tenants/:tenantId/notifications", limiter, notificationsRouter);
+app.use("/api/tenants/:tenantId/suppliers", limiter, suppliersRouter);
+app.use("/api/tenants/:tenantId/purchase-orders", limiter, purchaseOrdersRouter);
+app.use("/api/tenants/:tenantId/transactions", limiter, transactionsRouter);
+app.use("/api/tenants/:tenantId/integrations", limiter, integrationsRouter);
+app.use("/api/tenants/:tenantId/api-keys", limiter, apiKeysRouter);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
