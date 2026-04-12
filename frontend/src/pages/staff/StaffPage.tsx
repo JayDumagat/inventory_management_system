@@ -13,7 +13,7 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { PageLoader } from "../../components/ui/Spinner";
-import { Plus, Pencil, Trash2, Users, GitBranch, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, GitBranch, X, Shield } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface StaffMember {
@@ -25,6 +25,7 @@ interface StaffMember {
   firstName: string;
   lastName: string;
   createdAt: string;
+  allowedPages: string[];
   branches: { id: string; name: string }[];
 }
 
@@ -33,6 +34,26 @@ interface Branch {
   name: string;
   isDefault: boolean;
 }
+
+// All navigable pages that staff can be restricted to
+const ALL_PAGES = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/pos", label: "POS" },
+  { href: "/products", label: "Products" },
+  { href: "/categories", label: "Categories" },
+  { href: "/customers", label: "Customers" },
+  { href: "/inventory", label: "Inventory" },
+  { href: "/units", label: "Units" },
+  { href: "/orders", label: "Sales Orders" },
+  { href: "/invoices", label: "Invoices" },
+  { href: "/suppliers", label: "Suppliers" },
+  { href: "/purchase-orders", label: "Purchase Orders" },
+  { href: "/transactions", label: "Transactions" },
+  { href: "/branches", label: "Branches" },
+  { href: "/reports", label: "Reports" },
+  { href: "/analytics", label: "Analytics" },
+  { href: "/audit", label: "Audit Log" },
+];
 
 const inviteSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -64,6 +85,8 @@ export default function StaffPage() {
   const [editActive, setEditActive] = useState(true);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
+  const [permissionsMember, setPermissionsMember] = useState<StaffMember | null>(null);
+  const [selectedPages, setSelectedPages] = useState<string[]>([]);
 
   const { data: staff = [], isLoading } = useQuery<StaffMember[]>({
     queryKey: ["staff", tid],
@@ -108,6 +131,26 @@ export default function StaffPage() {
       api.delete(`/api/tenants/${tid}/staff/${staffId}/branches/${branchId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", tid] }),
   });
+
+  const updatePagesMutation = useMutation({
+    mutationFn: ({ staffId, allowedPages }: { staffId: string; allowedPages: string[] }) =>
+      api.patch(`/api/tenants/${tid}/staff/${staffId}`, { allowedPages }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["staff", tid] });
+      setPermissionsMember(null);
+    },
+  });
+
+  const openPermissions = (member: StaffMember) => {
+    setPermissionsMember(member);
+    setSelectedPages(member.allowedPages ?? []);
+  };
+
+  const togglePage = (href: string) => {
+    setSelectedPages((prev) =>
+      prev.includes(href) ? prev.filter((p) => p !== href) : [...prev, href]
+    );
+  };
 
   const canManage = ["owner", "admin"].includes(myRole);
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
@@ -238,6 +281,15 @@ export default function StaffPage() {
                       <td className="px-6 py-3">
                         {canManage && m.role !== "owner" && !isMe && (
                           <div className="flex items-center gap-1 justify-end">
+                            {m.role === "staff" && (
+                              <Button
+                                variant="ghost" size="sm"
+                                title="Manage page permissions"
+                                onClick={() => openPermissions(m)}
+                              >
+                                <Shield className="w-4 h-4 text-blue-500" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => openEdit(m)}>
                               <Pencil className="w-4 h-4" />
                             </Button>
@@ -363,6 +415,47 @@ export default function StaffPage() {
             );
           })}
           <Button variant="outline" className="mt-2" onClick={() => setBranchMember(null)}>Done</Button>
+        </div>
+      </Modal>
+
+      {/* Page Permissions Modal */}
+      <Modal open={!!permissionsMember} onClose={() => setPermissionsMember(null)} title="Page Permissions" size="sm">
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-muted">
+            Select which pages <span className="font-medium text-ink">{permissionsMember?.firstName || permissionsMember?.email}</span> can access.
+            Leave all unchecked to allow access to all pages.
+          </p>
+          <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+            {ALL_PAGES.map((page) => (
+              <label key={page.href} className={cn("flex items-center gap-2 p-2 border cursor-pointer transition-colors", selectedPages.includes(page.href) ? "border-primary-400 bg-primary-50" : "border-stroke hover:bg-hover")}>
+                <input
+                  type="checkbox"
+                  checked={selectedPages.includes(page.href)}
+                  onChange={() => togglePage(page.href)}
+                  className="w-3.5 h-3.5 accent-primary-600"
+                />
+                <span className="text-sm text-ink">{page.label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => setSelectedPages([])}
+              className="text-xs text-muted hover:text-ink underline"
+            >
+              Clear all (allow all pages)
+            </button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setPermissionsMember(null)}>Cancel</Button>
+              <Button
+                size="sm"
+                onClick={() => updatePagesMutation.mutate({ staffId: permissionsMember!.tenantUserId, allowedPages: selectedPages })}
+                disabled={updatePagesMutation.isPending}
+              >
+                {updatePagesMutation.isPending ? "Saving…" : "Save permissions"}
+              </Button>
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

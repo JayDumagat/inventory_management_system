@@ -21,6 +21,7 @@ router.get("/", authenticate, requireTenant("manager"), async (req: Request, res
         userId: tenantUsers.userId,
         role: tenantUsers.role,
         isActive: tenantUsers.isActive,
+        allowedPages: tenantUsers.allowedPages,
         createdAt: tenantUsers.createdAt,
         email: users.email,
         firstName: users.firstName,
@@ -139,6 +140,7 @@ router.patch("/:staffId", authenticate, requireTenant("admin"), async (req: Requ
     const body = z.object({
       role: z.enum(["staff", "manager", "admin"]).optional(),
       isActive: z.boolean().optional(),
+      allowedPages: z.array(z.string()).optional(),
     }).parse(req.body);
 
     const [existing] = await db

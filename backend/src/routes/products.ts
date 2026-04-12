@@ -14,6 +14,7 @@ const productSchema = z.object({
   categoryId: z.string().uuid().optional().nullable(),
   unitId: z.string().uuid().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
+  type: z.enum(["physical", "digital", "service", "bundle"]).optional().default("physical"),
 });
 
 const variantSchema = z.object({
