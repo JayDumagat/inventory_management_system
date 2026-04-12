@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "../../api/client";
-import { useTenantStore } from "../../stores/tenantStore";
+import { Link } from "react-router-dom";
 import { useTheme } from "../../contexts/ThemeContext";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
-import { Building2, Globe, Bell, Shield, Moon, Sun, Monitor, Palette, CheckCircle, Trash2, AlertCircle } from "lucide-react";
+import { Building2, Globe, Palette, CheckCircle, Trash2, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useTenantStore } from "../../stores/tenantStore";
 import type { AccentColor, ThemeMode } from "../../stores/themeStore";
 
 const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: string; description: string }[] = [
@@ -46,37 +46,13 @@ const LANGUAGES = [
 ];
 
 export default function SettingsPage() {
-  const { currentTenant, setCurrentTenant } = useTenantStore();
+  const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const theme = useTheme();
-  const [orgSuccess, setOrgSuccess] = useState(false);
-  const [orgError, setOrgError] = useState("");
-  const [orgName, setOrgName] = useState(currentTenant?.name || "");
-  const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
-  const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
-  const [savingOrg, setSavingOrg] = useState(false);
   const [dangerConfirm, setDangerConfirm] = useState("");
 
-  const handleSaveOrg = async () => {
-    if (!currentTenant) return;
-    setSavingOrg(true);
-    setOrgError("");
-    try {
-      const { data: updated } = await api.patch(`/api/tenants/${currentTenant.id}`, {
-        name: orgName,
-        description: orgDesc,
-        logoUrl: orgLogo || undefined,
-      });
-      setCurrentTenant({ ...currentTenant, name: updated.name, ...(updated.logoUrl && { logoUrl: updated.logoUrl }) });
-      qc.invalidateQueries({ queryKey: ["tenants"] });
-      setOrgSuccess(true);
-      setTimeout(() => setOrgSuccess(false), 3000);
-    } catch (e: unknown) {
-      setOrgError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Save failed");
-    } finally {
-      setSavingOrg(false);
-    }
-  };
+  // Suppress unused variable warning
+  void qc;
 
   const MODE_OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
     { value: "light", label: "Light", icon: Sun },
@@ -88,63 +64,24 @@ export default function SettingsPage() {
     <div className="space-y-5 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-ink">Settings</h1>
-        <p className="text-muted text-sm mt-1">Configure your organization and application preferences</p>
+        <p className="text-muted text-sm mt-1">Configure application preferences</p>
       </div>
 
-      {/* Organization settings */}
+      {/* Link to Organization Settings */}
       <Card>
-        <CardHeader>
-          <CardTitle>
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-muted" />
-              Organization
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="w-5 h-5 text-muted flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink">Organization-wide settings</p>
+              <p className="text-xs text-muted mt-0.5">Manage your organization, team, notifications, and security</p>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {orgError && (
-            <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{orgError}</div>
-          )}
-          {orgSuccess && (
-            <div className="p-3 bg-green-50 border border-green-200 text-sm text-green-700 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              Organization saved
-            </div>
-          )}
-          <Input label="Organization name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">URL slug</label>
-            <div className="px-3 py-2 border border-stroke bg-page text-muted text-sm font-mono">
-              {currentTenant?.slug}
-            </div>
-            <p className="text-xs text-muted">Slugs cannot be changed after creation</p>
-          </div>
-          <Input
-            label="Description (optional)"
-            value={orgDesc}
-            onChange={(e) => setOrgDesc(e.target.value)}
-          />
-          <div className="flex flex-col gap-2">
-            <Input
-              label="Logo URL (optional)"
-              placeholder="https://example.com/logo.png"
-              value={orgLogo}
-              onChange={(e) => setOrgLogo(e.target.value)}
-            />
-            {orgLogo && /^https?:\/\//i.test(orgLogo) && (
-              <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
-                <img
-                  src={orgLogo}
-                  alt="Logo preview"
-                  className="w-10 h-10 object-contain flex-shrink-0"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-                <span className="text-xs text-muted">Logo preview</span>
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={handleSaveOrg} loading={savingOrg}>Save organization</Button>
+            <Link
+              to="/organization"
+              className="text-sm text-primary-600 hover:underline font-medium whitespace-nowrap"
+            >
+              Organization Settings →
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -280,77 +217,6 @@ export default function SettingsPage() {
             <option value="DD/MM/YYYY">DD/MM/YYYY</option>
             <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
           </Select>
-        </CardContent>
-      </Card>
-
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-muted" />
-              Notifications
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              { label: "Low stock alerts", desc: "Get notified when items fall below reorder point", defaultVal: true },
-              { label: "New order notifications", desc: "Receive notifications for incoming orders", defaultVal: true },
-              { label: "Weekly summary", desc: "Weekly digest of sales and inventory changes", defaultVal: false },
-              { label: "System updates", desc: "Important updates about the platform", defaultVal: true },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between py-2 border-b border-stroke last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-ink">{item.label}</p>
-                  <p className="text-xs text-muted mt-0.5">{item.desc}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  defaultChecked={item.defaultVal}
-                  className="w-4 h-4 border-stroke text-primary-600 focus:ring-primary-500"
-                />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Security */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-muted" />
-              Security
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between py-2 border-b border-stroke">
-              <div>
-                <p className="text-sm font-medium text-ink">Two-factor authentication</p>
-                <p className="text-xs text-muted mt-0.5">Add an extra layer of security to your account</p>
-              </div>
-              <span className="text-xs bg-stroke text-muted px-2 py-0.5">Coming soon</span>
-            </div>
-            <div className="flex items-center justify-between py-2 border-b border-stroke">
-              <div>
-                <p className="text-sm font-medium text-ink">Active sessions</p>
-                <p className="text-xs text-muted mt-0.5">Manage where you're signed in</p>
-              </div>
-              <span className="text-xs bg-stroke text-muted px-2 py-0.5">Coming soon</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-ink">Audit log access</p>
-                <p className="text-xs text-muted mt-0.5">Full activity history in the Audit Log page</p>
-              </div>
-              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 font-medium">Enabled</span>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
