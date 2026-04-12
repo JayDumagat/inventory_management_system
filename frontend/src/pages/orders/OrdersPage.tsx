@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -235,10 +235,10 @@ export default function OrdersPage() {
         {/* Step indicator */}
         <div className="flex items-center gap-1 mb-4">
           {([1, 2, 3] as const).map((s, i) => (
-            <>
-              <div key={s} className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${createStep >= s ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>{s}</div>
+            <React.Fragment key={s}>
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${createStep >= s ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>{s}</div>
               {i < 2 && <div className="flex-1 h-px bg-stroke" />}
-            </>
+            </React.Fragment>
           ))}
         </div>
 

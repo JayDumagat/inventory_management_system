@@ -278,7 +278,7 @@ export default function InventoryPage() {
 
         {adjustStep === 2 && (
           <form
-            onSubmit={form.handleSubmit((d) => adjust.mutate({ ...d, quantity: Number(d.quantity) }))}
+            onSubmit={form.handleSubmit((d) => adjust.mutate(d))}
             className="flex flex-col gap-4"
           >
             {/* Branch info */}
