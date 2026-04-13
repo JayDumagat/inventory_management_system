@@ -9,12 +9,13 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import {
   Code, Plus, Trash2, Eye, EyeOff, Copy, CheckCircle, AlertCircle,
   Key, BookOpen, Terminal, Webhook,
 } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface ApiKey {
   id: string;
@@ -39,6 +40,7 @@ export default function APIPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin"].includes(myRole);
+  const toast = useToast();
 
   const [createModal, setCreateModal] = useState(false);
   const [newRawKey, setNewRawKey] = useState<string | null>(null);
@@ -61,12 +63,15 @@ export default function APIPage() {
       setNewRawKey(res.data.rawKey);
       setCreateModal(false);
       form.reset();
+      toast.success("API key generated");
     },
+    onError: () => toast.error("Failed to generate API key"),
   });
 
   const revoke = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/api-keys/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["api-keys", tid] }); setRevokeConfirm(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["api-keys", tid] }); setRevokeConfirm(null); toast.success("API key revoked"); },
+    onError: () => toast.error("Failed to revoke API key"),
   });
 
   const copyKey = () => {
@@ -78,7 +83,17 @@ export default function APIPage() {
 
   const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-6 max-w-3xl">

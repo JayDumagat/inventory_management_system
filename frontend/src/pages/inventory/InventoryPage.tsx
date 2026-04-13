@@ -12,7 +12,8 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
+import { useToast } from "../../hooks/useToast";
 import { formatDateTime, formatDate } from "../../lib/utils";
 import { ArrowUpDown, GitBranch, AlertTriangle, ArrowRightLeft, Search, Plus, Pencil, Trash2, FlaskConical } from "lucide-react";
 
@@ -93,6 +94,7 @@ export default function InventoryPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const [tab, setTab] = useState<"stock" | "movements" | "batches" | "transfers">("stock");
   const [adjustModal, setAdjustModal] = useState(false);
@@ -179,7 +181,9 @@ export default function InventoryPage() {
       qc.invalidateQueries({ queryKey: ["inventory", tid] });
       qc.invalidateQueries({ queryKey: ["movements", tid] });
       closeAdjustModal();
+      toast.success("Stock adjusted");
     },
+    onError: () => toast.error("Failed to adjust stock"),
   });
 
   const transfer = useMutation({
@@ -189,7 +193,9 @@ export default function InventoryPage() {
       qc.invalidateQueries({ queryKey: ["inventory", tid] });
       qc.invalidateQueries({ queryKey: ["movements", tid] });
       closeTransferModal();
+      toast.success("Stock transferred");
     },
+    onError: () => toast.error("Failed to transfer stock"),
   });
 
   const lookupBarcode = useMutation({
@@ -215,7 +221,9 @@ export default function InventoryPage() {
       setBatchModal({ open: false });
       batchForm.reset({ quantity: 0 });
       setBatchSelectedProductId("");
+      toast.success(batchModal.batch ? "Batch updated" : "Batch created");
     },
+    onError: () => toast.error("Failed to save batch"),
   });
 
   const doDeleteBatch = useMutation({
@@ -223,7 +231,9 @@ export default function InventoryPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["batches", tid] });
       setPendingDeleteBatch(null);
+      toast.success("Batch deleted");
     },
+    onError: () => toast.error("Failed to delete batch"),
   });
 
   const openCreateBatch = () => {
@@ -248,7 +258,18 @@ export default function InventoryPage() {
   const allVariants = products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name })));
   const transferMovements = movements.filter((m) => m.type === "transfer");
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-32" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <Skeleton className="h-10 w-full" />
+      <div className="border border-stroke">
+        <table className="w-full"><SkeletonTable rows={8} cols={5} /></table>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">

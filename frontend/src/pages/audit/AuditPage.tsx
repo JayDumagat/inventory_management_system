@@ -3,7 +3,7 @@ import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDateTime } from "../../lib/utils";
 import { ClipboardList } from "lucide-react";
 
@@ -36,7 +36,17 @@ export default function AuditPage() {
     enabled: !!tid,
   });
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   const logs = data?.data ?? [];
 

@@ -3,7 +3,7 @@ import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { SkeletonStatCard, SkeletonCard, Skeleton } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -42,7 +42,22 @@ export default function DashboardPage() {
     enabled: !!currentTenant,
   });
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="space-y-5">
+      <div>
+        <Skeleton className="h-7 w-36 mb-1" />
+        <Skeleton className="h-4 w-48" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} />)}
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <SkeletonCard className="xl:col-span-2 h-64" />
+        <SkeletonCard className="h-64" />
+      </div>
+      <SkeletonCard className="h-48" />
+    </div>
+  );
 
   const stats = [
     { label: "Total Products",  value: data?.stats.totalProducts ?? 0,               icon: Package,       color: "text-primary-600 bg-primary-50 border-primary-200" },

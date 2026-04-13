@@ -12,9 +12,10 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, Users, GitBranch, X, Shield } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 interface StaffMember {
   tenantUserId: string;
@@ -112,24 +113,29 @@ export default function StaffPage() {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setInviteOpen(false);
       inviteForm.reset({ role: "staff" });
+      toast.success("Staff member invited");
     },
+    onError: () => toast.error("Failed to invite staff member"),
   });
 
   const remove = useMutation({
     mutationFn: (staffId: string) => api.delete(`/api/tenants/${tid}/staff/${staffId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff", tid] }); toast.success("Staff member removed"); },
+    onError: () => toast.error("Failed to remove staff member"),
   });
 
   const assignBranch = useMutation({
     mutationFn: ({ staffId, branchId }: { staffId: string; branchId: string }) =>
       api.post(`/api/tenants/${tid}/staff/${staffId}/branches`, { branchId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff", tid] }); toast.success("Branch assigned"); },
+    onError: () => toast.error("Failed to assign branch"),
   });
 
   const unassignBranch = useMutation({
     mutationFn: ({ staffId, branchId }: { staffId: string; branchId: string }) =>
       api.delete(`/api/tenants/${tid}/staff/${staffId}/branches/${branchId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff", tid] }); toast.success("Branch unassigned"); },
+    onError: () => toast.error("Failed to unassign branch"),
   });
 
   const updatePagesMutation = useMutation({
@@ -138,7 +144,9 @@ export default function StaffPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setPermissionsMember(null);
+      toast.success("Permissions updated");
     },
+    onError: () => toast.error("Failed to update permissions"),
   });
 
   const openPermissions = (member: StaffMember) => {
@@ -154,6 +162,7 @@ export default function StaffPage() {
 
   const canManage = ["owner", "admin"].includes(myRole);
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
@@ -186,7 +195,17 @@ export default function StaffPage() {
     }
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   const assignedBranchIds = new Set(branchMember?.branches.map((b) => b.id) || []);
 

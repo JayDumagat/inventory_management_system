@@ -11,9 +11,10 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, GitBranch } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 interface Branch {
   id: string;
@@ -42,6 +43,7 @@ export default function BranchesPage() {
   const tid = currentTenant?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const [modal, setModal] = useState<{ open: boolean; branch?: Branch }>({ open: false });
+  const toast = useToast();
 
   const { data: branches = [], isLoading } = useQuery<Branch[]>({
     queryKey: ["branches", tid],
@@ -74,7 +76,9 @@ export default function BranchesPage() {
       }
       setModal({ open: false });
       form.reset();
+      toast.success(modal.branch ? "Branch updated" : "Branch created");
     },
+    onError: () => toast.error("Failed to save branch"),
   });
 
   const remove = useMutation({
@@ -85,7 +89,9 @@ export default function BranchesPage() {
       if (currentBranch?.id === id) {
         setCurrentBranch(null);
       }
+      toast.success("Branch deleted");
     },
+    onError: () => toast.error("Failed to delete branch"),
   });
 
   const openModal = (branch?: Branch) => {
@@ -110,7 +116,17 @@ export default function BranchesPage() {
     }
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

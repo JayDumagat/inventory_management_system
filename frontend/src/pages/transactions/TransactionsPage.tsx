@@ -11,10 +11,11 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { ArrowLeftRight, Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, Search } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 type TransactionType = "sale" | "purchase" | "expense" | "refund" | "adjustment" | "other";
 
@@ -69,6 +70,7 @@ export default function TransactionsPage() {
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
   const canDelete = ["owner", "admin"].includes(myRole);
+  const toast = useToast();
 
   const [modal, setModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null);
@@ -93,12 +95,14 @@ export default function TransactionsPage() {
         amount: Number(data.amount),
         branchId: data.branchId || currentBranch?.id || undefined,
       }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["transactions", tid] }); setModal(false); form.reset({ type: "expense" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["transactions", tid] }); setModal(false); form.reset({ type: "expense" }); toast.success("Transaction saved"); },
+    onError: () => toast.error("Failed to save transaction"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/transactions/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["transactions", tid] }); setDeleteConfirm(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["transactions", tid] }); setDeleteConfirm(null); toast.success("Transaction deleted"); },
+    onError: () => toast.error("Failed to delete transaction"),
   });
 
   const filtered = useMemo(() => {
@@ -115,7 +119,17 @@ export default function TransactionsPage() {
   const totalExpense = txList.filter((t) => typeSign[t.type] < 0).reduce((s, t) => s + Number(t.amount), 0);
   const netBalance = totalIncome - totalExpense;
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

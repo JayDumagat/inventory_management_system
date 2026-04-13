@@ -5,12 +5,14 @@ import { integrations } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { authenticate, requireTenant } from "../middleware/auth";
 import { createAuditLog } from "../middleware/auditLog";
+import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
 
 const router = Router({ mergeParams: true });
 
 const SUPPORTED_PROVIDERS = [
   "shopify", "woocommerce", "quickbooks", "xero", "stripe",
   "paypal", "mailchimp", "slack", "zapier", "webhook",
+  "minio", "redis",
 ];
 
 const upsertSchema = z.object({
@@ -23,17 +25,26 @@ const upsertSchema = z.object({
 // GET /api/tenants/:tenantId/integrations
 router.get("/", authenticate, requireTenant(), async (req: Request, res: Response): Promise<void> => {
   try {
+    const tenantId = req.tenantContext!.tenantId;
+    const cacheKey = `integrations:${tenantId}`;
+
+    const cached = await cacheGet<object[]>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     const stored = await db
       .select()
       .from(integrations)
-      .where(eq(integrations.tenantId, req.tenantContext!.tenantId));
+      .where(eq(integrations.tenantId, tenantId));
 
     // Merge stored with the full list of supported providers
     const storedMap = new Map(stored.map((i) => [i.provider, i]));
     const result = SUPPORTED_PROVIDERS.map((provider) =>
       storedMap.get(provider) ?? {
         id: null,
-        tenantId: req.tenantContext!.tenantId,
+        tenantId: tenantId,
         provider,
         isEnabled: false,
         config: {},
@@ -42,6 +53,8 @@ router.get("/", authenticate, requireTenant(), async (req: Request, res: Respons
         updatedAt: null,
       }
     );
+
+    await cacheSet(cacheKey, result, 120);
     res.json(result);
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -85,6 +98,7 @@ router.put("/:provider", authenticate, requireTenant("admin"), async (req: Reque
     }
 
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "integration", resourceId: integration.id });
+    await cacheDel(`integrations:${req.tenantContext!.tenantId}`);
     res.json(integration);
   } catch (error) {
     if (error instanceof z.ZodError) {

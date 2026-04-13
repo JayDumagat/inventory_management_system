@@ -11,7 +11,8 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
+import { useToast } from "../../hooks/useToast";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { Plus, Trash2, Eye, RefreshCw, ShoppingCart, GitBranch, AlertTriangle } from "lucide-react";
 
@@ -54,6 +55,7 @@ export default function OrdersPage() {
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const toast = useToast();
   const [createModal, setCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);
@@ -102,24 +104,44 @@ export default function OrdersPage() {
   const createOrder = useMutation({
     mutationFn: (data: CreateOrderForm & { branchId: string }) =>
       api.post(`/api/tenants/${tid}/sales-orders`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["orders", tid] }); closeCreateModal(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders", tid] });
+      closeCreateModal();
+      toast.success("Order created");
+    },
+    onError: () => toast.error("Failed to create order"),
   });
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/tenants/${tid}/sales-orders/${id}`, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orders", tid] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders", tid] });
+      toast.success("Order status updated");
+    },
+    onError: () => toast.error("Failed to update order status"),
   });
 
   const deleteOrder = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/sales-orders/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orders", tid] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders", tid] });
+      toast.success("Order deleted");
+    },
+    onError: () => toast.error("Failed to delete order"),
   });
 
   const submitRefund = useMutation({
     mutationFn: ({ id, amount, reason }: { id: string; amount: number; reason: string }) =>
       api.post(`/api/tenants/${tid}/sales-orders/${id}/refund`, { amount, reason }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["orders", tid] }); setRefundModal({ open: false }); setRefundAmount(""); setRefundReason(""); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders", tid] });
+      setRefundModal({ open: false });
+      setRefundAmount("");
+      setRefundReason("");
+      toast.success("Refund submitted");
+    },
+    onError: () => toast.error("Failed to submit refund"),
   });
 
   const allVariants = products.flatMap((p) =>
@@ -142,7 +164,17 @@ export default function OrdersPage() {
     refunded: [],
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-7 w-28" />
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <div className="border border-stroke">
+        <table className="w-full"><SkeletonTable rows={8} cols={6} /></table>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">

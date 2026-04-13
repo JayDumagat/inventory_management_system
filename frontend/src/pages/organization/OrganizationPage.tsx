@@ -13,13 +13,14 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { SkeletonTable } from "../../components/ui/Skeleton";
 import {
   Building2, Palette, CreditCard, Users, Bell, Shield,
   CheckCircle, Sun, Moon, Monitor, Plus, Pencil, Trash2,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { AccentColor, ThemeMode } from "../../stores/themeStore";
+import { useToast } from "../../hooks/useToast";
 
 const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: string; description: string }[] = [
   { key: "olive",   label: "Olive Garden",  color: "#606c38", bg: "#fefae0", description: "Warm earthy tones" },
@@ -137,16 +138,20 @@ export default function OrganizationPage() {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setInviteOpen(false);
       inviteForm.reset({ role: "staff" });
+      toast.success("Staff member invited");
     },
+    onError: () => toast.error("Failed to invite staff member"),
   });
 
   const remove = useMutation({
     mutationFn: (staffId: string) => api.delete(`/api/tenants/${tid}/staff/${staffId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["staff", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["staff", tid] }); toast.success("Staff member removed"); },
+    onError: () => toast.error("Failed to remove staff member"),
   });
 
   const canManage = ["owner", "admin"].includes(myRole);
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
+  const toast = useToast();
 
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
@@ -435,7 +440,9 @@ export default function OrganizationPage() {
           </div>
 
           {staffLoading ? (
-            <PageLoader />
+            <div className="border border-stroke">
+              <table className="w-full"><SkeletonTable rows={4} cols={4} /></table>
+            </div>
           ) : staff.length === 0 ? (
             <Card>
               <CardContent className="p-0">
