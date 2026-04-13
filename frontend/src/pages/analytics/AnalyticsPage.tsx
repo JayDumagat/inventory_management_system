@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { formatCurrency } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -63,7 +63,14 @@ export default function AnalyticsPage() {
     enabled: !!tid,
   });
 
-  if (salesLoading || invLoading || prodLoading) return <PageLoader />;
+  if (salesLoading || invLoading || prodLoading) return (
+  <div className="space-y-4">
+    <Skeleton className="h-7 w-40" />
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  </div>
+);
 
   const revenueChartData = (salesData?.byDay ?? []).map((d) => ({
     date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),

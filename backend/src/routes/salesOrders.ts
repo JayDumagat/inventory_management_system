@@ -5,6 +5,7 @@ import { salesOrders, salesOrderItems, inventory, stockMovements, refunds } from
 import { eq, and, desc } from "drizzle-orm";
 import { authenticate, requireTenant } from "../middleware/auth";
 import { createAuditLog } from "../middleware/auditLog";
+import { appEvents } from "../lib/events";
 
 const router = Router({ mergeParams: true });
 
@@ -84,7 +85,14 @@ router.post("/", authenticate, requireTenant("staff"), async (req: Request, res:
     const insertedItems = await db.insert(salesOrderItems).values(itemValues).returning();
     
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "create", resourceType: "sales_order", resourceId: order.id });
-    
+
+    appEvents.emit("order.created", {
+      tenantId: req.tenantContext!.tenantId,
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      totalAmount: totalAmount,
+    });
+
     res.status(201).json({ ...order, items: insertedItems });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -155,7 +163,17 @@ router.patch("/:orderId", authenticate, requireTenant("staff"), async (req: Requ
     const [updated] = await db.update(salesOrders).set({ status: status || order.status, notes: notes || order.notes, updatedAt: new Date() }).where(eq(salesOrders.id, order.id)).returning();
     
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "sales_order", resourceId: order.id, oldValues: { status: order.status }, newValues: { status } });
-    
+
+    if (status && status !== order.status) {
+      appEvents.emit("order.status_changed", {
+        tenantId: req.tenantContext!.tenantId,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        previousStatus: order.status,
+        newStatus: status,
+      });
+    }
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {

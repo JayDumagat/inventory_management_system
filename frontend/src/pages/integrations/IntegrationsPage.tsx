@@ -9,7 +9,8 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { SkeletonCard } from "../../components/ui/Skeleton";
+import { useToast } from "../../hooks/useToast";
 import { Link2, Link2Off, Settings, Plug } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -32,12 +33,19 @@ const PROVIDER_META: Record<string, { label: string; description: string; catego
   slack:       { label: "Slack",        description: "Receive notifications about orders and low stock in Slack",category: "Notifications",color: "bg-pink-50 border-pink-200" },
   zapier:      { label: "Zapier",       description: "Automate workflows by connecting to thousands of apps via Zapier",category: "Automation", color: "bg-orange-50 border-orange-200" },
   webhook:     { label: "Webhook",      description: "Send real-time event data to any URL via HTTP webhook",    category: "Developer",   color: "bg-gray-50 border-gray-200" },
+  minio:       { label: "MinIO",        description: "Store and serve files (images, documents) via MinIO object storage", category: "Storage", color: "bg-red-50 border-red-200" },
+  redis:       { label: "Redis",        description: "High-performance in-memory caching for faster API responses", category: "Infrastructure", color: "bg-rose-50 border-rose-200" },
 };
 
 const configSchema = z.object({
   webhookUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   apiKey: z.string().optional(),
   storeName: z.string().optional(),
+  endpoint: z.string().optional(),
+  port: z.string().optional(),
+  bucket: z.string().optional(),
+  useSSL: z.boolean().optional(),
+  connectionUrl: z.string().optional(),
 });
 type ConfigForm = z.infer<typeof configSchema>;
 
@@ -47,6 +55,7 @@ export default function IntegrationsPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin"].includes(myRole);
+  const toast = useToast();
 
   const [configModal, setConfigModal] = useState<Integration | null>(null);
 
@@ -61,11 +70,19 @@ export default function IntegrationsPage() {
   const update = useMutation({
     mutationFn: ({ provider, data }: { provider: string; data: Partial<Integration> & { apiKey?: string; storeName?: string } }) =>
       api.put(`/api/tenants/${tid}/integrations/${provider}`, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["integrations", tid] });
       setConfigModal(null);
       form.reset();
+      const label = PROVIDER_META[variables.provider]?.label ?? variables.provider;
+      const enabling = variables.data.isEnabled;
+      if (enabling !== undefined) {
+        toast.success(enabling ? `${label} connected` : `${label} disconnected`);
+      } else {
+        toast.success(`${label} configuration saved`);
+      }
     },
+    onError: () => toast.error("Failed to update integration"),
   });
 
   const toggle = (integration: Integration) => {
@@ -78,6 +95,11 @@ export default function IntegrationsPage() {
       webhookUrl: integration.webhookUrl || "",
       apiKey: (integration.config?.apiKey as string) || "",
       storeName: (integration.config?.storeName as string) || "",
+      endpoint: (integration.config?.endpoint as string) || "",
+      port: (integration.config?.port as string) || "",
+      bucket: (integration.config?.bucket as string) || "",
+      useSSL: (integration.config?.useSSL as boolean) || false,
+      connectionUrl: (integration.config?.connectionUrl as string) || "",
     });
     setConfigModal(integration);
   };
@@ -92,6 +114,11 @@ export default function IntegrationsPage() {
           ...(configModal.config ?? {}),
           apiKey: data.apiKey || undefined,
           storeName: data.storeName || undefined,
+          endpoint: data.endpoint || undefined,
+          port: data.port || undefined,
+          bucket: data.bucket || undefined,
+          useSSL: data.useSSL,
+          connectionUrl: data.connectionUrl || undefined,
         },
       },
     });
@@ -106,7 +133,17 @@ export default function IntegrationsPage() {
     }, {})
   );
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div>
+        <SkeletonCard className="h-6 w-40 mb-1" />
+        <SkeletonCard className="h-4 w-64" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -192,27 +229,71 @@ export default function IntegrationsPage() {
               {(update.error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Save failed"}
             </div>
           )}
-          <Input
-            label="Webhook URL"
-            placeholder="https://your-app.com/webhook"
-            {...form.register("webhookUrl")}
-            error={form.formState.errors.webhookUrl?.message}
-          />
-          <Input
-            label="API Key / Secret"
-            type="password"
-            placeholder="sk_live_…"
-            {...form.register("apiKey")}
-          />
-          {["shopify", "woocommerce"].includes(configModal?.provider ?? "") && (
-            <Input
-              label="Store name / URL"
-              placeholder="mystore.myshopify.com"
-              {...form.register("storeName")}
-            />
+
+          {/* MinIO-specific fields */}
+          {configModal?.provider === "minio" ? (
+            <>
+              <Input
+                label="MinIO Endpoint"
+                placeholder="localhost or minio.example.com"
+                {...form.register("endpoint")}
+              />
+              <Input
+                label="Port"
+                placeholder="9000"
+                {...form.register("port")}
+              />
+              <Input
+                label="Access Key"
+                placeholder="minioadmin"
+                {...form.register("apiKey")}
+              />
+              <Input
+                label="Secret Key"
+                type="password"
+                placeholder="minioadmin123"
+                {...form.register("storeName")}
+              />
+              <Input
+                label="Bucket Name"
+                placeholder="inventory-files"
+                {...form.register("bucket")}
+              />
+            </>
+          ) : configModal?.provider === "redis" ? (
+            <>
+              <Input
+                label="Redis Connection URL"
+                placeholder="redis://localhost:6379"
+                {...form.register("connectionUrl")}
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                label="Webhook URL"
+                placeholder="https://your-app.com/webhook"
+                {...form.register("webhookUrl")}
+                error={form.formState.errors.webhookUrl?.message}
+              />
+              <Input
+                label="API Key / Secret"
+                type="password"
+                placeholder="sk_live_…"
+                {...form.register("apiKey")}
+              />
+              {["shopify", "woocommerce"].includes(configModal?.provider ?? "") && (
+                <Input
+                  label="Store name / URL"
+                  placeholder="mystore.myshopify.com"
+                  {...form.register("storeName")}
+                />
+              )}
+            </>
           )}
+
           <p className="text-xs text-muted">
-            API keys are stored securely and are only used to communicate with the external service.
+            API keys and secrets are stored securely and are only used to communicate with the external service.
           </p>
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => { setConfigModal(null); form.reset(); }}>Cancel</Button>

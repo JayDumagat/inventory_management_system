@@ -9,9 +9,10 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import { Users, Plus, Pencil, Trash2, Search, AlertCircle, Mail, Phone, MapPin } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface Customer {
   id: string;
@@ -50,6 +51,7 @@ export default function CustomersPage() {
   const [step, setStep] = useState<1 | 2>(1);
 
   const form = useForm<CustomerForm>({ resolver: zodResolver(schema) });
+  const toast = useToast();
 
   const { data: customers = [], isLoading } = useQuery<Customer[]>({
     queryKey: ["customers", tid],
@@ -65,7 +67,9 @@ export default function CustomersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers", tid] });
       closeModal();
+      toast.success("Customer saved");
     },
+    onError: () => toast.error("Failed to save customer"),
   });
 
   const remove = useMutation({
@@ -73,7 +77,9 @@ export default function CustomersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers", tid] });
       setDeleteConfirm(null);
+      toast.success("Customer deleted");
     },
+    onError: () => toast.error("Failed to delete customer"),
   });
 
   const closeModal = () => {
@@ -111,7 +117,17 @@ export default function CustomersPage() {
     [customers, search]
   );
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

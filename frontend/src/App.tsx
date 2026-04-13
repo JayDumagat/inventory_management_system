@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 import { RequireAuth, RequireTenant } from "./components/RouteGuard";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
@@ -42,6 +43,16 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              borderRadius: "2px",
+              fontSize: "14px",
+            },
+          }}
+        />
         <BrowserRouter>
           <Routes>
             {/* Public */}

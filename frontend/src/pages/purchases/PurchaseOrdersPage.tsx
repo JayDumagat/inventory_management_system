@@ -12,9 +12,10 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { ShoppingBag, Plus, Eye, Trash2, Pencil, AlertCircle } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface Supplier { id: string; name: string; }
 interface Product { id: string; name: string; variants: { id: string; name: string; sku: string; costPrice: string }[]; }
@@ -93,6 +94,7 @@ export default function PurchaseOrdersPage() {
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [viewOrder, setViewOrder] = useState<PurchaseOrder | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const toast = useToast();
 
   const form = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
@@ -131,18 +133,21 @@ export default function PurchaseOrdersPage() {
         taxAmount: data.taxAmount ? Number(data.taxAmount) : 0,
         items: data.items.map((i) => ({ ...i, quantity: Number(i.quantity), unitCost: Number(i.unitCost) })),
       }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }); closeCreateModal(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }); toast.success("Purchase order created"); closeCreateModal(); },
+    onError: () => toast.error("Failed to create purchase order"),
   });
 
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/tenants/${tid}/purchase-orders/${id}`, { status }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }); toast.success("Order status updated"); },
+    onError: () => toast.error("Failed to update order status"),
   });
 
   const deleteOrder = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/purchase-orders/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchase-orders", tid] }); toast.success("Purchase order deleted"); },
+    onError: () => toast.error("Failed to delete purchase order"),
   });
 
   const allVariants = products.flatMap((p) =>
@@ -166,7 +171,17 @@ export default function PurchaseOrdersPage() {
     }
   };
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

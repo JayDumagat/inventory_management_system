@@ -10,8 +10,9 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, Tag, Search, FolderTree, AlertCircle } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface Category { id: string; name: string; description?: string; parentId?: string; }
 
@@ -50,6 +51,7 @@ export default function CategoriesPage() {
   const [modal, setModal] = useState<{ open: boolean; category?: Category }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const toast = useToast();
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
     queryKey: ["categories", tid],
@@ -63,12 +65,14 @@ export default function CategoriesPage() {
     mutationFn: (data: FormData) => modal.category
       ? api.patch(`/api/tenants/${tid}/categories/${modal.category.id}`, data)
       : api.post(`/api/tenants/${tid}/categories`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setModal({ open: false }); form.reset(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setModal({ open: false }); form.reset(); toast.success("Category saved"); },
+    onError: () => toast.error("Failed to save category"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/categories/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setDeleteConfirm(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setDeleteConfirm(null); toast.success("Category deleted"); },
+    onError: () => toast.error("Failed to delete category"),
   });
 
   const openModal = (category?: Category) => {
@@ -89,7 +93,17 @@ export default function CategoriesPage() {
   const topCount = categories.filter((c) => !c.parentId).length;
   const subCount = categories.filter((c) => !!c.parentId).length;
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-5">

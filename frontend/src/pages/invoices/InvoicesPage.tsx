@@ -7,9 +7,10 @@ import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
-import { PageLoader } from "../../components/ui/Spinner";
+import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
 import { Plus, Trash2, Eye, FileText, X } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
 
 interface InvoiceItem {
   id: string;
@@ -71,6 +72,7 @@ export default function InvoicesPage() {
   const [form, setForm] = useState({ customerName: "", customerEmail: "", customerPhone: "", customerAddress: "", taxAmount: "0", discountAmount: "0", notes: "", dueDate: "" });
   const [createError, setCreateError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const toast = useToast();
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ["invoices", tid],
@@ -86,25 +88,27 @@ export default function InvoicesPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: object) => api.post(`/api/tenants/${tid}/invoices`, data).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setCreateOpen(false); resetForm(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setCreateOpen(false); resetForm(); toast.success("Invoice created"); },
     onError: (e: unknown) => setCreateError((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Failed to create invoice"),
   });
 
   const fromOrderMutation = useMutation({
     mutationFn: (orderId: string) => api.post(`/api/tenants/${tid}/invoices/from-order/${orderId}`).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setCreateOpen(false); resetForm(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setCreateOpen(false); resetForm(); toast.success("Invoice created from order"); },
     onError: (e: unknown) => setCreateError((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Failed to create invoice from order"),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.patch(`/api/tenants/${tid}/invoices/${id}`, { status }).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setStatusUpdating(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setStatusUpdating(null); toast.success("Invoice status updated"); },
+    onError: () => toast.error("Failed to update invoice status"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/invoices/${id}`).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setDeleteTarget(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["invoices", tid] }); setDeleteTarget(null); toast.success("Invoice deleted"); },
+    onError: () => toast.error("Failed to delete invoice"),
   });
 
   function resetForm() {
@@ -151,7 +155,17 @@ export default function InvoicesPage() {
     });
   }
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading) return (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-7 w-32" />
+      <Skeleton className="h-9 w-32" />
+    </div>
+    <div className="border border-stroke">
+      <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
+    </div>
+  </div>
+);
 
   const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
 
