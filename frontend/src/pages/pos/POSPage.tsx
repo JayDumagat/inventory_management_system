@@ -176,8 +176,8 @@ export default function POSPage() {
 
       // If there's a customer name but no selected customer, auto-create the customer
       if (customerName.trim() && !selectedCustomerId) {
-        api.post(`/api/tenants/${tid}/customers`, { name: customerName.trim() }).catch(() => {
-          // Silently fail — non-critical
+        api.post(`/api/tenants/${tid}/customers`, { name: customerName.trim() }).catch((err) => {
+          console.warn("Auto-create customer failed:", err?.response?.data?.error || err.message);
         });
       }
 

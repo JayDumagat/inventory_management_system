@@ -49,6 +49,18 @@ const variantSchema = z.object({
 type ProductForm = z.infer<typeof productSchema>;
 type VariantForm = z.infer<typeof variantSchema>;
 
+function ProductThumbnail({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (!src || error) return <Package className="w-4 h-4 text-primary-500" />;
+  return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+}
+
+function ImageWithFallback({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [error, setError] = useState(false);
+  if (error) return <Image className="w-8 h-8 text-muted" />;
+  return <img src={src} alt={alt} className={className} onError={() => setError(true)} />;
+}
+
 export default function ProductsPage() {
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
@@ -358,11 +370,7 @@ export default function ProductsPage() {
                     ? <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
                     : <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />}
                   <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {p.images && p.images.length > 0 ? (
-                      <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>'; }} />
-                    ) : (
-                      <Package className="w-4 h-4 text-primary-500" />
-                    )}
+                    <ProductThumbnail src={p.images?.[0]?.url} alt={p.name} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -798,15 +806,10 @@ export default function ProductsPage() {
               {imageList.map((img) => (
                 <div key={img.id} className="relative group border border-stroke bg-page">
                   <div className="aspect-square flex items-center justify-center overflow-hidden">
-                    <img
+                    <ImageWithFallback
                       src={img.url}
                       alt={img.altText || "Product image"}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        target.parentElement!.innerHTML = '<div class="flex items-center justify-center w-full h-full"><svg class="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
-                      }}
                     />
                   </div>
                   <button
