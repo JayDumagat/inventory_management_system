@@ -22,6 +22,7 @@ import integrationsRouter from "./integrations";
 import apiKeysRouter from "./apiKeys";
 import uploadsRouter from "./uploads";
 import invoicesRouter from "./invoices";
+import customersRouter from "./customers";
 
 export function registerRoutes(app: Express): void {
   app.use("/api/auth", limiter, authRouter);
@@ -45,4 +46,5 @@ export function registerRoutes(app: Express): void {
   app.use("/api/tenants/:tenantId/api-keys", limiter, apiKeysRouter);
   app.use("/api/tenants/:tenantId/invoices", limiter, invoicesRouter);
   app.use("/api/tenants/:tenantId/uploads", limiter, uploadsRouter);
+  app.use("/api/tenants/:tenantId/customers", limiter, customersRouter);
 }

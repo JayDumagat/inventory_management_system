@@ -29,18 +29,54 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     const subtotal = body.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const totalAmount = subtotal + (body.taxAmount ?? 0) - (body.discountAmount ?? 0);
 
+    // Validate total is positive
+    if (totalAmount < 0) {
+      res.status(400).json({ error: "Total amount cannot be negative" });
+      return;
+    }
+
+    // Validate items have positive quantities and prices
+    for (const item of body.items) {
+      if (item.quantity <= 0) {
+        res.status(400).json({ error: `Invalid quantity for ${item.productName}` });
+        return;
+      }
+      if (item.unitPrice < 0) {
+        res.status(400).json({ error: `Invalid price for ${item.productName}` });
+        return;
+      }
+    }
+
+    const requestedStatus = body.status || "draft";
+
+    // If the order is being immediately completed (POS sale), verify and deduct stock
+    if (requestedStatus === "delivered" || requestedStatus === "confirmed") {
+      for (const item of body.items) {
+        const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, body.branchId)));
+        if (!inv || inv.quantity < item.quantity) {
+          res.status(400).json({ error: `Insufficient stock for ${item.productName} - ${item.variantName}` });
+          return;
+        }
+      }
+    }
+
+    const notes = body.paymentMethod 
+      ? (body.notes ? `${body.notes} | Payment: ${body.paymentMethod}` : `Payment: ${body.paymentMethod}`)
+      : body.notes;
+
     const [order] = await db.insert(salesOrders).values({
       tenantId,
       branchId: body.branchId,
       orderNumber: generateSalesOrderNumber(),
+      status: requestedStatus,
       customerName: body.customerName,
-      customerEmail: body.customerEmail,
+      customerEmail: body.customerEmail || undefined,
       customerPhone: body.customerPhone,
       subtotal: String(subtotal),
       taxAmount: String(body.taxAmount ?? 0),
       discountAmount: String(body.discountAmount ?? 0),
       totalAmount: String(totalAmount),
-      notes: body.notes,
+      notes,
       createdBy: req.user!.id,
     }).returning();
 
@@ -57,6 +93,28 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       })),
     );
 
+    // If order is immediately delivered/confirmed, deduct stock
+    if (requestedStatus === "delivered" || requestedStatus === "confirmed") {
+      for (const item of body.items) {
+        const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, body.branchId)));
+        if (inv) {
+          await db.update(inventory).set({ quantity: inv.quantity - item.quantity, updatedAt: new Date() }).where(eq(inventory.id, inv.id));
+          await db.insert(stockMovements).values({
+            tenantId,
+            variantId: item.variantId,
+            branchId: body.branchId,
+            type: "out",
+            quantity: item.quantity,
+            previousQuantity: inv.quantity,
+            newQuantity: inv.quantity - item.quantity,
+            referenceType: "sales_order",
+            referenceId: order.id,
+            createdBy: req.user!.id,
+          });
+        }
+      }
+    }
+
     await createAuditLog({ tenantId, userId: req.user!.id, action: "create", resourceType: "sales_order", resourceId: order.id });
 
     appEvents.emit("order.created", {
@@ -64,7 +122,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       orderId: order.id,
       orderNumber: order.orderNumber,
       totalAmount: Number(order.totalAmount),
-      customerId: undefined,
+      customerId: body.customerId,
     });
 
     res.status(201).json(order);
