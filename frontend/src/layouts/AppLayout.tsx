@@ -2,63 +2,18 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { useTenantStore } from "../stores/tenantStore";
 import { useBranchStore } from "../stores/branchStore";
-import { cn } from "../lib/utils";
+import { cn, relativeTime } from "../lib/utils";
 import {
-  LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
-  ClipboardList, LogOut, Menu, GitBranch, ChevronDown, Check,
+  LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
-  Users, BarChart2, Ruler, Building2, AlertTriangle, ArrowRightLeft,
-  Truck, ShoppingBag, CreditCard, Plug, Code, TrendingUp, FileText,
+  AlertTriangle, ArrowRightLeft, Package,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { PreferencesModal } from "../components/ui/PreferencesModal";
-
-interface Branch { id: string; name: string; isDefault: boolean; }
-
-interface Notification {
-  id: string;
-  type: string;
-  message: string;
-  createdAt: string;
-  resourceType: string;
-  resourceId?: string;
-}
-
-function relativeTime(date: string): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-const navItems = [
-  { label: "Dashboard",       icon: LayoutDashboard, href: "/dashboard",       roles: null },
-  { label: "POS",             icon: CreditCard,      href: "/pos",             roles: null },
-  { label: "Products",        icon: Package,         href: "/products",        roles: null },
-  { label: "Categories",      icon: Tag,             href: "/categories",      roles: null },
-  { label: "Customers",       icon: Users,           href: "/customers",       roles: null },
-  { label: "Inventory",       icon: Warehouse,       href: "/inventory",       roles: null },
-  { label: "Units",           icon: Ruler,           href: "/units",           roles: null },
-  { label: "Sales Orders",    icon: ShoppingCart,    href: "/orders",          roles: null },
-  { label: "Invoices",        icon: FileText,        href: "/invoices",        roles: null },
-  { label: "Suppliers",       icon: Truck,           href: "/suppliers",       roles: null },
-  { label: "Purchase Orders", icon: ShoppingBag,     href: "/purchase-orders", roles: null },
-  { label: "Transactions",    icon: ArrowRightLeft,  href: "/transactions",    roles: null },
-  { label: "Branches",        icon: GitBranch,       href: "/branches",        roles: null },
-  { label: "Staff",           icon: Users,           href: "/staff",           roles: ["owner", "admin", "manager"] },
-  { label: "Reports",         icon: BarChart2,       href: "/reports",         roles: null },
-  { label: "Analytics",       icon: TrendingUp,      href: "/analytics",       roles: null },
-  { label: "Audit Log",       icon: ClipboardList,   href: "/audit",           roles: null },
-  { label: "Integrations",    icon: Plug,            href: "/integrations",    roles: ["owner", "admin"] },
-  { label: "API",             icon: Code,            href: "/api-keys",        roles: ["owner", "admin"] },
-  { label: "Organization",    icon: Building2,       href: "/organization",    roles: ["owner", "admin", "manager"] },
-];
+import { navItems } from "../constants/navigation";
+import type { Branch, Notification } from "../types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
