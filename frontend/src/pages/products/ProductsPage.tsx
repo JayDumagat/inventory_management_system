@@ -92,7 +92,7 @@ export default function ProductsPage() {
   const [editNewImages, setEditNewImages] = useState<File[]>([]);
   const [editNewPreviews, setEditNewPreviews] = useState<string[]>([]);
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading, isError } = useQuery<Product[]>({
     queryKey: ["products", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/products`).then((r) => r.data),
     enabled: !!tid,
@@ -416,6 +416,27 @@ export default function ProductsPage() {
       </div>
       <Skeleton className="h-10 w-full" />
       {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+    </div>
+  );
+
+  if (isError) return (
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+        <h1 className="text-2xl font-bold text-ink">Products</h1>
+        <Button onClick={() => openProductModal()} className="gap-2 self-start sm:self-auto">
+          <Plus className="w-4 h-4" /> Add product
+        </Button>
+      </div>
+      <Card>
+        <CardContent className="py-12 text-center">
+          <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
+          <p className="text-sm font-medium text-ink mb-1">Failed to load products</p>
+          <p className="text-sm text-muted mb-4">There was an error connecting to the server. Please check your connection and try again.</p>
+          <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ["products", tid] })}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 
