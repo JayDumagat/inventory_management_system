@@ -49,6 +49,18 @@ services:
       timeout: 10s
       retries: 5
 
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: node dist/db/migrate.js
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/inventory_db
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -75,6 +87,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./backend/src:/app/src
 
