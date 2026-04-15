@@ -330,7 +330,8 @@ export default function ProductsPage() {
     try {
       await api.delete(`/api/tenants/${tid}/products/${productModal.product.id}/images/${image.id}`);
       setEditImages((prev) => prev.filter((i) => i.id !== image.id));
-    } catch {
+    } catch (error) {
+      console.error("Failed to delete image:", error);
       toast.error("Failed to delete image");
     }
   };
