@@ -61,12 +61,44 @@ export async function updateProduct(req: Request, res: Response): Promise<void> 
 
 export async function deleteProduct(req: Request, res: Response): Promise<void> {
   try {
-    const [product] = await db.delete(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId))).returning();
+    const tenantId = req.tenantContext!.tenantId;
+    const productId = req.params.productId as string;
+
+    // Check if product exists
+    const existing = await db.query.products.findFirst({
+      where: and(eq(products.id, productId), eq(products.tenantId, tenantId)),
+      with: { variants: true },
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+
+    // Check if any variant is referenced in active orders
+    if (existing.variants.length > 0) {
+      const { salesOrderItems, salesOrders } = await import("../db/schema");
+      const variantIds = existing.variants.map((v) => v.id);
+      for (const vid of variantIds) {
+        const orderItems = await db.select({ orderId: salesOrderItems.orderId })
+          .from(salesOrderItems)
+          .where(eq(salesOrderItems.variantId, vid))
+          .limit(1);
+        if (orderItems.length > 0) {
+          const [order] = await db.select().from(salesOrders).where(eq(salesOrders.id, orderItems[0].orderId));
+          if (order && !["cancelled", "refunded"].includes(order.status)) {
+            res.status(400).json({ error: "Cannot delete product with active orders. Cancel or complete all orders first." });
+            return;
+          }
+        }
+      }
+    }
+
+    const [product] = await db.delete(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId))).returning();
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "delete", resourceType: "product", resourceId: product.id });
+    await createAuditLog({ tenantId, userId: req.user!.id, action: "delete", resourceType: "product", resourceId: product.id });
     res.json({ message: "Product deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
