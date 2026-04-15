@@ -1,0 +1,265 @@
+import { Request, Response } from "express";
+import { db } from "../db";
+import { products, productVariants, productAttributes, productAttributeOptions } from "../db/schema";
+import { eq, and } from "drizzle-orm";
+import { createAuditLog } from "../services/audit";
+import { handleControllerError } from "../utils/errors";
+import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
+
+export async function listProducts(req: Request, res: Response): Promise<void> {
+  try {
+    const list = await db.query.products.findMany({
+      where: eq(products.tenantId, req.tenantContext!.tenantId),
+      with: { variants: true, category: true },
+    });
+    res.json(list);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function createProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const body = productSchema.parse(req.body);
+    const [product] = await db.insert(products).values({ ...body, tenantId: req.tenantContext!.tenantId }).returning();
+    await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "create", resourceType: "product", resourceId: product.id });
+    res.status(201).json(product);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function getProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const product = await db.query.products.findFirst({
+      where: and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)),
+      with: { variants: { with: { inventory: { with: { branch: true } } } }, category: true },
+    });
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    res.json(product);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function updateProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const body = productSchema.partial().parse(req.body);
+    const [product] = await db.update(products).set({ ...body, updatedAt: new Date() }).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId))).returning();
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    res.json(product);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function deleteProduct(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.delete(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId))).returning();
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "delete", resourceType: "product", resourceId: product.id });
+    res.json({ message: "Product deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function listVariants(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const variants = await db.select().from(productVariants).where(eq(productVariants.productId, req.params.productId as string));
+    res.json(variants);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function createVariant(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const body = variantSchema.parse(req.body);
+    const [variant] = await db.insert(productVariants).values({
+      ...body,
+      productId: req.params.productId as string,
+      price: String(body.price),
+      costPrice: String(body.costPrice || "0"),
+    }).returning();
+    res.status(201).json(variant);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function updateVariant(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const body = variantSchema.partial().parse(req.body);
+    const updateData: {
+      name?: string; sku?: string; barcode?: string | null; price?: string;
+      costPrice?: string; attributes?: Record<string, unknown>; imageUrl?: string | null; updatedAt: Date;
+    } = { updatedAt: new Date() };
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.sku !== undefined) updateData.sku = body.sku;
+    if (body.barcode !== undefined) updateData.barcode = body.barcode ?? null;
+    if (body.price !== undefined) updateData.price = String(body.price);
+    if (body.costPrice !== undefined) updateData.costPrice = String(body.costPrice);
+    if (body.attributes !== undefined) updateData.attributes = body.attributes;
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl ?? null;
+    const [variant] = await db.update(productVariants).set(updateData).where(and(eq(productVariants.id, req.params.variantId as string), eq(productVariants.productId, req.params.productId as string))).returning();
+    if (!variant) {
+      res.status(404).json({ error: "Variant not found" });
+      return;
+    }
+    res.json(variant);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function deleteVariant(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const [variant] = await db.delete(productVariants).where(and(eq(productVariants.id, req.params.variantId as string), eq(productVariants.productId, req.params.productId as string))).returning();
+    if (!variant) {
+      res.status(404).json({ error: "Variant not found" });
+      return;
+    }
+    res.json({ message: "Variant deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function listAttributes(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const attrs = await db.query.productAttributes.findMany({
+      where: eq(productAttributes.productId, req.params.productId as string),
+      with: { options: true },
+      orderBy: (a, { asc }) => [asc(a.sortOrder)],
+    });
+    res.json(attrs);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function createAttribute(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const body = attributeSchema.parse(req.body);
+    const [attr] = await db.insert(productAttributes).values({
+      productId: req.params.productId as string,
+      name: body.name,
+      sortOrder: body.sortOrder ?? 0,
+    }).returning();
+    if (body.options && body.options.length > 0) {
+      await db.insert(productAttributeOptions).values(
+        body.options.map((opt) => ({
+          attributeId: attr.id,
+          value: opt.value,
+          sortOrder: opt.sortOrder ?? 0,
+        })),
+      );
+    }
+    const full = await db.query.productAttributes.findFirst({
+      where: eq(productAttributes.id, attr.id),
+      with: { options: true },
+    });
+    res.status(201).json(full);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function updateAttribute(req: Request, res: Response): Promise<void> {
+  try {
+    const body = updateAttributeSchema.parse(req.body);
+    const [attr] = await db.update(productAttributes).set(body).where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string))).returning();
+    if (!attr) {
+      res.status(404).json({ error: "Attribute not found" });
+      return;
+    }
+    res.json(attr);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function deleteAttribute(req: Request, res: Response): Promise<void> {
+  try {
+    const [attr] = await db.delete(productAttributes).where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string))).returning();
+    if (!attr) {
+      res.status(404).json({ error: "Attribute not found" });
+      return;
+    }
+    res.json({ message: "Attribute deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function createAttributeOption(req: Request, res: Response): Promise<void> {
+  try {
+    const body = attributeOptionSchema.parse(req.body);
+    const [attr] = await db.select().from(productAttributes).where(and(eq(productAttributes.id, req.params.attributeId as string), eq(productAttributes.productId, req.params.productId as string)));
+    if (!attr) {
+      res.status(404).json({ error: "Attribute not found" });
+      return;
+    }
+    const [option] = await db.insert(productAttributeOptions).values({
+      attributeId: req.params.attributeId as string,
+      value: body.value,
+      sortOrder: body.sortOrder ?? 0,
+    }).returning();
+    res.status(201).json(option);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function deleteAttributeOption(req: Request, res: Response): Promise<void> {
+  try {
+    const [option] = await db.delete(productAttributeOptions).where(and(eq(productAttributeOptions.id, req.params.optionId as string), eq(productAttributeOptions.attributeId, req.params.attributeId as string))).returning();
+    if (!option) {
+      res.status(404).json({ error: "Option not found" });
+      return;
+    }
+    res.json({ message: "Option deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}

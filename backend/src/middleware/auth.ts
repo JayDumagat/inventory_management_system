@@ -3,25 +3,9 @@ import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users, tenantUsers } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import "../types/express.d";
 
-export interface AuthUser {
-  id: string;
-  email: string;
-}
-
-export interface TenantContext {
-  tenantId: string;
-  role: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthUser;
-      tenantContext?: TenantContext;
-    }
-  }
-}
+export type { AuthUser, TenantContext } from "../types/express.d";
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
