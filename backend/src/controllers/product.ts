@@ -325,8 +325,13 @@ export async function deleteProductImage(req: Request, res: Response): Promise<v
       return;
     }
     // Attempt to delete from MinIO storage (best effort)
-    const { deleteFile } = await import("../lib/storage");
-    await deleteFile(image.objectName);
+    try {
+      const { deleteFile } = await import("../lib/storage");
+      await deleteFile(image.objectName);
+    } catch {
+      // Storage deletion is best-effort; log but don't fail the request
+      console.error(`Failed to delete file from storage: ${image.objectName}`);
+    }
     res.json({ message: "Image deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
