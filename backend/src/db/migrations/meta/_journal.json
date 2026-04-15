@@ -15,6 +15,20 @@
       "when": 1775900000000,
       "tag": "0001_new_pages_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775995012740,
+      "tag": "0002_amused_ulik",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1775999151846,
+      "tag": "0003_keen_midnight",
+      "breakpoints": true
     }
   ]
 }
