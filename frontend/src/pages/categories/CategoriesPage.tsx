@@ -14,12 +14,12 @@ import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, Tag, Search, FolderTree, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
-interface Category { id: string; name: string; description?: string; parentId?: string; }
+interface Category { id: string; name: string; description?: string; parentId?: string | null; }
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  parentId: z.string().optional(),
+  parentId: z.string().optional().nullable(),
 });
 type FormData = z.infer<typeof schema>;
 
