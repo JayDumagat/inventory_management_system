@@ -12,18 +12,19 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X, ImagePlus, Image } from "lucide-react";
 
 interface Variant { id: string; name: string; sku: string; barcode?: string | null; price: string; costPrice: string; isActive: boolean; }
 interface Category { id: string; name: string; }
 interface Unit { id: string; name: string; abbreviation: string; }
 interface AttributeOption { id: string; value: string; sortOrder: number; }
 interface Attribute { id: string; name: string; sortOrder: number; options: AttributeOption[]; }
+interface ProductImage { id: string; objectName: string; url: string; altText?: string; sortOrder: number; }
 interface Product {
   id: string; name: string; description?: string; isActive: boolean; type?: string;
-  category?: Category; unit?: Unit; variants: Variant[];
+  category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
 
 const productSchema = z.object({
@@ -70,6 +71,9 @@ export default function ProductsPage() {
   const [newAttrName, setNewAttrName] = useState("");
   const [newOptionValues, setNewOptionValues] = useState<Record<string, string>>({});
   const [attrLoading, setAttrLoading] = useState(false);
+  const [imageModal, setImageModal] = useState<{ open: boolean; product?: Product }>({ open: false });
+  const [imageList, setImageList] = useState<ProductImage[]>([]);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", tid],
@@ -167,6 +171,77 @@ export default function ProductsPage() {
       setAttrList(res.data);
     } finally {
       setAttrLoading(false);
+    }
+  };
+
+  const openImageModal = (product: Product) => {
+    setImageModal({ open: true, product });
+    setImageList(product.images ?? []);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !imageModal.product) return;
+
+    setImageUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image`);
+          continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} exceeds 10 MB limit`);
+          continue;
+        }
+
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        // Upload to MinIO
+        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
+          filename: file.name,
+          mimeType: file.type,
+          base64,
+        });
+
+        // Attach to product
+        const imageRes = await api.post(`/api/tenants/${tid}/products/${imageModal.product.id}/images`, {
+          objectName: uploadRes.data.objectName,
+          url: uploadRes.data.url,
+          altText: file.name,
+          sortOrder: imageList.length + i,
+        });
+
+        setImageList((prev) => [...prev, imageRes.data]);
+      }
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      toast.success("Image(s) uploaded");
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setImageUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDeleteImage = async (image: ProductImage) => {
+    if (!imageModal.product) return;
+    try {
+      await api.delete(`/api/tenants/${tid}/products/${imageModal.product.id}/images/${image.id}`);
+      setImageList((prev) => prev.filter((i) => i.id !== image.id));
+      qc.invalidateQueries({ queryKey: ["products", tid] });
+      toast.success("Image deleted");
+    } catch {
+      toast.error("Failed to delete image");
     }
   };
 
@@ -282,8 +357,12 @@ export default function ProductsPage() {
                   {expanded[p.id]
                     ? <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
                     : <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />}
-                  <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0">
-                    <Package className="w-4 h-4 text-primary-500" />
+                  <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {p.images && p.images.length > 0 ? (
+                      <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg class="w-4 h-4 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>'; }} />
+                    ) : (
+                      <Package className="w-4 h-4 text-primary-500" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -320,6 +399,10 @@ export default function ProductsPage() {
                   <div className="flex items-center justify-between px-4 sm:px-6 py-3">
                     <p className="text-sm font-medium text-ink">Variants</p>
                     <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => openImageModal(p)}>
+                        <ImagePlus className="w-3.5 h-3.5 mr-1" /> Images
+                        {(p.images?.length ?? 0) > 0 && <span className="ml-1 text-xs text-muted">({p.images?.length})</span>}
+                      </Button>
                       <Button size="sm" variant="outline" onClick={() => openAttrModal(p)}>
                         <SlidersHorizontal className="w-3.5 h-3.5 mr-1" /> Attributes
                       </Button>
@@ -677,6 +760,77 @@ export default function ProductsPage() {
           )}
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={() => { setAttrModal({ open: false }); setAttrList([]); setNewAttrName(""); setNewOptionValues({}); }}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Images modal */}
+      <Modal
+        open={imageModal.open}
+        onClose={() => { setImageModal({ open: false }); setImageList([]); }}
+        title={`Images — ${imageModal.product?.name || ""}`}
+        size="lg"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-muted">Upload product images via MinIO storage. Supported formats: JPEG, PNG, WebP, GIF. Max 10 MB per file.</p>
+
+          {/* Upload button */}
+          <label className={cn(
+            "flex flex-col items-center justify-center border-2 border-dashed border-stroke px-4 py-6 cursor-pointer hover:border-primary-400 hover:bg-hover transition-colors",
+            imageUploading && "opacity-50 pointer-events-none"
+          )}>
+            <ImagePlus className="w-8 h-8 text-muted mb-2" />
+            <span className="text-sm text-muted">{imageUploading ? "Uploading…" : "Click to upload images"}</span>
+            <span className="text-xs text-muted mt-1">Or drag and drop</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={imageUploading}
+            />
+          </label>
+
+          {/* Image grid */}
+          {imageList.length > 0 ? (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {imageList.map((img) => (
+                <div key={img.id} className="relative group border border-stroke bg-page">
+                  <div className="aspect-square flex items-center justify-center overflow-hidden">
+                    <img
+                      src={img.url}
+                      alt={img.altText || "Product image"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
+                        target.parentElement!.innerHTML = '<div class="flex items-center justify-center w-full h-full"><svg class="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage(img)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  {img.altText && (
+                    <p className="text-xs text-muted truncate px-1 py-0.5">{img.altText}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-sm text-muted">
+              <Image className="w-8 h-8 mx-auto mb-2 text-stroke" />
+              No images uploaded yet
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => { setImageModal({ open: false }); setImageList([]); }}>Done</Button>
           </div>
         </div>
       </Modal>
