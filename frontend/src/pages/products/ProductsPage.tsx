@@ -32,7 +32,7 @@ const productSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().optional(),
   unitId: z.string().optional(),
-  type: z.enum(["physical", "digital", "service", "bundle"]).optional().default("physical"),
+  type: z.enum(["physical", "digital", "service", "bundle"]).optional(),
 });
 const variantSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -86,6 +86,11 @@ export default function ProductsPage() {
   const [imageModal, setImageModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [imageList, setImageList] = useState<ProductImage[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
+  const [formImages, setFormImages] = useState<File[]>([]);
+  const [formImagePreviews, setFormImagePreviews] = useState<string[]>([]);
+  const [editImages, setEditImages] = useState<ProductImage[]>([]);
+  const [editNewImages, setEditNewImages] = useState<File[]>([]);
+  const [editNewPreviews, setEditNewPreviews] = useState<string[]>([]);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["products", tid],
@@ -109,13 +114,19 @@ export default function ProductsPage() {
   const vForm = useForm<VariantForm>({ resolver: zodResolver(variantSchema) });
 
   const saveProduct = useMutation({
-    mutationFn: (data: ProductForm) => productModal.product
-      ? api.patch(`/api/tenants/${tid}/products/${productModal.product.id}`, data)
-      : api.post(`/api/tenants/${tid}/products`, data),
+    mutationFn: async (data: ProductForm) => {
+      if (productModal.product) {
+        await api.patch(`/api/tenants/${tid}/products/${productModal.product.id}`, data);
+        if (editNewImages.length > 0) {
+          await uploadFilesToProduct(productModal.product.id, editNewImages, editImages.length);
+        }
+      } else {
+        await api.post(`/api/tenants/${tid}/products`, data);
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products", tid] });
-      setProductModal({ open: false });
-      pForm.reset();
+      closeProductModal();
       toast.success(productModal.product ? "Product updated" : "Product created");
     },
     onError: () => toast.error("Failed to save product"),
@@ -160,6 +171,13 @@ export default function ProductsPage() {
     pForm.reset();
     vForm.reset();
     setProductStep(1);
+    setFormImages([]);
+    formImagePreviews.forEach((u) => URL.revokeObjectURL(u));
+    setFormImagePreviews([]);
+    setEditImages([]);
+    setEditNewImages([]);
+    editNewPreviews.forEach((u) => URL.revokeObjectURL(u));
+    setEditNewPreviews([]);
   };
 
   const openProductModal = (product?: Product) => {
@@ -167,6 +185,17 @@ export default function ProductsPage() {
     vForm.reset();
     setProductModal({ open: true, product });
     setProductStep(1);
+    setFormImages([]);
+    setFormImagePreviews([]);
+    if (product) {
+      setEditImages(product.images ?? []);
+      setEditNewImages([]);
+      setEditNewPreviews([]);
+    } else {
+      setEditImages([]);
+      setEditNewImages([]);
+      setEditNewPreviews([]);
+    }
   };
 
   const openVariantModal = (productId: string, variant?: Variant) => {
@@ -259,6 +288,82 @@ export default function ProductsPage() {
 
   const goToProductStep2 = pForm.handleSubmit(() => setProductStep(2));
 
+  const handleFormImageSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: "add" | "edit") => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const validFiles: File[] = [];
+    const previews: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 10 MB limit`);
+        continue;
+      }
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
+    }
+    if (mode === "add") {
+      setFormImages((prev) => [...prev, ...validFiles]);
+      setFormImagePreviews((prev) => [...prev, ...previews]);
+    } else {
+      setEditNewImages((prev) => [...prev, ...validFiles]);
+      setEditNewPreviews((prev) => [...prev, ...previews]);
+    }
+    e.target.value = "";
+  };
+
+  const removeFormImage = (index: number) => {
+    URL.revokeObjectURL(formImagePreviews[index]);
+    setFormImages((prev) => prev.filter((_, i) => i !== index));
+    setFormImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeEditNewImage = (index: number) => {
+    URL.revokeObjectURL(editNewPreviews[index]);
+    setEditNewImages((prev) => prev.filter((_, i) => i !== index));
+    setEditNewPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeEditExistingImage = async (image: ProductImage) => {
+    if (!productModal.product) return;
+    try {
+      await api.delete(`/api/tenants/${tid}/products/${productModal.product.id}/images/${image.id}`);
+      setEditImages((prev) => prev.filter((i) => i.id !== image.id));
+    } catch {
+      toast.error("Failed to delete image");
+    }
+  };
+
+  const uploadFilesToProduct = async (productId: string, files: File[], startIndex: number) => {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
+        filename: file.name,
+        mimeType: file.type,
+        base64,
+      });
+      await api.post(`/api/tenants/${tid}/products/${productId}/images`, {
+        objectName: uploadRes.data.objectName,
+        url: uploadRes.data.url,
+        altText: file.name,
+        sortOrder: startIndex + i,
+      });
+    }
+  };
+
   const handleAddProductSubmit = async () => {
     const pData = pForm.getValues();
     const vData = vForm.getValues();
@@ -274,12 +379,19 @@ export default function ProductsPage() {
       const productRes = await api.post(`/api/tenants/${tid}/products`, pData);
       const productId = productRes.data.id;
 
+      if (formImages.length > 0) {
+        await uploadFilesToProduct(productId, formImages, 0);
+      }
+
       if (hasVariant) {
         await api.post(`/api/tenants/${tid}/products/${productId}/variants`, vData);
       }
 
       qc.invalidateQueries({ queryKey: ["products", tid] });
       closeProductModal();
+      toast.success("Product created");
+    } catch {
+      toast.error("Failed to create product");
     } finally {
       setIsAddingProduct(false);
     }
@@ -533,6 +645,55 @@ export default function ProductsPage() {
               <option value="service">Service</option>
               <option value="bundle">Bundle</option>
             </Select>
+
+            {/* Images section */}
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1.5">Images</label>
+              {(editImages.length > 0 || editNewPreviews.length > 0) && (
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {editImages.map((img) => (
+                    <div key={img.id} className="relative group border border-stroke bg-page">
+                      <div className="aspect-square flex items-center justify-center overflow-hidden">
+                        <ImageWithFallback src={img.url} alt={img.altText || "Product image"} className="w-full h-full object-cover" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeEditExistingImage(img)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {editNewPreviews.map((preview, idx) => (
+                    <div key={`new-${idx}`} className="relative group border border-stroke bg-page">
+                      <div className="aspect-square flex items-center justify-center overflow-hidden">
+                        <img src={preview} alt="New upload" className="w-full h-full object-cover" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeEditNewImage(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm text-muted cursor-pointer hover:text-ink transition-colors">
+                <ImagePlus className="w-4 h-4" />
+                <span>Add images</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFormImageSelect(e, "edit")}
+                />
+              </label>
+            </div>
+
             <div className="flex gap-3 justify-end pt-1">
               <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
               <Button type="submit" loading={saveProduct.isPending}>Save</Button>
@@ -575,6 +736,41 @@ export default function ProductsPage() {
                   <option value="service">Service</option>
                   <option value="bundle">Bundle</option>
                 </Select>
+
+                {/* Images section */}
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-1.5">Images</label>
+                  {formImagePreviews.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      {formImagePreviews.map((preview, idx) => (
+                        <div key={idx} className="relative group border border-stroke bg-page">
+                          <div className="aspect-square flex items-center justify-center overflow-hidden">
+                            <img src={preview} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFormImage(idx)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 text-sm text-muted cursor-pointer hover:text-ink transition-colors">
+                    <ImagePlus className="w-4 h-4" />
+                    <span>Add images</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleFormImageSelect(e, "add")}
+                    />
+                  </label>
+                </div>
+
                 <div className="flex gap-3 justify-end pt-1">
                   <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
                   <Button type="submit">Next →</Button>
