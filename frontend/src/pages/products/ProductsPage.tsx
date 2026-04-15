@@ -110,24 +110,21 @@ export default function ProductsPage() {
     enabled: !!tid,
   });
 
-  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema) });
+  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema), defaultValues: { type: "physical" } });
   const vForm = useForm<VariantForm>({ resolver: zodResolver(variantSchema) });
 
   const saveProduct = useMutation({
     mutationFn: async (data: ProductForm) => {
-      if (productModal.product) {
-        await api.patch(`/api/tenants/${tid}/products/${productModal.product.id}`, data);
-        if (editNewImages.length > 0) {
-          await uploadFilesToProduct(productModal.product.id, editNewImages, editImages.length);
-        }
-      } else {
-        await api.post(`/api/tenants/${tid}/products`, data);
+      if (!productModal.product) return;
+      await api.patch(`/api/tenants/${tid}/products/${productModal.product.id}`, data);
+      if (editNewImages.length > 0) {
+        await uploadFilesToProduct(productModal.product.id, editNewImages, editImages.length);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products", tid] });
       closeProductModal();
-      toast.success(productModal.product ? "Product updated" : "Product created");
+      toast.success("Product updated");
     },
     onError: () => toast.error("Failed to save product"),
   });
@@ -339,28 +336,33 @@ export default function ProductsPage() {
   };
 
   const uploadFilesToProduct = async (productId: string, files: File[], startIndex: number) => {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
-        filename: file.name,
-        mimeType: file.type,
-        base64,
-      });
-      await api.post(`/api/tenants/${tid}/products/${productId}/images`, {
-        objectName: uploadRes.data.objectName,
-        url: uploadRes.data.url,
-        altText: file.name,
-        sortOrder: startIndex + i,
-      });
+    const results = await Promise.allSettled(
+      files.map(async (file, i) => {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
+          filename: file.name,
+          mimeType: file.type,
+          base64,
+        });
+        await api.post(`/api/tenants/${tid}/products/${productId}/images`, {
+          objectName: uploadRes.data.objectName,
+          url: uploadRes.data.url,
+          altText: file.name,
+          sortOrder: startIndex + i,
+        });
+      })
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      toast.error(`${failed.length} image(s) failed to upload`);
     }
   };
 
