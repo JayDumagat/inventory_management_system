@@ -12,12 +12,15 @@ export const orderItemSchema = z.object({
 export const createOrderSchema = z.object({
   branchId: z.string().uuid(),
   customerName: z.string().optional(),
-  customerEmail: z.string().email().optional(),
+  customerEmail: z.string().email().optional().or(z.literal("")),
   customerPhone: z.string().optional(),
-  items: z.array(orderItemSchema).min(1),
+  customerId: z.string().uuid().optional(),
+  items: z.array(orderItemSchema).min(1, "At least one item is required"),
   taxAmount: z.number().min(0).optional().default(0),
   discountAmount: z.number().min(0).optional().default(0),
   notes: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  status: z.enum(["draft", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"]).optional(),
 });
 
 export const updateOrderSchema = z.object({

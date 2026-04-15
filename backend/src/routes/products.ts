@@ -22,4 +22,8 @@ router.delete("/:productId/attributes/:attributeId", authenticate, requireTenant
 router.post("/:productId/attributes/:attributeId/options", authenticate, requireTenant("manager"), ctrl.createAttributeOption);
 router.delete("/:productId/attributes/:attributeId/options/:optionId", authenticate, requireTenant("manager"), ctrl.deleteAttributeOption);
 
+router.get("/:productId/images", authenticate, requireTenant(), ctrl.listProductImages);
+router.post("/:productId/images", authenticate, requireTenant("manager"), ctrl.addProductImage);
+router.delete("/:productId/images/:imageId", authenticate, requireTenant("manager"), ctrl.deleteProductImage);
+
 export default router;

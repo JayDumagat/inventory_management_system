@@ -15,3 +15,5 @@ export * from "./transactions";
 export * from "./integrations";
 export * from "./apiKeys";
 export * from "./invoices";
+export * from "./customers";
+export * from "./productImages";

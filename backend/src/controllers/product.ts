@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { products, productVariants, productAttributes, productAttributeOptions } from "../db/schema";
+import { products, productVariants, productAttributes, productAttributeOptions, productImages } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -10,7 +10,7 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
   try {
     const list = await db.query.products.findMany({
       where: eq(products.tenantId, req.tenantContext!.tenantId),
-      with: { variants: true, category: true },
+      with: { variants: true, category: true, images: true },
     });
     res.json(list);
   } catch {
@@ -33,7 +33,7 @@ export async function getProduct(req: Request, res: Response): Promise<void> {
   try {
     const product = await db.query.products.findFirst({
       where: and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)),
-      with: { variants: { with: { inventory: { with: { branch: true } } } }, category: true },
+      with: { variants: { with: { inventory: { with: { branch: true } } } }, category: true, images: true },
     });
     if (!product) {
       res.status(404).json({ error: "Product not found" });
@@ -259,6 +259,75 @@ export async function deleteAttributeOption(req: Request, res: Response): Promis
       return;
     }
     res.json({ message: "Option deleted" });
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function listProductImages(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const images = await db.select().from(productImages)
+      .where(eq(productImages.productId, req.params.productId as string))
+      .orderBy(productImages.sortOrder);
+    res.json(images);
+  } catch {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function addProductImage(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const { objectName, url, altText, sortOrder } = req.body as {
+      objectName?: string; url?: string; altText?: string; sortOrder?: number;
+    };
+    if (!objectName || !url) {
+      res.status(400).json({ error: "objectName and url are required" });
+      return;
+    }
+    const [image] = await db.insert(productImages).values({
+      productId: req.params.productId as string,
+      objectName,
+      url,
+      altText: altText || null,
+      sortOrder: sortOrder ?? 0,
+    }).returning();
+    res.status(201).json(image);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function deleteProductImage(req: Request, res: Response): Promise<void> {
+  try {
+    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    const [image] = await db.delete(productImages)
+      .where(and(
+        eq(productImages.id, req.params.imageId as string),
+        eq(productImages.productId, req.params.productId as string)
+      ))
+      .returning();
+    if (!image) {
+      res.status(404).json({ error: "Image not found" });
+      return;
+    }
+    // Attempt to delete from MinIO storage (best effort)
+    const { deleteFile } = await import("../lib/storage");
+    await deleteFile(image.objectName);
+    res.json({ message: "Image deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
