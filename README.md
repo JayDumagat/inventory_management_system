@@ -47,6 +47,21 @@ docker compose exec backend npm run migrate
 Frontend: http://localhost:5173  
 Backend API: http://localhost:3001
 
+### Deploying on Vercel
+
+This repository includes a root `vercel.json` that deploys:
+- `frontend` as a static Vite app
+- `backend` as a serverless function at `/api/*`
+
+Set these Vercel environment variables:
+- Backend: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`
+- Frontend (optional): `VITE_API_URL` (defaults to `/api` in Vercel)
+
+For local development, keep `frontend/.env` as:
+```bash
+VITE_API_URL=http://localhost:3001
+```
+
 ### Manual Setup
 
 **Backend**
