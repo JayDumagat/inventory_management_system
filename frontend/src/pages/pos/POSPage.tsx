@@ -11,11 +11,12 @@ import { formatCurrency } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
+import type { ProductImage } from "../../types";
 
 interface Product {
   id: string;
   name: string;
-  images?: { id: string; objectName: string; url: string; altText?: string; sortOrder: number }[];
+  images?: ProductImage[];
   variants: { id: string; name: string; sku: string; price: string }[];
 }
 
