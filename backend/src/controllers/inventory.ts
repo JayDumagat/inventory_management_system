@@ -12,6 +12,15 @@ export async function listInventory(req: Request, res: Response): Promise<void> 
   try {
     const tenantId = req.tenantContext!.tenantId;
     const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    if (branchId) {
+      const branch = await db.query.branches.findFirst({
+        where: and(eq(branches.id, branchId), eq(branches.tenantId, tenantId)),
+      });
+      if (!branch) {
+        res.status(404).json({ error: "Branch not found" });
+        return;
+      }
+    }
     const cacheKey = `inventory:${tenantId}:list:${branchId ?? "all"}`;
     const cached = await cacheGet<unknown[]>(cacheKey);
     if (cached) {
