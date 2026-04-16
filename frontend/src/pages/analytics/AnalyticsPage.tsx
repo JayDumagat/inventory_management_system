@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
                 <Tooltip
                   formatter={(value) => {
                     const numericValue = toTooltipNumber(value);
-                    return [`$${numericValue.toFixed(2)}`, "Revenue"];
+                    return `$${numericValue.toFixed(2)}`;
                   }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#revGrad)" />
@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
                   <Tooltip
                     formatter={(value) => {
                       const numericValue = toTooltipNumber(value);
-                      return [`$${numericValue.toFixed(2)}`, "Revenue"];
+                      return `$${numericValue.toFixed(2)}`;
                     }}
                   />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[0, 2, 2, 0]} />
@@ -255,7 +255,7 @@ export default function AnalyticsPage() {
                   <Tooltip
                     formatter={(value) => {
                       const numericValue = toTooltipNumber(value);
-                      return [numericValue.toLocaleString(), "Units"];
+                      return numericValue.toLocaleString();
                     }}
                   />
                   <Legend formatter={(v) => <span className="text-xs text-ink">{v}</span>} />
