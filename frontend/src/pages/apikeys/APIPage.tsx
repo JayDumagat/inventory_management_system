@@ -81,7 +81,7 @@ export default function APIPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const baseUrl = API_BASE_URL;
+  const baseUrl = API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
   if (isLoading) return (
   <div className="space-y-4">
