@@ -19,6 +19,7 @@ export async function listInventory(req: Request, res: Response): Promise<void> 
       return;
     }
     const all = await db.query.inventory.findMany({
+      where: branchId ? eq(inventory.branchId, branchId) : undefined,
       with: { variant: { with: { product: true } }, branch: true },
     });
     const filtered = all.filter((item) =>
