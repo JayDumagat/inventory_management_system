@@ -36,6 +36,12 @@ function formatDateParam(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
+function toTooltipNumber(value: unknown) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const numericValue = Number(rawValue ?? 0);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
+
 export default function AnalyticsPage() {
   const { currentTenant } = useTenantStore();
   const tid = currentTenant?.id;
@@ -183,7 +189,7 @@ export default function AnalyticsPage() {
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip
                   formatter={(value) => {
-                    const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                    const numericValue = toTooltipNumber(value);
                     return [`$${numericValue.toFixed(2)}`, "Revenue"];
                   }}
                 />
@@ -211,7 +217,7 @@ export default function AnalyticsPage() {
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
                   <Tooltip
                     formatter={(value) => {
-                      const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                      const numericValue = toTooltipNumber(value);
                       return [`$${numericValue.toFixed(2)}`, "Revenue"];
                     }}
                   />
@@ -248,7 +254,7 @@ export default function AnalyticsPage() {
                   </Pie>
                   <Tooltip
                     formatter={(value) => {
-                      const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                      const numericValue = toTooltipNumber(value);
                       return [numericValue.toLocaleString(), "Units"];
                     }}
                   />
