@@ -8,6 +8,10 @@ import { transactionSchema } from "../validators/transaction";
 
 export const listTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    const whereCondition = branchId
+      ? and(eq(transactions.tenantId, req.tenantContext!.tenantId), eq(transactions.branchId, branchId))
+      : eq(transactions.tenantId, req.tenantContext!.tenantId);
     const list = await db
       .select({
         id: transactions.id,
@@ -23,7 +27,7 @@ export const listTransactions = async (req: Request, res: Response): Promise<voi
       })
       .from(transactions)
       .leftJoin(branches, eq(transactions.branchId, branches.id))
-      .where(eq(transactions.tenantId, req.tenantContext!.tenantId))
+      .where(whereCondition)
       .orderBy(desc(transactions.createdAt));
     res.json(list);
   } catch {

@@ -9,6 +9,10 @@ import { generatePurchaseOrderNumber } from "../utils/helpers";
 
 export const listPurchaseOrders = async (req: Request, res: Response): Promise<void> => {
   try {
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    const whereCondition = branchId
+      ? and(eq(purchaseOrders.tenantId, req.tenantContext!.tenantId), eq(purchaseOrders.branchId, branchId))
+      : eq(purchaseOrders.tenantId, req.tenantContext!.tenantId);
     const orders = await db
       .select({
         id: purchaseOrders.id,
@@ -30,7 +34,7 @@ export const listPurchaseOrders = async (req: Request, res: Response): Promise<v
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
       .leftJoin(branches, eq(purchaseOrders.branchId, branches.id))
-      .where(eq(purchaseOrders.tenantId, req.tenantContext!.tenantId));
+      .where(whereCondition);
     res.json(orders);
   } catch {
     res.status(500).json({ error: "Internal server error" });

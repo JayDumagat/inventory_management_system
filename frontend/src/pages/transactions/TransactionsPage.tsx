@@ -83,8 +83,8 @@ export default function TransactionsPage() {
   });
 
   const { data: txList = [], isLoading } = useQuery<Transaction[]>({
-    queryKey: ["transactions", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/transactions`).then((r) => r.data),
+    queryKey: ["transactions", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/transactions`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
     enabled: !!tid,
   });
 

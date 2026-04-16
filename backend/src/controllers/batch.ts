@@ -8,8 +8,12 @@ import { batchSchema } from "../validators/batch";
 
 export const listBatches = async (req: Request, res: Response): Promise<void> => {
   try {
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    const whereCondition = branchId
+      ? and(eq(productBatches.tenantId, req.tenantContext!.tenantId), eq(productBatches.branchId, branchId))
+      : eq(productBatches.tenantId, req.tenantContext!.tenantId);
     const list = await db.query.productBatches.findMany({
-      where: eq(productBatches.tenantId, req.tenantContext!.tenantId),
+      where: whereCondition,
       with: {
         variant: { with: { product: true } },
         branch: true,

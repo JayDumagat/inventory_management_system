@@ -10,8 +10,12 @@ import { appEvents } from "../lib/events";
 
 export async function listOrders(req: Request, res: Response): Promise<void> {
   try {
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    const whereCondition = branchId
+      ? and(eq(salesOrders.tenantId, req.tenantContext!.tenantId), eq(salesOrders.branchId, branchId))
+      : eq(salesOrders.tenantId, req.tenantContext!.tenantId);
     const orders = await db.query.salesOrders.findMany({
-      where: eq(salesOrders.tenantId, req.tenantContext!.tenantId),
+      where: whereCondition,
       with: { items: true, branch: true, refunds: true },
       orderBy: (o, { desc: d }) => [d(o.createdAt)],
     });
