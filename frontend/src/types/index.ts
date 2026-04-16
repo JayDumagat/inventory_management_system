@@ -73,6 +73,15 @@ export interface Product {
   category?: Category;
   unit?: Unit;
   variants: Variant[];
+  images?: ProductImage[];
+}
+
+export interface ProductImage {
+  id: string;
+  objectName: string;
+  url: string;
+  altText?: string;
+  sortOrder: number;
 }
 
 export interface InventoryItem {

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { api } from "../../api/client";
+import { api, API_DOCS_BASE_URL } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -12,7 +12,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import {
-  Code, Plus, Trash2, Eye, EyeOff, Copy, CheckCircle, AlertCircle,
+  Plus, Trash2, Eye, EyeOff, Copy, CheckCircle, AlertCircle,
   Key, BookOpen, Terminal, Webhook,
 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
@@ -81,7 +81,7 @@ export default function APIPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+  const baseUrl = API_DOCS_BASE_URL;
 
   if (isLoading) return (
   <div className="space-y-4">

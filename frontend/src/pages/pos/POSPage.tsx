@@ -11,10 +11,12 @@ import { formatCurrency } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
+import type { ProductImage } from "../../types";
 
 interface Product {
   id: string;
   name: string;
+  images?: ProductImage[];
   variants: { id: string; name: string; sku: string; price: string }[];
 }
 
@@ -45,6 +47,22 @@ interface CustomerResult {
   name: string;
   email?: string;
   phone?: string;
+}
+
+function ProductImageThumbnail({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false);
+  if (!src || error) {
+    return (
+      <div role="img" aria-label="Product image unavailable">
+        <ShoppingCart aria-hidden="true" className="w-6 h-6 text-primary-400" />
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+}
+
+function getPrimaryProductImageUrl(product: Product): string | undefined {
+  return product.images?.[0]?.url;
 }
 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
@@ -202,7 +220,7 @@ export default function POSPage() {
   });
 
   const allVariants = useMemo(
-    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id }))),
+    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id, imageUrl: getPrimaryProductImageUrl(p) }))),
     [products]
   );
 
@@ -374,7 +392,7 @@ export default function POSPage() {
                 className="flex flex-col bg-panel border border-stroke p-3 text-left hover:bg-hover hover:border-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-primary-500"
               >
                 <div className="w-full aspect-square bg-primary-50 border border-primary-100 flex items-center justify-center mb-2">
-                  <ShoppingCart className="w-6 h-6 text-primary-400" />
+                  <ProductImageThumbnail src={v.imageUrl} alt={v.productName} />
                 </div>
                 <p className="text-xs font-semibold text-ink truncate">{v.productName}</p>
                 <p className="text-xs text-muted truncate">{v.name}</p>
