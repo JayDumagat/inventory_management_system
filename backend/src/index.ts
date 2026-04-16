@@ -14,6 +14,7 @@ import { registerRoutes } from "./routes";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isVercel = process.env.VERCEL === "1";
 
 app.use(helmet());
 app.use(cors({
@@ -30,9 +31,10 @@ registerRoutes(app);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 export default app;
-
