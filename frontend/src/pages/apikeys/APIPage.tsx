@@ -12,7 +12,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import {
-  Code, Plus, Trash2, Eye, EyeOff, Copy, CheckCircle, AlertCircle,
+  Plus, Trash2, Eye, EyeOff, Copy, CheckCircle, AlertCircle,
   Key, BookOpen, Terminal, Webhook,
 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
