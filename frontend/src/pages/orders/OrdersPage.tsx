@@ -64,9 +64,9 @@ export default function OrdersPage() {
   const [refundReason, setRefundReason] = useState("");
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
-    queryKey: ["orders", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/sales-orders`).then((r) => r.data),
-    enabled: !!tid,
+    queryKey: ["orders", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/sales-orders`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
+    enabled: !!tid && !!currentBranch?.id,
   });
 
   const { data: products = [] } = useQuery<Product[]>({

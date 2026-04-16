@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
+import { useBranchStore } from "../../stores/branchStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -54,6 +55,7 @@ function isExpired(expiryDate?: string | null): boolean {
 
 export default function BatchesPage() {
   const { currentTenant } = useTenantStore();
+  const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
@@ -65,9 +67,9 @@ export default function BatchesPage() {
   const [selectedProductId, setSelectedProductId] = useState("");
 
   const { data: batches = [], isLoading } = useQuery<Batch[]>({
-    queryKey: ["batches", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/batches`).then((r) => r.data),
-    enabled: !!tid,
+    queryKey: ["batches", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/batches`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
+    enabled: !!tid && !!currentBranch?.id,
   });
 
   const { data: products = [] } = useQuery<Product[]>({

@@ -103,9 +103,9 @@ export default function PurchaseOrdersPage() {
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
   const { data: orders = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ["purchase-orders", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/purchase-orders`).then((r) => r.data),
-    enabled: !!tid,
+    queryKey: ["purchase-orders", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/purchase-orders`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
+    enabled: !!tid && !!currentBranch?.id,
   });
 
   const { data: suppliers = [] } = useQuery<Supplier[]>({
