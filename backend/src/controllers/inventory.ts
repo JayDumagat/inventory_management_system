@@ -11,13 +11,24 @@ import { appEvents } from "../lib/events";
 export async function listInventory(req: Request, res: Response): Promise<void> {
   try {
     const tenantId = req.tenantContext!.tenantId;
-    const cacheKey = `inventory:${tenantId}:list`;
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    if (branchId) {
+      const branch = await db.query.branches.findFirst({
+        where: and(eq(branches.id, branchId), eq(branches.tenantId, tenantId)),
+      });
+      if (!branch) {
+        res.status(404).json({ error: "Branch not found" });
+        return;
+      }
+    }
+    const cacheKey = `inventory:${tenantId}:list:${branchId ?? "all"}`;
     const cached = await cacheGet<unknown[]>(cacheKey);
     if (cached) {
       res.json(cached);
       return;
     }
     const all = await db.query.inventory.findMany({
+      where: branchId ? eq(inventory.branchId, branchId) : undefined,
       with: { variant: { with: { product: true } }, branch: true },
     });
     const filtered = all.filter((item) => item.variant?.product?.tenantId === tenantId);
@@ -182,8 +193,12 @@ export async function setStock(req: Request, res: Response): Promise<void> {
 
 export async function listMovements(req: Request, res: Response): Promise<void> {
   try {
+    const branchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    const whereCondition = branchId
+      ? and(eq(stockMovements.tenantId, req.tenantContext!.tenantId), eq(stockMovements.branchId, branchId))
+      : eq(stockMovements.tenantId, req.tenantContext!.tenantId);
     const movements = await db.select().from(stockMovements)
-      .where(eq(stockMovements.tenantId, req.tenantContext!.tenantId))
+      .where(whereCondition)
       .orderBy(desc(stockMovements.createdAt))
       .limit(100);
     res.json(movements);

@@ -113,14 +113,14 @@ export default function InventoryPage() {
   const [batchSelectedProductId, setBatchSelectedProductId] = useState("");
 
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
-    queryKey: ["inventory", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/inventory`).then((r) => r.data),
+    queryKey: ["inventory", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/inventory`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
     enabled: !!tid,
   });
 
   const { data: movements = [] } = useQuery<Movement[]>({
-    queryKey: ["movements", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/inventory/movements`).then((r) => r.data),
+    queryKey: ["movements", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/inventory/movements`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
     enabled: !!tid && (tab === "movements" || tab === "transfers"),
   });
 
@@ -137,8 +137,8 @@ export default function InventoryPage() {
   });
 
   const { data: batches = [] } = useQuery<Batch[]>({
-    queryKey: ["batches", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/batches`).then((r) => r.data),
+    queryKey: ["batches", tid, currentBranch?.id],
+    queryFn: () => api.get(`/api/tenants/${tid}/batches`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
     enabled: !!tid && tab === "batches",
   });
 
