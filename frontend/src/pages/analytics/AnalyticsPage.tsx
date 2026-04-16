@@ -181,7 +181,12 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]} />
+                <Tooltip
+                  formatter={(value) => {
+                    const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                    return [`$${numericValue.toFixed(2)}`, "Revenue"];
+                  }}
+                />
                 <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#revGrad)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -204,7 +209,12 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
-                  <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]} />
+                  <Tooltip
+                    formatter={(value) => {
+                      const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                      return [`$${numericValue.toFixed(2)}`, "Revenue"];
+                    }}
+                  />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[0, 2, 2, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -236,7 +246,12 @@ export default function AnalyticsPage() {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => [v.toLocaleString(), "Units"]} />
+                  <Tooltip
+                    formatter={(value) => {
+                      const numericValue = Array.isArray(value) ? Number(value[0] ?? 0) : Number(value ?? 0);
+                      return [numericValue.toLocaleString(), "Units"];
+                    }}
+                  />
                   <Legend formatter={(v) => <span className="text-xs text-ink">{v}</span>} />
                 </PieChart>
               </ResponsiveContainer>
