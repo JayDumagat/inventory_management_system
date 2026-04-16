@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { api, API_BASE_URL } from "../../api/client";
+import { api, API_DOCS_BASE_URL } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -81,7 +81,7 @@ export default function APIPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const baseUrl = API_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  const baseUrl = API_DOCS_BASE_URL;
 
   if (isLoading) return (
   <div className="space-y-4">
