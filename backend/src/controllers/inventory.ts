@@ -22,10 +22,7 @@ export async function listInventory(req: Request, res: Response): Promise<void> 
       where: branchId ? eq(inventory.branchId, branchId) : undefined,
       with: { variant: { with: { product: true } }, branch: true },
     });
-    const filtered = all.filter((item) =>
-      item.variant?.product?.tenantId === tenantId &&
-      (!branchId || item.branchId === branchId),
-    );
+    const filtered = all.filter((item) => item.variant?.product?.tenantId === tenantId);
     await cacheSet(cacheKey, filtered, 30);
     res.json(filtered);
   } catch {
