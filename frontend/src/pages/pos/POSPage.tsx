@@ -51,7 +51,13 @@ interface CustomerResult {
 
 function ProductImageThumbnail({ src, alt }: { src?: string; alt: string }) {
   const [error, setError] = useState(false);
-  if (!src || error) return <ShoppingCart aria-label="Product image unavailable" className="w-6 h-6 text-primary-400" />;
+  if (!src || error) {
+    return (
+      <div role="img" aria-label="Product image unavailable">
+        <ShoppingCart aria-hidden="true" className="w-6 h-6 text-primary-400" />
+      </div>
+    );
+  }
   return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
 }
 
