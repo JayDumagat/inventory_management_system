@@ -14,7 +14,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
-import { ShoppingBag, Plus, Eye, Trash2, Pencil, AlertCircle } from "lucide-react";
+import { ShoppingBag, Plus, Eye, Trash2 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
 interface Supplier { id: string; name: string; }
