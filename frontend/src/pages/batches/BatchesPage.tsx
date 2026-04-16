@@ -69,7 +69,7 @@ export default function BatchesPage() {
   const { data: batches = [], isLoading } = useQuery<Batch[]>({
     queryKey: ["batches", tid, currentBranch?.id],
     queryFn: () => api.get(`/api/tenants/${tid}/batches`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
-    enabled: !!tid && !!currentBranch?.id,
+    enabled: !!tid,
   });
 
   const { data: products = [] } = useQuery<Product[]>({

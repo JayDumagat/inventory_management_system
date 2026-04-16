@@ -115,13 +115,13 @@ export default function InventoryPage() {
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["inventory", tid, currentBranch?.id],
     queryFn: () => api.get(`/api/tenants/${tid}/inventory`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
-    enabled: !!tid && !!currentBranch?.id,
+    enabled: !!tid,
   });
 
   const { data: movements = [] } = useQuery<Movement[]>({
     queryKey: ["movements", tid, currentBranch?.id],
     queryFn: () => api.get(`/api/tenants/${tid}/inventory/movements`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
-    enabled: !!tid && !!currentBranch?.id && (tab === "movements" || tab === "transfers"),
+    enabled: !!tid && (tab === "movements" || tab === "transfers"),
   });
 
   const { data: products = [] } = useQuery<Product[]>({
@@ -139,7 +139,7 @@ export default function InventoryPage() {
   const { data: batches = [] } = useQuery<Batch[]>({
     queryKey: ["batches", tid, currentBranch?.id],
     queryFn: () => api.get(`/api/tenants/${tid}/batches`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
-    enabled: !!tid && !!currentBranch?.id && tab === "batches",
+    enabled: !!tid && tab === "batches",
   });
 
   const form = useForm<AdjustForm>({ resolver: zodResolver(adjustSchema), defaultValues: { type: "in" } });

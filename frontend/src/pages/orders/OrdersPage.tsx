@@ -66,7 +66,7 @@ export default function OrdersPage() {
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["orders", tid, currentBranch?.id],
     queryFn: () => api.get(`/api/tenants/${tid}/sales-orders`, { params: { branchId: currentBranch?.id } }).then((r) => r.data),
-    enabled: !!tid && !!currentBranch?.id,
+    enabled: !!tid,
   });
 
   const { data: products = [] } = useQuery<Product[]>({
