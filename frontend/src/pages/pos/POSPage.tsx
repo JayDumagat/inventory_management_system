@@ -51,8 +51,12 @@ interface CustomerResult {
 
 function ProductImageThumbnail({ src, alt }: { src?: string; alt: string }) {
   const [error, setError] = useState(false);
-  if (!src || error) return <ShoppingCart className="w-6 h-6 text-primary-400" />;
+  if (!src || error) return <ShoppingCart aria-label="Product image unavailable" className="w-6 h-6 text-primary-400" />;
   return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+}
+
+function getPrimaryProductImageUrl(product: Product): string | undefined {
+  return product.images?.[0]?.url;
 }
 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
@@ -210,7 +214,7 @@ export default function POSPage() {
   });
 
   const allVariants = useMemo(
-    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id, imageUrl: p.images?.[0]?.url }))),
+    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id, imageUrl: getPrimaryProductImageUrl(p) }))),
     [products]
   );
 
