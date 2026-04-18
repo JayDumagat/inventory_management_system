@@ -85,7 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pageLabel = navItems.find((n) => n.href === location.pathname)?.label ?? currentTenant?.name;
   const myRole = currentTenant?.role || "staff";
   const tenantLogoUrl = (currentTenant as { logoUrl?: string })?.logoUrl;
-  const allowedPages = (currentTenant as { allowedPages?: string[] })?.allowedPages;
+  const allowedPages = currentTenant?.allowedPages;
 
   const visibleNavItems = useMemo(() => navItems.filter((item) => {
     if (item.roles && !item.roles.includes(myRole)) return false;

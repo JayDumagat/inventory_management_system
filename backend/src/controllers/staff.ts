@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import argon2 from "argon2";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users, tenantUsers, branches, branchStaff } from "../db/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -62,6 +63,8 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
     const body = inviteStaffSchema.parse(req.body);
 
     let [user] = await db.select().from(users).where(eq(users.email, body.email));
+    let inviteToken: string | undefined;
+    const isNewUser = !user;
     if (!user) {
       const tempHash = await argon2.hash(crypto.randomBytes(32).toString("hex"));
       [user] = await db.insert(users).values({
@@ -97,6 +100,15 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
       role: body.role,
     }).returning();
 
+    // Generate an invite token for newly-created users so they can complete registration
+    if (isNewUser) {
+      inviteToken = jwt.sign(
+        { userId: user.id, tenantId, type: "staff-invite" },
+        process.env.JWT_SECRET!,
+        { expiresIn: "7d" },
+      );
+    }
+
     await createAuditLog({
       tenantId,
       userId: req.user!.id,
@@ -106,7 +118,7 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
       newValues: { email: body.email, role: body.role },
     });
 
-    res.status(201).json({ ...tenantUser, email: user.email, firstName: user.firstName, lastName: user.lastName });
+    res.status(201).json({ ...tenantUser, email: user.email, firstName: user.firstName, lastName: user.lastName, inviteToken });
   } catch (error) {
     handleControllerError(error, res);
   }

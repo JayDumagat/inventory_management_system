@@ -7,6 +7,7 @@ interface Tenant {
   slug: string;
   description?: string;
   role: string;
+  allowedPages?: string[] | null;
 }
 
 interface TenantState {

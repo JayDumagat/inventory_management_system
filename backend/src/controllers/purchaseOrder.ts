@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { purchaseOrders, purchaseOrderItems, suppliers, branches } from "../db/schema";
+import { purchaseOrders, purchaseOrderItems, suppliers, branches, transactions } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -127,6 +127,18 @@ export const createPurchaseOrder = async (req: Request, res: Response): Promise<
 export const updatePurchaseOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = updatePurchaseOrderSchema.parse(req.body);
+
+    // Fetch existing order before update to know previous status and amount
+    const [existing] = await db
+      .select()
+      .from(purchaseOrders)
+      .where(and(eq(purchaseOrders.id, req.params.orderId as string), eq(purchaseOrders.tenantId, req.tenantContext!.tenantId)));
+
+    if (!existing) {
+      res.status(404).json({ error: "Purchase order not found" });
+      return;
+    }
+
     const updateData: Record<string, unknown> = { ...body, updatedAt: new Date() };
     if (body.status === "received") updateData.receivedAt = new Date();
 
@@ -140,6 +152,21 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
       res.status(404).json({ error: "Purchase order not found" });
       return;
     }
+
+    // Auto-record a purchase transaction when the order is first marked as received
+    if (body.status === "received" && existing.status !== "received") {
+      await db.insert(transactions).values({
+        tenantId: req.tenantContext!.tenantId,
+        branchId: existing.branchId,
+        type: "purchase",
+        amount: existing.totalAmount,
+        description: `Purchase — PO ${existing.orderNumber}`,
+        referenceType: "purchase_order",
+        referenceId: existing.id,
+        createdBy: req.user!.id,
+      });
+    }
+
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "purchase_order", resourceId: order.id });
     res.json(order);
   } catch (error) {

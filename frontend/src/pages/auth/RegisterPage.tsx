@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
+import { useTenantStore } from "../../stores/tenantStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useState, useEffect, useRef } from "react";
@@ -28,6 +29,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const register = useAuthStore((s) => s.register);
   const setAuthData = useAuthStore((s) => s.setTokens);
+  const setCurrentTenant = useTenantStore((s) => s.setCurrentTenant);
   const [error, setError] = useState("");
   const [oauthLoading, setOauthLoading] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -36,11 +38,21 @@ export default function RegisterPage() {
     resolver: zodResolver(schema),
   });
 
+  const redirectAfterRegister = async () => {
+    const { data: tenantList } = await api.get("/api/tenants");
+    if (tenantList.length > 0) {
+      setCurrentTenant(tenantList[0]);
+      navigate("/dashboard");
+    } else {
+      navigate("/setup");
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     try {
       setError("");
       await register(data.email, data.password, data.confirmPassword, data.firstName, data.lastName);
-      navigate("/setup");
+      await redirectAfterRegister();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Registration failed";
       setError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || msg);
@@ -56,7 +68,7 @@ export default function RegisterPage() {
       localStorage.setItem("refreshToken", data.refreshToken);
       setAuthData(data.accessToken, data.refreshToken);
       useAuthStore.setState({ user: data.user, isAuthenticated: true });
-      navigate("/setup");
+      await redirectAfterRegister();
     } catch (e: unknown) {
       setError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Google sign-up failed");
     } finally {

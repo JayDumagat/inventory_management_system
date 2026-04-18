@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { salesOrders, salesOrderItems, inventory, productVariants, products, branches, categories } from "../db/schema";
-import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, notInArray } from "drizzle-orm";
 import { parseDate } from "../utils/helpers";
 
 export const salesReport = async (req: Request, res: Response): Promise<void> => {
@@ -21,7 +21,8 @@ export const salesReport = async (req: Request, res: Response): Promise<void> =>
         and(
           eq(salesOrders.tenantId, tenantId),
           gte(salesOrders.createdAt, from),
-          lte(salesOrders.createdAt, to)
+          lte(salesOrders.createdAt, to),
+          notInArray(salesOrders.status, ["draft", "cancelled", "refunded"])
         )
       )
       .groupBy(sql`to_char(${salesOrders.createdAt}, 'YYYY-MM-DD')`)
@@ -38,7 +39,8 @@ export const salesReport = async (req: Request, res: Response): Promise<void> =>
         and(
           eq(salesOrders.tenantId, tenantId),
           gte(salesOrders.createdAt, from),
-          lte(salesOrders.createdAt, to)
+          lte(salesOrders.createdAt, to),
+          notInArray(salesOrders.status, ["draft", "cancelled", "refunded"])
         )
       );
 
@@ -146,7 +148,8 @@ export const productsReport = async (req: Request, res: Response): Promise<void>
         and(
           eq(salesOrders.tenantId, tenantId),
           gte(salesOrders.createdAt, from),
-          lte(salesOrders.createdAt, to)
+          lte(salesOrders.createdAt, to),
+          notInArray(salesOrders.status, ["draft", "cancelled", "refunded"])
         )
       )
       .groupBy(products.id, products.name, productVariants.name, productVariants.sku)

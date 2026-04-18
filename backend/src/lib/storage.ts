@@ -93,6 +93,12 @@ export async function deleteFile(
 }
 
 export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): string {
+  const publicBase = process.env.MINIO_PUBLIC_BASE_URL;
+  if (publicBase) {
+    // Use the configured public base (e.g. "/storage" served via nginx proxy, or "https://cdn.example.com")
+    const base = publicBase.endsWith("/") ? publicBase.slice(0, -1) : publicBase;
+    return `${base}/${bucket}/${objectName}`;
+  }
   const endpoint = process.env.MINIO_ENDPOINT || "localhost";
   const port = process.env.MINIO_PORT || "9000";
   const protocol = process.env.MINIO_USE_SSL === "true" ? "https" : "http";

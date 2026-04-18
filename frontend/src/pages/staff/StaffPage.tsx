@@ -88,6 +88,8 @@ export default function StaffPage() {
   const [editError, setEditError] = useState("");
   const [permissionsMember, setPermissionsMember] = useState<StaffMember | null>(null);
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
 
   const { data: staff = [], isLoading } = useQuery<StaffMember[]>({
     queryKey: ["staff", tid],
@@ -109,11 +111,16 @@ export default function StaffPage() {
   const invite = useMutation({
     mutationFn: (data: InviteForm) =>
       api.post(`/api/tenants/${tid}/staff`, data).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (data: { inviteToken?: string }) => {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setInviteOpen(false);
       inviteForm.reset({ role: "staff" });
-      toast.success("Staff member invited");
+      if (data.inviteToken) {
+        setInviteLink(`${window.location.origin}/accept-invite?token=${data.inviteToken}`);
+        setInviteLinkOpen(true);
+      } else {
+        toast.success("Staff member invited");
+      }
     },
     onError: () => toast.error("Failed to invite staff member"),
   });
@@ -163,6 +170,11 @@ export default function StaffPage() {
   const canManage = ["owner", "admin"].includes(myRole);
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
   const toast = useToast();
+
+  const handleCloseInviteLink = () => {
+    setInviteLinkOpen(false);
+    setInviteLink(null);
+  };
 
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
@@ -475,6 +487,33 @@ export default function StaffPage() {
               </Button>
             </div>
           </div>
+        </div>
+      </Modal>
+
+      {/* Invite link modal for new (pre-registered) staff members */}
+      <Modal open={inviteLinkOpen} onClose={handleCloseInviteLink} title="Staff invited">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted">
+            Share this invite link with the staff member so they can set their password and join the organization.
+          </p>
+          <div className="flex items-center gap-2 p-3 bg-page border border-stroke">
+            <span className="flex-1 text-xs text-ink break-all font-mono">{inviteLink}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (inviteLink) {
+                  navigator.clipboard.writeText(inviteLink)
+                    .then(() => toast.success("Copied!"))
+                    .catch(() => toast.error("Failed to copy. Please copy the link manually."));
+                }
+              }}
+            >
+              Copy
+            </Button>
+          </div>
+          <p className="text-xs text-muted">This link expires in 7 days.</p>
+          <Button onClick={handleCloseInviteLink}>Done</Button>
         </div>
       </Modal>
     </div>
