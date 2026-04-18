@@ -5,6 +5,11 @@ import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
+import { getPublicUrl } from "../lib/storage";
+
+function toPublicImageUrl<T extends { objectName: string }>(image: T): T & { url: string } {
+  return { ...image, url: getPublicUrl(image.objectName) };
+}
 
 export async function listProducts(req: Request, res: Response): Promise<void> {
   try {
@@ -12,7 +17,10 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
       where: eq(products.tenantId, req.tenantContext!.tenantId),
       with: { variants: true, category: true, images: true },
     });
-    res.json(list);
+    res.json(list.map((product) => ({
+      ...product,
+      images: product.images?.map(toPublicImageUrl),
+    })));
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -39,7 +47,10 @@ export async function getProduct(req: Request, res: Response): Promise<void> {
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    res.json(product);
+    res.json({
+      ...product,
+      images: product.images?.map(toPublicImageUrl),
+    });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -306,7 +317,7 @@ export async function listProductImages(req: Request, res: Response): Promise<vo
     const images = await db.select().from(productImages)
       .where(eq(productImages.productId, req.params.productId as string))
       .orderBy(productImages.sortOrder);
-    res.json(images);
+    res.json(images.map(toPublicImageUrl));
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -319,17 +330,18 @@ export async function addProductImage(req: Request, res: Response): Promise<void
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    const { objectName, url, altText, sortOrder } = req.body as {
-      objectName?: string; url?: string; altText?: string; sortOrder?: number;
+    const { objectName, altText, sortOrder } = req.body as {
+      objectName?: string; altText?: string; sortOrder?: number;
     };
-    if (!objectName || !url) {
-      res.status(400).json({ error: "objectName and url are required" });
+    if (!objectName) {
+      res.status(400).json({ error: "objectName is required" });
       return;
     }
+    const derivedUrl = getPublicUrl(objectName);
     const [image] = await db.insert(productImages).values({
       productId: req.params.productId as string,
       objectName,
-      url,
+      url: derivedUrl,
       altText: altText || null,
       sortOrder: sortOrder ?? 0,
     }).returning();
