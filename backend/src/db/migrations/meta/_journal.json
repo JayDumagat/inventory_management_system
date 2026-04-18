@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775742269811,
-      "tag": "0000_melted_amazoness",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775900000000,
-      "tag": "0001_new_pages_tables",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1775995012740,
-      "tag": "0002_amused_ulik",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1775999151846,
-      "tag": "0003_keen_midnight",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1776267551897,
-      "tag": "0004_clumsy_harry_osborn",
+      "when": 1776485618444,
+      "tag": "0000_slippery_banshee",
       "breakpoints": true
     }
   ]
