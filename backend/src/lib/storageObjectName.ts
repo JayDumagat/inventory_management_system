@@ -11,10 +11,12 @@ const MIME_TO_EXTENSION: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
 };
 
+const MAX_EXTENSION_LENGTH = 10;
+
 function sanitizeExtension(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const ext = value.trim().toLowerCase().replace(/^\.+/, "");
-  if (!/^[a-z0-9]{1,10}$/.test(ext)) return undefined;
+  if (!new RegExp(`^[a-z0-9]{1,${MAX_EXTENSION_LENGTH}}$`).test(ext)) return undefined;
   return ext;
 }
 
@@ -34,14 +36,21 @@ export function buildTenantObjectName(tenantId: string, filename: string, mimeTy
   return `${tenantId}-${uuidv4()}.${ext}`;
 }
 
-export function isTenantOwnedObjectName(objectName: string, tenantId: string): boolean {
+export function isTenantOwnedObjectName(objectName: unknown, tenantId: unknown): boolean {
+  if (typeof objectName !== "string" || typeof tenantId !== "string") {
+    return false;
+  }
+
   const firstSlash = objectName.indexOf("/");
   if (firstSlash > 0) {
     return objectName.slice(0, firstSlash) === tenantId;
   }
 
   const flatMatch = objectName.match(
-    /^(.+)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([a-z0-9]{1,10})$/i
+    new RegExp(
+      `^(.+)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\\.([a-z0-9]{1,${MAX_EXTENSION_LENGTH}})$`,
+      "i"
+    )
   );
   if (!flatMatch) return false;
   return flatMatch[1] === tenantId;
