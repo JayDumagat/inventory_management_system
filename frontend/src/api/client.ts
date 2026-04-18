@@ -18,6 +18,11 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const tenantId = localStorage.getItem("currentTenantId");
   if (tenantId) config.headers["x-tenant-id"] = tenantId;
+  if (config.data instanceof FormData) {
+    const headers = axios.AxiosHeaders.from(config.headers);
+    headers.delete("Content-Type");
+    config.headers = headers;
+  }
   return config;
 });
 
