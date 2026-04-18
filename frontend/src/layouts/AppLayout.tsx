@@ -250,7 +250,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="w-4 h-4" />
           </button>
 
-          <span className="text-sm font-bold text-ink">{pageLabel}</span>
+          <span className="text-sm font-bold text-ink truncate max-w-[45vw] sm:max-w-none">{pageLabel}</span>
 
           <div className="flex-1" />
 
@@ -363,7 +363,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
-        <main className="flex-1 p-5 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-3 sm:p-5 overflow-y-auto">{children}</main>
       </div>
 
       <PreferencesModal open={prefsOpen} onClose={() => setPrefsOpen(false)} />
