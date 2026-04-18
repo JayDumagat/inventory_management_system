@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { uploadFile, getPresignedUrl, deleteFile, getPublicUrl } from "../lib/storage";
-import { v4 as uuidv4 } from "uuid";
 import { ALLOWED_MIME_TYPES, MAX_SIZE_BYTES } from "../validators/upload";
+import { buildTenantObjectName, isTenantOwnedObjectName } from "../lib/storageObjectName";
 
 export const uploadFileHandler = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -27,8 +27,7 @@ export const uploadFileHandler = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const ext = filename.split(".").pop() ?? "bin";
-    const objectName = `${req.tenantContext!.tenantId}/${uuidv4()}.${ext}`;
+    const objectName = buildTenantObjectName(req.tenantContext!.tenantId, filename, mimeType);
 
     const result = await uploadFile(objectName, buffer, mimeType);
     if (!result) {
@@ -51,7 +50,7 @@ export const getPresignedUrlHandler = async (req: Request, res: Response): Promi
       return;
     }
 
-    if (!objectName.startsWith(`${req.tenantContext!.tenantId}/`)) {
+    if (!isTenantOwnedObjectName(objectName, req.tenantContext!.tenantId)) {
       res.status(403).json({ error: "Access denied" });
       return;
     }
@@ -76,7 +75,7 @@ export const deleteFileHandler = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    if (!objectName.startsWith(`${req.tenantContext!.tenantId}/`)) {
+    if (!isTenantOwnedObjectName(objectName, req.tenantContext!.tenantId)) {
       res.status(403).json({ error: "Access denied" });
       return;
     }

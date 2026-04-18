@@ -6,6 +6,7 @@ import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
 import { getPublicUrl } from "../lib/storage";
+import { isTenantOwnedObjectName } from "../lib/storageObjectName";
 
 function toPublicImageUrl<T extends { objectName: string }>(image: T): T & { url: string } {
   return { ...image, url: getPublicUrl(image.objectName) };
@@ -335,6 +336,10 @@ export async function addProductImage(req: Request, res: Response): Promise<void
     };
     if (!objectName) {
       res.status(400).json({ error: "objectName is required" });
+      return;
+    }
+    if (!isTenantOwnedObjectName(objectName, req.tenantContext!.tenantId)) {
+      res.status(403).json({ error: "Access denied" });
       return;
     }
     const derivedUrl = getPublicUrl(objectName);
