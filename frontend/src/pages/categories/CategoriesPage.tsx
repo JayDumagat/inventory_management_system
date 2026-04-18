@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,20 +91,24 @@ export default function CategoriesPage() {
     [categories, search]
   );
 
-  const pagedFiltered = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page]
+  const topLevelAll = useMemo(() => filtered.filter((c) => !c.parentId), [filtered]);
+  const totalPages = Math.max(1, Math.ceil(topLevelAll.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const topLevel = useMemo(
+    () => topLevelAll.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [topLevelAll, currentPage]
   );
-  const topLevel = pagedFiltered.filter((c) => !c.parentId);
-  const subCategories = pagedFiltered.filter((c) => !!c.parentId);
+  const visibleTopIds = useMemo(() => new Set(topLevel.map((c) => c.id)), [topLevel]);
+  const subCategories = useMemo(
+    () => filtered.filter((c) => !!c.parentId && visibleTopIds.has(c.parentId)),
+    [filtered, visibleTopIds]
+  );
+  const mobileCategories = useMemo(
+    () => topLevel.flatMap((top) => [top, ...subCategories.filter((s) => s.parentId === top.id)]),
+    [topLevel, subCategories]
+  );
   const topCount = categories.filter((c) => !c.parentId).length;
   const subCount = categories.filter((c) => !!c.parentId).length;
-
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    if (page > totalPages) setPage(totalPages);
-  }, [filtered.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
   <div className="space-y-4">
@@ -180,7 +184,7 @@ export default function CategoriesPage() {
             type="text"
             placeholder="Search categories…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
           />
         </div>
@@ -276,7 +280,7 @@ export default function CategoriesPage() {
 
           {/* Mobile card list */}
           <div className="sm:hidden divide-y divide-stroke">
-            {pagedFiltered.map((c) => {
+            {mobileCategories.map((c) => {
               const parent = c.parentId ? categories.find((p) => p.id === c.parentId) : null;
               const isTop = !c.parentId;
               return (
@@ -313,11 +317,11 @@ export default function CategoriesPage() {
       )}
       {filtered.length > 0 && (
         <Pagination
-          totalItems={filtered.length}
-          page={page}
+          totalItems={topLevelAll.length}
+          page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
-          itemLabel="categories"
+          itemLabel="top-level categories"
         />
       )}
 

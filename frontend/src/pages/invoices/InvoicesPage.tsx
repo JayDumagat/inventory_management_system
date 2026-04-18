@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
@@ -159,6 +159,22 @@ export default function InvoicesPage() {
     });
   }
 
+  const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
+  const filteredInvoices = useMemo(
+    () => invoices.filter((inv) =>
+      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.customerName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (inv.customerEmail ?? "").toLowerCase().includes(search.toLowerCase())
+    ),
+    [invoices, search]
+  );
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedInvoices = useMemo(
+    () => filteredInvoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredInvoices, currentPage]
+  );
+
   if (isLoading) return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -170,25 +186,6 @@ export default function InvoicesPage() {
     </div>
   </div>
 );
-
-  const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
-  const filteredInvoices = useMemo(
-    () => invoices.filter((inv) =>
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (inv.customerName ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (inv.customerEmail ?? "").toLowerCase().includes(search.toLowerCase())
-    ),
-    [invoices, search]
-  );
-  const pagedInvoices = useMemo(
-    () => filteredInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filteredInvoices, page]
-  );
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
-    if (page > totalPages) setPage(totalPages);
-  }, [filteredInvoices.length, page, PAGE_SIZE]);
 
   return (
     <div className="space-y-5">
@@ -208,7 +205,7 @@ export default function InvoicesPage() {
             type="text"
             placeholder="Search invoices by number, customer, or email…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
           />
         </div>
@@ -331,7 +328,7 @@ export default function InvoicesPage() {
       {filteredInvoices.length > 0 && (
         <Pagination
           totalItems={filteredInvoices.length}
-          page={page}
+          page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
           itemLabel="invoices"

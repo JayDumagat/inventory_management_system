@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -168,14 +168,12 @@ export default function OrdersPage() {
     refunded: [],
   };
 
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
   const pagedOrders = useMemo(
-    () => orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [orders, page]
+    () => orders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [orders, currentPage]
   );
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
-    if (page > totalPages) setPage(totalPages);
-  }, [orders.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -221,6 +219,7 @@ export default function OrdersPage() {
             </div>
           </CardContent>
         ) : (
+          <>
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -310,12 +309,13 @@ export default function OrdersPage() {
               </div>
             ))}
           </div>
+          </>
         )}
       </Card>
       {orders.length > 0 && (
         <Pagination
           totalItems={orders.length}
-          page={page}
+          page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
           itemLabel="orders"

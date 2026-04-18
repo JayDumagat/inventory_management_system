@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -263,39 +263,30 @@ export default function InventoryPage() {
 
   const allVariants = products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name })));
   const transferMovements = movements.filter((m) => m.type === "transfer");
+  const stockTotalPages = Math.max(1, Math.ceil(inventory.length / PAGE_SIZE));
+  const movementTotalPages = Math.max(1, Math.ceil(movements.length / PAGE_SIZE));
+  const batchTotalPages = Math.max(1, Math.ceil(batches.length / PAGE_SIZE));
+  const transferTotalPages = Math.max(1, Math.ceil(transferMovements.length / PAGE_SIZE));
+  const currentStockPage = Math.min(stockPage, stockTotalPages);
+  const currentMovementPage = Math.min(movementPage, movementTotalPages);
+  const currentBatchPage = Math.min(batchPage, batchTotalPages);
+  const currentTransferPage = Math.min(transferPage, transferTotalPages);
   const pagedInventory = useMemo(
-    () => inventory.slice((stockPage - 1) * PAGE_SIZE, stockPage * PAGE_SIZE),
-    [inventory, stockPage]
+    () => inventory.slice((currentStockPage - 1) * PAGE_SIZE, currentStockPage * PAGE_SIZE),
+    [inventory, currentStockPage]
   );
   const pagedMovements = useMemo(
-    () => movements.slice((movementPage - 1) * PAGE_SIZE, movementPage * PAGE_SIZE),
-    [movements, movementPage]
+    () => movements.slice((currentMovementPage - 1) * PAGE_SIZE, currentMovementPage * PAGE_SIZE),
+    [movements, currentMovementPage]
   );
   const pagedBatches = useMemo(
-    () => batches.slice((batchPage - 1) * PAGE_SIZE, batchPage * PAGE_SIZE),
-    [batches, batchPage]
+    () => batches.slice((currentBatchPage - 1) * PAGE_SIZE, currentBatchPage * PAGE_SIZE),
+    [batches, currentBatchPage]
   );
   const pagedTransferMovements = useMemo(
-    () => transferMovements.slice((transferPage - 1) * PAGE_SIZE, transferPage * PAGE_SIZE),
-    [transferMovements, transferPage]
+    () => transferMovements.slice((currentTransferPage - 1) * PAGE_SIZE, currentTransferPage * PAGE_SIZE),
+    [transferMovements, currentTransferPage]
   );
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(inventory.length / PAGE_SIZE));
-    if (stockPage > totalPages) setStockPage(totalPages);
-  }, [inventory.length, stockPage, PAGE_SIZE]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(movements.length / PAGE_SIZE));
-    if (movementPage > totalPages) setMovementPage(totalPages);
-  }, [movements.length, movementPage, PAGE_SIZE]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(batches.length / PAGE_SIZE));
-    if (batchPage > totalPages) setBatchPage(totalPages);
-  }, [batches.length, batchPage, PAGE_SIZE]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(transferMovements.length / PAGE_SIZE));
-    if (transferPage > totalPages) setTransferPage(totalPages);
-  }, [transferMovements.length, transferPage, PAGE_SIZE]);
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -414,7 +405,7 @@ export default function InventoryPage() {
       {tab === "stock" && inventory.length > 0 && (
         <Pagination
           totalItems={inventory.length}
-          page={stockPage}
+          page={currentStockPage}
           pageSize={PAGE_SIZE}
           onPageChange={setStockPage}
           itemLabel="stock records"
@@ -470,7 +461,7 @@ export default function InventoryPage() {
       {tab === "movements" && movements.length > 0 && (
         <Pagination
           totalItems={movements.length}
-          page={movementPage}
+          page={currentMovementPage}
           pageSize={PAGE_SIZE}
           onPageChange={setMovementPage}
           itemLabel="movements"
@@ -566,7 +557,7 @@ export default function InventoryPage() {
       {tab === "batches" && batches.length > 0 && (
         <Pagination
           totalItems={batches.length}
-          page={batchPage}
+          page={currentBatchPage}
           pageSize={PAGE_SIZE}
           onPageChange={setBatchPage}
           itemLabel="batches"
@@ -622,7 +613,7 @@ export default function InventoryPage() {
       {tab === "transfers" && transferMovements.length > 0 && (
         <Pagination
           totalItems={transferMovements.length}
-          page={transferPage}
+          page={currentTransferPage}
           pageSize={PAGE_SIZE}
           onPageChange={setTransferPage}
           itemLabel="transfers"

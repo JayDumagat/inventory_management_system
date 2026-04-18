@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -413,15 +413,12 @@ export default function ProductsPage() {
     ),
     [products, search]
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
   const pagedFiltered = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page]
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
   );
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    if (page > totalPages) setPage(totalPages);
-  }, [filtered.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -478,7 +475,7 @@ export default function ProductsPage() {
             type="text"
             placeholder="Search by name, description or category…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
           />
         </div>
@@ -651,7 +648,7 @@ export default function ProductsPage() {
       {filtered.length > 0 && (
         <Pagination
           totalItems={filtered.length}
-          page={page}
+          page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
           itemLabel="products"
