@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../api/client";
 import { useTenantStore } from "../stores/tenantStore";
 import { getCachedPresignedUrl, setCachedPresignedUrl } from "../lib/presignedUrls";
+import { resolveImageUrl } from "../lib/utils";
 
 /**
  * Fetch and cache a presigned MinIO GET URL for the given storage object name.
@@ -40,8 +41,8 @@ export function usePresignedUrl(objectName: string | undefined | null) {
       })
       .then((r) => {
         if (cancelled) return;
-        const presignedUrl = r.data.url as string;
-        setCachedPresignedUrl(cacheKey, presignedUrl);
+        const presignedUrl = resolveImageUrl(r.data.url as string) ?? null;
+        setCachedPresignedUrl(cacheKey, presignedUrl ?? "");
         setUrl(presignedUrl);
       })
       .catch(() => {
@@ -63,8 +64,8 @@ export function usePresignedUrl(objectName: string | undefined | null) {
       const r = await api.get(`/api/tenants/${tenantId}/uploads/presign`, {
         params: { object: objectName },
       });
-      const fresh = r.data.url as string;
-      setCachedPresignedUrl(cacheKey, fresh);
+      const fresh = resolveImageUrl(r.data.url as string) ?? null;
+      setCachedPresignedUrl(cacheKey, fresh ?? "");
       setUrl(fresh);
       return fresh;
     } catch {
