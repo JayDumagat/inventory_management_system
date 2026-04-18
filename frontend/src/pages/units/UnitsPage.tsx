@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,8 +9,9 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { Plus, Pencil, Trash2, Ruler } from "lucide-react";
+import { Plus, Pencil, Trash2, Ruler, Search, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
 interface Unit { id: string; name: string; abbreviation: string; createdAt: string; }
@@ -22,6 +23,7 @@ const unitSchema = z.object({
 type UnitForm = z.infer<typeof unitSchema>;
 
 export default function UnitsPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
@@ -31,6 +33,8 @@ export default function UnitsPage() {
 
   const [modal, setModal] = useState<{ open: boolean; unit?: Unit }>({ open: false });
   const [pendingDelete, setPendingDelete] = useState<Unit | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const { data: units = [], isLoading } = useQuery<Unit[]>({
     queryKey: ["units", tid],
@@ -74,6 +78,20 @@ export default function UnitsPage() {
     form.reset({ name: "", abbreviation: "" });
   };
 
+  const filtered = useMemo(
+    () => units.filter((u) =>
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.abbreviation.toLowerCase().includes(search.toLowerCase())
+    ),
+    [units, search]
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedFiltered = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
   if (isLoading) return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -88,13 +106,13 @@ export default function UnitsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Units of Measurement</h1>
           <p className="text-muted text-sm mt-1">Define units used across products (e.g. kg, pcs, litre)</p>
         </div>
         {canManage && (
-          <Button onClick={openCreate} className="gap-2">
+          <Button onClick={openCreate} className="gap-2 self-start sm:self-auto">
             <Plus className="w-4 h-4" /> Add unit
           </Button>
         )}
@@ -113,7 +131,26 @@ export default function UnitsPage() {
             </div>
           </CardContent>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-3 sm:p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search units by name or abbreviation…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
+              />
+            </div>
+            {filtered.length === 0 ? (
+              <div className="py-10 text-center">
+                <AlertCircle className="w-8 h-8 text-muted mx-auto mb-2" />
+                <p className="text-sm font-medium text-ink mb-1">No results found</p>
+                <p className="text-sm text-muted">No units match &ldquo;{search}&rdquo;</p>
+              </div>
+            ) : (
+              <>
+                <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stroke text-left">
@@ -123,7 +160,7 @@ export default function UnitsPage() {
                 </tr>
               </thead>
               <tbody>
-                {units.map((u) => (
+                {pagedFiltered.map((u) => (
                   <tr key={u.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-6 py-3 font-medium text-ink">{u.name}</td>
                     <td className="px-6 py-3 text-muted font-mono">{u.abbreviation}</td>
@@ -143,6 +180,36 @@ export default function UnitsPage() {
                 ))}
               </tbody>
             </table>
+                </div>
+                <div className="md:hidden divide-y divide-stroke border border-stroke">
+                  {pagedFiltered.map((u) => (
+                    <div key={u.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-ink">{u.name}</p>
+                        <p className="text-xs text-muted font-mono mt-0.5">{u.abbreviation}</p>
+                      </div>
+                      {canManage && (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setPendingDelete(u)}>
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Pagination
+                  totalItems={filtered.length}
+                  page={currentPage}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  itemLabel="units"
+                />
+              </>
+            )}
           </div>
         )}
       </Card>

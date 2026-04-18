@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import { Users, Plus, Pencil, Trash2, Search, AlertCircle, Mail, Phone, MapPin } from "lucide-react";
@@ -41,6 +42,7 @@ const schema = z.object({
 type CustomerForm = z.infer<typeof schema>;
 
 export default function CustomersPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
@@ -49,6 +51,7 @@ export default function CustomersPage() {
   const [modal, setModal] = useState<{ open: boolean; customer?: Customer }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<Customer | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
+  const [page, setPage] = useState(1);
 
   const form = useForm<CustomerForm>({ resolver: zodResolver(schema) });
   const toast = useToast();
@@ -117,6 +120,13 @@ export default function CustomersPage() {
     [customers, search]
   );
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedFiltered = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
   if (isLoading) return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -151,7 +161,7 @@ export default function CustomersPage() {
             type="text"
             placeholder="Search customers by name, email, phone or city…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
           />
         </div>
@@ -216,7 +226,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c) => (
+                {pagedFiltered.map((c) => (
                   <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -275,7 +285,7 @@ export default function CustomersPage() {
 
           {/* Mobile cards */}
           <div className="md:hidden bg-panel border border-stroke divide-y divide-stroke">
-            {filtered.map((c) => (
+            {pagedFiltered.map((c) => (
               <div key={c.id} className="px-4 py-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 bg-primary-50 border border-primary-200 flex items-center justify-center text-primary-700 font-bold text-sm flex-shrink-0 mt-0.5">
@@ -310,6 +320,15 @@ export default function CustomersPage() {
             ))}
           </div>
         </>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          totalItems={filtered.length}
+          page={currentPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="customers"
+        />
       )}
 
       {/* Add / Edit modal */}

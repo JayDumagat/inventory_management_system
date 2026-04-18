@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { formatDateTime, formatDate } from "../../lib/utils";
@@ -88,6 +89,7 @@ function isExpired(expiryDate?: string | null): boolean {
 }
 
 export default function InventoryPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
@@ -111,6 +113,10 @@ export default function InventoryPage() {
   const [batchModal, setBatchModal] = useState<{ open: boolean; batch?: Batch }>({ open: false });
   const [pendingDeleteBatch, setPendingDeleteBatch] = useState<Batch | null>(null);
   const [batchSelectedProductId, setBatchSelectedProductId] = useState("");
+  const [stockPage, setStockPage] = useState(1);
+  const [movementPage, setMovementPage] = useState(1);
+  const [batchPage, setBatchPage] = useState(1);
+  const [transferPage, setTransferPage] = useState(1);
 
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["inventory", tid, currentBranch?.id],
@@ -257,6 +263,30 @@ export default function InventoryPage() {
 
   const allVariants = products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name })));
   const transferMovements = movements.filter((m) => m.type === "transfer");
+  const stockTotalPages = Math.max(1, Math.ceil(inventory.length / PAGE_SIZE));
+  const movementTotalPages = Math.max(1, Math.ceil(movements.length / PAGE_SIZE));
+  const batchTotalPages = Math.max(1, Math.ceil(batches.length / PAGE_SIZE));
+  const transferTotalPages = Math.max(1, Math.ceil(transferMovements.length / PAGE_SIZE));
+  const currentStockPage = Math.min(stockPage, stockTotalPages);
+  const currentMovementPage = Math.min(movementPage, movementTotalPages);
+  const currentBatchPage = Math.min(batchPage, batchTotalPages);
+  const currentTransferPage = Math.min(transferPage, transferTotalPages);
+  const pagedInventory = useMemo(
+    () => inventory.slice((currentStockPage - 1) * PAGE_SIZE, currentStockPage * PAGE_SIZE),
+    [inventory, currentStockPage]
+  );
+  const pagedMovements = useMemo(
+    () => movements.slice((currentMovementPage - 1) * PAGE_SIZE, currentMovementPage * PAGE_SIZE),
+    [movements, currentMovementPage]
+  );
+  const pagedBatches = useMemo(
+    () => batches.slice((currentBatchPage - 1) * PAGE_SIZE, currentBatchPage * PAGE_SIZE),
+    [batches, currentBatchPage]
+  );
+  const pagedTransferMovements = useMemo(
+    () => transferMovements.slice((currentTransferPage - 1) * PAGE_SIZE, currentTransferPage * PAGE_SIZE),
+    [transferMovements, currentTransferPage]
+  );
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -273,12 +303,12 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Inventory</h1>
           <p className="text-muted text-sm mt-1">Track stock levels across all branches</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => { setBarcodeModal(true); setBarcodeResult(null); setBarcodeError(""); bForm.reset(); }} className="gap-2">
             <Search className="w-4 h-4" /> Barcode lookup
           </Button>
@@ -299,7 +329,8 @@ export default function InventoryPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-stroke">
+      <div className="overflow-x-auto">
+      <div className="flex gap-0 border-b border-stroke min-w-max">
         {([
           { value: "stock", label: "Stock levels" },
           { value: "movements", label: "Transactions" },
@@ -318,6 +349,7 @@ export default function InventoryPage() {
             {t.label}
           </button>
         ))}
+      </div>
       </div>
 
       {tab === "stock" && (
@@ -348,7 +380,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inventory.map((item) => {
+                  {pagedInventory.map((item) => {
                     const low = item.reorderPoint > 0 && item.quantity <= item.reorderPoint;
                     return (
                       <tr key={item.id} className="border-b border-stroke hover:bg-hover transition-colors">
@@ -369,6 +401,15 @@ export default function InventoryPage() {
             </div>
           )}
         </Card>
+      )}
+      {tab === "stock" && inventory.length > 0 && (
+        <Pagination
+          totalItems={inventory.length}
+          page={currentStockPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setStockPage}
+          itemLabel="stock records"
+        />
       )}
 
       {tab === "movements" && (
@@ -398,7 +439,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {movements.map((m) => (
+                  {pagedMovements.map((m) => (
                     <tr key={m.id} className="border-b border-stroke hover:bg-hover transition-colors">
                       <td className="px-6 py-3">
                         <Badge variant={movementBadge[m.type]}>{m.type}</Badge>
@@ -416,6 +457,15 @@ export default function InventoryPage() {
             </div>
           )}
         </Card>
+      )}
+      {tab === "movements" && movements.length > 0 && (
+        <Pagination
+          totalItems={movements.length}
+          page={currentMovementPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setMovementPage}
+          itemLabel="movements"
+        />
       )}
 
       {tab === "batches" && (
@@ -455,7 +505,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {batches.map((b) => {
+                    {pagedBatches.map((b) => {
                       const expired = isExpired(b.expiryDate);
                       const expiringSoon = !expired && isExpiringSoon(b.expiryDate);
                       return (
@@ -504,6 +554,15 @@ export default function InventoryPage() {
           </Card>
         </div>
       )}
+      {tab === "batches" && batches.length > 0 && (
+        <Pagination
+          totalItems={batches.length}
+          page={currentBatchPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setBatchPage}
+          itemLabel="batches"
+        />
+      )}
 
       {tab === "transfers" && (
         <Card>
@@ -531,7 +590,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transferMovements.map((m) => {
+                  {pagedTransferMovements.map((m) => {
                     const fromBranch = branches.find((b) => b.id === m.branchId);
                     const toBranch = branches.find((b) => b.id === m.destinationBranchId);
                     return (
@@ -550,6 +609,15 @@ export default function InventoryPage() {
             </div>
           )}
         </Card>
+      )}
+      {tab === "transfers" && transferMovements.length > 0 && (
+        <Pagination
+          totalItems={transferMovements.length}
+          page={currentTransferPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setTransferPage}
+          itemLabel="transfers"
+        />
       )}
 
       {/* Adjust modal */}
