@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users, tenantUsers } from "../db/schema";
 import { eq, and } from "drizzle-orm";
-import "../types/express";
 
 export type { AuthUser, TenantContext } from "../types/express";
 
