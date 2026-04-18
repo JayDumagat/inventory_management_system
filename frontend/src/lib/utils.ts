@@ -56,14 +56,16 @@ export function relativeTime(date: string): string {
  * `/storage/` proxy, and returns all other URLs (relative paths, CDN URLs,
  * blob: URLs) unchanged.
  */
+
+// Known Docker-Compose service hostnames that are not browser-resolvable.
+const INTERNAL_DOCKER_HOSTNAMES = new Set(["minio", "backend", "frontend", "db", "redis"]);
+
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
   try {
     const parsed = new URL(url);
-    // Internal Docker service hostnames have no dots (e.g. "minio", "backend").
-    // Localhost is directly accessible from the developer's browser, so leave it alone.
-    if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") {
-      // Re-route through the nginx /storage/ proxy: strip the leading origin
+    if (INTERNAL_DOCKER_HOSTNAMES.has(parsed.hostname)) {
+      // Re-route through the nginx /storage/ proxy
       return `/storage${parsed.pathname}`;
     }
   } catch {

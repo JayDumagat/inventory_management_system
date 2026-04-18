@@ -501,7 +501,13 @@ export default function StaffPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => { if (inviteLink) navigator.clipboard.writeText(inviteLink); toast.success("Copied!"); }}
+              onClick={() => {
+                if (inviteLink) {
+                  navigator.clipboard.writeText(inviteLink)
+                    .then(() => toast.success("Copied!"))
+                    .catch(() => toast.error("Failed to copy. Please copy the link manually."));
+                }
+              }}
             >
               Copy
             </Button>
