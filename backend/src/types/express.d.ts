@@ -6,6 +6,9 @@ export interface AuthUser {
 export interface TenantContext {
   tenantId: string;
   role: string;
+  tenantUserId: string;
+  allowedPages: string[];
+  allowedBranchIds: string[];
 }
 
 declare global {

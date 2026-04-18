@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { salesOrders, salesOrderItems, inventory, stockMovements, refunds } from "../db/schema";
+import { salesOrders, salesOrderItems, inventory, stockMovements, refunds, transactions } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -117,6 +117,19 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
           });
         }
       }
+
+      // Auto-record a sale transaction
+      await db.insert(transactions).values({
+        tenantId,
+        branchId: body.branchId,
+        type: "sale",
+        amount: totalAmount.toFixed(2),
+        description: `Sale — Order ${order.orderNumber}${body.customerName ? ` (${body.customerName})` : ""}`,
+        referenceType: "sales_order",
+        referenceId: order.id,
+        notes: notes ?? null,
+        createdBy: req.user!.id,
+      });
     }
 
     await createAuditLog({ tenantId, userId: req.user!.id, action: "create", resourceType: "sales_order", resourceId: order.id });
@@ -193,6 +206,21 @@ export async function updateOrder(req: Request, res: Response): Promise<void> {
     }
 
     const [order] = await db.update(salesOrders).set({ ...body, updatedAt: new Date() }).where(and(eq(salesOrders.id, req.params.orderId as string), eq(salesOrders.tenantId, tenantId))).returning();
+
+    // Auto-record a sale transaction when order is first confirmed or delivered
+    const saleStatuses = ["confirmed", "delivered"];
+    if (body.status && saleStatuses.includes(body.status) && !saleStatuses.includes(previousStatus)) {
+      await db.insert(transactions).values({
+        tenantId,
+        branchId: existing.branchId,
+        type: "sale",
+        amount: existing.totalAmount,
+        description: `Sale — Order ${existing.orderNumber}${existing.customerName ? ` (${existing.customerName})` : ""}`,
+        referenceType: "sales_order",
+        referenceId: existing.id,
+        createdBy: req.user!.id,
+      });
+    }
 
     await createAuditLog({ tenantId, userId: req.user!.id, action: "update", resourceType: "sales_order", resourceId: order.id });
 
@@ -282,6 +310,19 @@ export async function refundOrder(req: Request, res: Response): Promise<void> {
     }
 
     await createAuditLog({ tenantId, userId: req.user!.id, action: "create", resourceType: "refund", resourceId: refund.id });
+
+    // Auto-record a refund transaction
+    await db.insert(transactions).values({
+      tenantId,
+      branchId: order.branchId,
+      type: "refund",
+      amount: Number(body.amount).toFixed(2),
+      description: `Refund — Order ${order.orderNumber}${order.customerName ? ` (${order.customerName})` : ""}`,
+      referenceType: "refund",
+      referenceId: refund.id,
+      notes: body.reason ?? null,
+      createdBy: req.user!.id,
+    });
 
     res.status(201).json(refund);
   } catch (error) {

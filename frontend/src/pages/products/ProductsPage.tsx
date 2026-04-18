@@ -12,7 +12,7 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
-import { formatCurrency, cn } from "../../lib/utils";
+import { formatCurrency, cn, resolveImageUrl } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X, ImagePlus, Image } from "lucide-react";
 
@@ -51,14 +51,16 @@ type VariantForm = z.infer<typeof variantSchema>;
 
 function ProductThumbnail({ src, alt }: { src?: string; alt: string }) {
   const [error, setError] = useState(false);
-  if (!src || error) return <Package className="w-4 h-4 text-primary-500" />;
-  return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+  const resolved = resolveImageUrl(src);
+  if (!resolved || error) return <Package className="w-4 h-4 text-primary-500" />;
+  return <img src={resolved} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
 }
 
 function ImageWithFallback({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [error, setError] = useState(false);
-  if (error) return <Image className="w-8 h-8 text-muted" />;
-  return <img src={src} alt={alt} className={className} onError={() => setError(true)} />;
+  const resolved = resolveImageUrl(src);
+  if (!resolved || error) return <Image className="w-8 h-8 text-muted" />;
+  return <img src={resolved} alt={alt} className={className} onError={() => setError(true)} />;
 }
 
 export default function ProductsPage() {

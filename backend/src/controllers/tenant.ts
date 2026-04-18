@@ -18,6 +18,7 @@ export async function listTenants(req: Request, res: Response): Promise<void> {
         isActive: tenants.isActive,
         createdAt: tenants.createdAt,
         role: tenantUsers.role,
+        allowedPages: tenantUsers.allowedPages,
       })
       .from(tenantUsers)
       .innerJoin(tenants, eq(tenantUsers.tenantId, tenants.id))
