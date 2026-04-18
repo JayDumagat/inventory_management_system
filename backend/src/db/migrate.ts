@@ -9,11 +9,11 @@ const pool = new Pool(
   process.env.DATABASE_URL
     ? { connectionString: process.env.DATABASE_URL }
     : {
-          host: "localhost",
-          port: 5432,
-          user: "postgres",
-          password: "postgres",
-          database: "inventory_db",
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT) || 5432,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
       }
 );
 

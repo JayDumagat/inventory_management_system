@@ -11,11 +11,11 @@ const pool = new Pool(
         connectionTimeoutMillis: 2000,
       }
     : {
-        host: "localhost",
-        port: 5432,
-        user: "postgres",
-        password: "postgres",
-        database: "inventory_db",
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT) || 5432,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
         max: 20,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000,
