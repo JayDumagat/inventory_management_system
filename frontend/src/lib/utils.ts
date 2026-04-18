@@ -57,18 +57,14 @@ export function relativeTime(date: string): string {
  * blob: URLs) unchanged.
  */
 
-// Known local/internal service hostnames that are not browser-resolvable for end users.
-const INTERNAL_DOCKER_HOSTNAMES = new Set([
+// Known container/service hostnames that are not browser-resolvable for end users.
+const INTERNAL_SERVICE_HOSTNAMES = new Set([
   "minio",
   "backend",
   "frontend",
   "db",
   "redis",
-  "localhost",
-  "127.0.0.1",
-  "0.0.0.0",
   "host.docker.internal",
-  "::1",
 ]);
 
 function isPrivateIpHost(hostname: string): boolean {
@@ -85,7 +81,19 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
   if (url.startsWith("inventory-files/")) return `/storage/${url}`;
   try {
     const parsed = new URL(url);
-    if (INTERNAL_DOCKER_HOSTNAMES.has(parsed.hostname) || isPrivateIpHost(parsed.hostname)) {
+    if (INTERNAL_SERVICE_HOSTNAMES.has(parsed.hostname) || isPrivateIpHost(parsed.hostname)) {
+      const apiBaseUrl = import.meta.env.VITE_API_URL;
+      // If frontend is configured to talk directly to an absolute API URL (e.g. http://localhost:3001),
+      // /storage may not be available on the frontend host. In that case, route to the API host on MinIO port.
+      if (typeof apiBaseUrl === "string" && /^https?:\/\//i.test(apiBaseUrl)) {
+        try {
+          const apiBase = new URL(apiBaseUrl);
+          const minioPort = parsed.port || "9000";
+          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
+        } catch {
+          // Fall back to /storage proxy path if API URL parsing fails
+        }
+      }
       // Re-route through the nginx /storage/ proxy
       return `/storage${parsed.pathname}`;
     }
