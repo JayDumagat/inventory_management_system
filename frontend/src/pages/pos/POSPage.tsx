@@ -7,10 +7,11 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
-import { formatCurrency, resolveImageUrl } from "../../lib/utils";
+import { formatCurrency } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
+import { usePresignedUrl } from "../../hooks/usePresignedUrl";
 import type { ProductImage } from "../../types";
 
 interface Product {
@@ -49,21 +50,21 @@ interface CustomerResult {
   phone?: string;
 }
 
-function ProductImageThumbnail({ src, alt }: { src?: string; alt: string }) {
+function ProductImageThumbnail({ objectName, alt }: { objectName?: string; alt: string }) {
+  const { url } = usePresignedUrl(objectName);
   const [error, setError] = useState(false);
-  const resolved = resolveImageUrl(src);
-  if (!resolved || error) {
+  if (!url || error) {
     return (
       <div role="img" aria-label="Product image unavailable">
         <ShoppingCart aria-hidden="true" className="w-6 h-6 text-primary-400" />
       </div>
     );
   }
-  return <img src={resolved} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+  return <img src={url} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
 }
 
-function getPrimaryProductImageUrl(product: Product): string | undefined {
-  return product.images?.[0]?.url;
+function getPrimaryProductImageObjectName(product: Product): string | undefined {
+  return product.images?.[0]?.objectName;
 }
 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
@@ -221,7 +222,7 @@ export default function POSPage() {
   });
 
   const allVariants = useMemo(
-    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id, imageUrl: getPrimaryProductImageUrl(p) }))),
+    () => products.flatMap((p) => p.variants.map((v) => ({ ...v, productName: p.name, productId: p.id, imageObjectName: getPrimaryProductImageObjectName(p) }))),
     [products]
   );
 
@@ -393,7 +394,7 @@ export default function POSPage() {
                 className="flex flex-col bg-panel border border-stroke p-3 text-left hover:bg-hover hover:border-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-primary-500"
               >
                 <div className="w-full aspect-square bg-primary-50 border border-primary-100 flex items-center justify-center mb-2">
-                  <ProductImageThumbnail src={v.imageUrl} alt={v.productName} />
+                  <ProductImageThumbnail objectName={v.imageObjectName} alt={v.productName} />
                 </div>
                 <p className="text-xs font-semibold text-ink truncate">{v.productName}</p>
                 <p className="text-xs text-muted truncate">{v.name}</p>

@@ -7,6 +7,8 @@ import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
 import { getPublicUrl } from "../lib/storage";
 import { isTenantOwnedObjectName } from "../lib/storageObjectName";
+import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
+import { presignCacheKey } from "./upload";
 
 function toPublicImageUrl<T extends { objectName: string }>(image: T): T & { url: string } {
   return { ...image, url: getPublicUrl(image.objectName) };
@@ -308,17 +310,36 @@ export async function deleteAttributeOption(req: Request, res: Response): Promis
   }
 }
 
+const PRODUCT_IMAGES_CACHE_TTL = 120; // 2 minutes
+
+function productImagesCacheKey(tenantId: string, productId: string): string {
+  return `product_images:${tenantId}:${productId}`;
+}
+
 export async function listProductImages(req: Request, res: Response): Promise<void> {
   try {
-    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    const tenantId = req.tenantContext!.tenantId;
+    const productId = req.params.productId as string;
+
+    const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
+
+    const cacheKey = productImagesCacheKey(tenantId, productId);
+    const cached = await cacheGet<ReturnType<typeof toPublicImageUrl>[]>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
     const images = await db.select().from(productImages)
-      .where(eq(productImages.productId, req.params.productId as string))
+      .where(eq(productImages.productId, productId))
       .orderBy(productImages.sortOrder);
-    res.json(images.map(toPublicImageUrl));
+    const result = images.map(toPublicImageUrl);
+    await cacheSet(cacheKey, result, PRODUCT_IMAGES_CACHE_TTL);
+    res.json(result);
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -326,7 +347,10 @@ export async function listProductImages(req: Request, res: Response): Promise<vo
 
 export async function addProductImage(req: Request, res: Response): Promise<void> {
   try {
-    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    const tenantId = req.tenantContext!.tenantId;
+    const productId = req.params.productId as string;
+
+    const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
@@ -338,18 +362,20 @@ export async function addProductImage(req: Request, res: Response): Promise<void
       res.status(400).json({ error: "objectName is required" });
       return;
     }
-    if (!isTenantOwnedObjectName(objectName, req.tenantContext!.tenantId)) {
+    if (!isTenantOwnedObjectName(objectName, tenantId)) {
       res.status(403).json({ error: "Access denied" });
       return;
     }
     const derivedUrl = getPublicUrl(objectName);
     const [image] = await db.insert(productImages).values({
-      productId: req.params.productId as string,
+      productId,
       objectName,
       url: derivedUrl,
       altText: altText || null,
       sortOrder: sortOrder ?? 0,
     }).returning();
+    // Invalidate cached image list so the new image is included on next fetch.
+    await cacheDel(productImagesCacheKey(tenantId, productId));
     res.status(201).json(image);
   } catch (error) {
     handleControllerError(error, res);
@@ -358,7 +384,10 @@ export async function addProductImage(req: Request, res: Response): Promise<void
 
 export async function deleteProductImage(req: Request, res: Response): Promise<void> {
   try {
-    const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
+    const tenantId = req.tenantContext!.tenantId;
+    const productId = req.params.productId as string;
+
+    const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
@@ -366,7 +395,7 @@ export async function deleteProductImage(req: Request, res: Response): Promise<v
     const [image] = await db.delete(productImages)
       .where(and(
         eq(productImages.id, req.params.imageId as string),
-        eq(productImages.productId, req.params.productId as string)
+        eq(productImages.productId, productId)
       ))
       .returning();
     if (!image) {
@@ -381,6 +410,11 @@ export async function deleteProductImage(req: Request, res: Response): Promise<v
       // Storage deletion is best-effort; log but don't fail the request
       console.error(`Failed to delete file from storage: ${image.objectName}`);
     }
+    // Invalidate the presigned URL cache and the product image list cache.
+    await Promise.all([
+      cacheDel(presignCacheKey(tenantId, image.objectName)),
+      cacheDel(productImagesCacheKey(tenantId, productId)),
+    ]);
     res.json({ message: "Image deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
