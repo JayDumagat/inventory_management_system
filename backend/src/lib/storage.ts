@@ -4,6 +4,7 @@ let minioClient: Minio.Client | null = null;
 let bucketEnsured = false;
 
 const DEFAULT_BUCKET = process.env.MINIO_BUCKET || "inventory-files";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
 
 function getMinioClient(): Minio.Client | null {
   if (minioClient) return minioClient;
@@ -114,9 +115,7 @@ export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): strin
       try {
         const parsedBase = new URL(configuredBase);
         const normalizedPath = parsedBase.pathname === "/" ? "" : parsedBase.pathname.replace(/\/+$/, "");
-        const localHostnames = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
-        let useRelativePath =
-          localHostnames.has(parsedBase.hostname);
+        let useRelativePath = LOCAL_HOSTNAMES.has(parsedBase.hostname);
         const frontendUrl = process.env.FRONTEND_URL;
         if (!useRelativePath && frontendUrl) {
           try {
@@ -131,7 +130,8 @@ export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): strin
         // Keep non-URL configured values unchanged.
       }
     }
-    return `${base}/${bucket}/${objectName}`;
+    const prefix = base ? `${base}/` : "/";
+    return `${prefix}${bucket}/${objectName}`;
   }
   const endpoint = process.env.MINIO_ENDPOINT || "localhost";
   const port = process.env.MINIO_PORT || "9000";
