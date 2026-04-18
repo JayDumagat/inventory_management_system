@@ -107,8 +107,31 @@ export async function deleteFile(
 export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): string {
   const publicBase = process.env.MINIO_PUBLIC_BASE_URL;
   if (publicBase) {
-    // Use the configured public base (e.g. "/storage" served via nginx proxy, or "https://cdn.example.com")
-    const base = publicBase.endsWith("/") ? publicBase.slice(0, -1) : publicBase;
+    // Use configured public base while normalizing localhost/frontend-origin URLs to relative proxy paths.
+    const configuredBase = publicBase.endsWith("/") ? publicBase.slice(0, -1) : publicBase;
+    let base = configuredBase;
+    if (!configuredBase.startsWith("/")) {
+      try {
+        const parsedBase = new URL(configuredBase);
+        const normalizedPath = parsedBase.pathname === "/" ? "" : parsedBase.pathname.replace(/\/+$/, "");
+        let useRelativePath =
+          parsedBase.hostname === "localhost" ||
+          parsedBase.hostname === "127.0.0.1" ||
+          parsedBase.hostname === "0.0.0.0";
+        const frontendUrl = process.env.FRONTEND_URL;
+        if (!useRelativePath && frontendUrl) {
+          try {
+            const parsedFrontend = new URL(frontendUrl);
+            useRelativePath = parsedFrontend.origin === parsedBase.origin;
+          } catch {
+            // Ignore invalid FRONTEND_URL and keep absolute configured base.
+          }
+        }
+        base = useRelativePath ? normalizedPath || "/" : `${parsedBase.origin}${normalizedPath}`;
+      } catch {
+        // Keep non-URL configured values unchanged.
+      }
+    }
     return `${base}/${bucket}/${objectName}`;
   }
   const endpoint = process.env.MINIO_ENDPOINT || "localhost";
