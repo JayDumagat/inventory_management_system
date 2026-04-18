@@ -1,7 +1,6 @@
 import * as Minio from "minio";
 
 let minioClient: Minio.Client | null = null;
-let presignClient: Minio.Client | null = null;
 let bucketEnsured = false;
 
 const DEFAULT_BUCKET = process.env.MINIO_BUCKET || "inventory-files";
@@ -26,40 +25,6 @@ function getMinioClient(): Minio.Client | null {
   } catch (err) {
     console.error("[MinIO] Failed to create client:", err);
     return null;
-  }
-}
-
-/**
- * Returns a MinIO client whose endpoint matches the public-facing URL
- * (MINIO_PUBLIC_ENDPOINT), so that presignedGetObject generates URLs
- * the browser can actually reach.
- *
- * Without this, presigned URLs would contain the Docker-internal hostname
- * (e.g. http://minio:9000) which is not resolvable outside the container
- * network.  Falls back to the regular internal client when
- * MINIO_PUBLIC_ENDPOINT is not set.
- */
-function getPresignClient(): Minio.Client | null {
-  if (presignClient) return presignClient;
-
-  const publicEndpoint = process.env.MINIO_PUBLIC_ENDPOINT;
-  if (!publicEndpoint) return getMinioClient();
-
-  try {
-    const parsed = new URL(publicEndpoint);
-    const defaultPort = parsed.protocol === "https:" ? 443 : 80;
-    presignClient = new Minio.Client({
-      endPoint: parsed.hostname,
-      port: parsed.port ? parseInt(parsed.port, 10) : defaultPort,
-      useSSL: parsed.protocol === "https:",
-      accessKey: process.env.MINIO_ACCESS_KEY || "minioadmin",
-      secretKey: process.env.MINIO_SECRET_KEY || "minioadmin123",
-    });
-    console.log("[MinIO] Presign client created (public endpoint)");
-    return presignClient;
-  } catch (err) {
-    console.error("[MinIO] Failed to create presign client, falling back to internal client:", err);
-    return getMinioClient();
   }
 }
 
@@ -109,20 +74,17 @@ export async function uploadFile(
   }
 }
 
+// Images are served via the nginx /storage/ proxy to a public-read MinIO bucket,
+// so no signed URL is required. This function returns the same static proxy path
+// as getPublicUrl() (e.g. /storage/inventory-files/<objectName>) which nginx
+// forwards to http://minio:9000/.
 export async function getPresignedUrl(
   objectName: string,
   bucket = DEFAULT_BUCKET,
-  expirySeconds = 3600
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _expirySeconds = 3600
 ): Promise<string | null> {
-  const client = getPresignClient();
-  if (!client) return null;
-  try {
-    const url = await client.presignedGetObject(bucket, objectName, expirySeconds);
-    return url;
-  } catch (err) {
-    console.error("[MinIO] Presign error:", err);
-    return null;
-  }
+  return getPublicUrl(objectName, bucket);
 }
 
 export async function deleteFile(

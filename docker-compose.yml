@@ -77,10 +77,6 @@ services:
       MINIO_SECRET_KEY: minioadmin123
       MINIO_BUCKET: inventory-files
       MINIO_PUBLIC_BASE_URL: /storage
-      # Public-facing MinIO endpoint used to generate browser-accessible presigned URLs.
-      # Must match the host:port the browser uses to reach MinIO directly.
-      # In Docker Compose, MinIO port 9000 is mapped to the host, so localhost:9000 works.
-      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
     depends_on:
       db:
         condition: service_healthy
