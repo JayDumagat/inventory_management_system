@@ -65,6 +65,10 @@ const INTERNAL_SERVICE_HOSTNAMES = new Set([
   "db",
   "redis",
   "host.docker.internal",
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "::1",
 ]);
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const DEFAULT_MINIO_PORT = "9000";
@@ -90,7 +94,7 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
         try {
           const apiBase = new URL(apiBaseUrl);
-          const minioPort = parsed.port || DEFAULT_MINIO_PORT;
+          const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
           return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
         } catch {
           // Fall back to /storage proxy path if API URL parsing fails
