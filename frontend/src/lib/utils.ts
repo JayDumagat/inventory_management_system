@@ -66,6 +66,8 @@ const INTERNAL_SERVICE_HOSTNAMES = new Set([
   "redis",
   "host.docker.internal",
 ]);
+const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
+const DEFAULT_MINIO_PORT = "9000";
 
 function isPrivateIpHost(hostname: string): boolean {
   return (
@@ -85,10 +87,10 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       const apiBaseUrl = import.meta.env.VITE_API_URL;
       // If frontend is configured to talk directly to an absolute API URL (e.g. http://localhost:3001),
       // /storage may not be available on the frontend host. In that case, route to the API host on MinIO port.
-      if (typeof apiBaseUrl === "string" && /^https?:\/\//i.test(apiBaseUrl)) {
+      if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
         try {
           const apiBase = new URL(apiBaseUrl);
-          const minioPort = parsed.port || "9000";
+          const minioPort = parsed.port || DEFAULT_MINIO_PORT;
           return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
         } catch {
           // Fall back to /storage proxy path if API URL parsing fails
