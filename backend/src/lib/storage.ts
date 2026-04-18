@@ -74,20 +74,17 @@ export async function uploadFile(
   }
 }
 
+// Images are served via the nginx /storage/ proxy to a public-read MinIO bucket,
+// so no signed URL is required. This function returns the same static proxy path
+// as getPublicUrl() (e.g. /storage/inventory-files/<objectName>) which nginx
+// forwards to http://minio:9000/.
 export async function getPresignedUrl(
   objectName: string,
   bucket = DEFAULT_BUCKET,
-  expirySeconds = 3600
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _expirySeconds = 3600
 ): Promise<string | null> {
-  const client = getMinioClient();
-  if (!client) return null;
-  try {
-    const url = await client.presignedGetObject(bucket, objectName, expirySeconds);
-    return url;
-  } catch (err) {
-    console.error("[MinIO] Presign error:", err);
-    return null;
-  }
+  return getPublicUrl(objectName, bucket);
 }
 
 export async function deleteFile(

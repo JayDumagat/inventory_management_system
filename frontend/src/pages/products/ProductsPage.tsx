@@ -13,8 +13,9 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
-import { formatCurrency, cn, resolveImageUrl } from "../../lib/utils";
+import { formatCurrency, cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
+import { usePresignedUrl } from "../../hooks/usePresignedUrl";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X, ImagePlus, Image } from "lucide-react";
 
 interface Variant { id: string; name: string; sku: string; barcode?: string | null; price: string; costPrice: string; isActive: boolean; }
@@ -50,18 +51,18 @@ const variantSchema = z.object({
 type ProductForm = z.infer<typeof productSchema>;
 type VariantForm = z.infer<typeof variantSchema>;
 
-function ProductThumbnail({ src, alt }: { src?: string; alt: string }) {
+function ProductThumbnail({ objectName, alt }: { objectName?: string; alt: string }) {
+  const { url } = usePresignedUrl(objectName);
   const [error, setError] = useState(false);
-  const resolved = resolveImageUrl(src);
-  if (!resolved || error) return <Package className="w-4 h-4 text-primary-500" />;
-  return <img src={resolved} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+  if (!url || error) return <Package className="w-4 h-4 text-primary-500" />;
+  return <img src={url} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
 }
 
-function ImageWithFallback({ src, alt, className }: { src: string; alt: string; className?: string }) {
+function ImageWithFallback({ objectName, alt, className }: { objectName: string | undefined; alt: string; className?: string }) {
+  const { url } = usePresignedUrl(objectName);
   const [error, setError] = useState(false);
-  const resolved = resolveImageUrl(src);
-  if (!resolved || error) return <Image className="w-8 h-8 text-muted" />;
-  return <img src={resolved} alt={alt} className={className} onError={() => setError(true)} />;
+  if (!url || error) return <Image className="w-8 h-8 text-muted" />;
+  return <img src={url} alt={alt} className={className} onError={() => setError(true)} />;
 }
 
 export default function ProductsPage() {
@@ -239,27 +240,14 @@ export default function ProductsPage() {
           continue;
         }
 
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        // Upload via multipart/form-data using Multer on the backend
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, formData);
 
-        // Upload to MinIO
-        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
-          filename: file.name,
-          mimeType: file.type,
-          base64,
-        });
-
-        // Attach to product
+        // Attach the uploaded object to the product
         const imageRes = await api.post(`/api/tenants/${tid}/products/${imageModal.product.id}/images`, {
           objectName: uploadRes.data.objectName,
-          url: uploadRes.data.url,
           altText: file.name,
           sortOrder: imageList.length + i,
         });
@@ -344,23 +332,12 @@ export default function ProductsPage() {
   const uploadFilesToProduct = async (productId: string, files: File[], startIndex: number) => {
     const results = await Promise.allSettled(
       files.map(async (file, i) => {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, {
-          filename: file.name,
-          mimeType: file.type,
-          base64,
-        });
+        // Upload via multipart/form-data using Multer on the backend
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadRes = await api.post(`/api/tenants/${tid}/uploads`, formData);
         await api.post(`/api/tenants/${tid}/products/${productId}/images`, {
           objectName: uploadRes.data.objectName,
-          url: uploadRes.data.url,
           altText: file.name,
           sortOrder: startIndex + i,
         });
@@ -517,7 +494,7 @@ export default function ProductsPage() {
                     ? <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
                     : <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />}
                   <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    <ProductThumbnail src={p.images?.[0]?.url} alt={p.name} />
+                    <ProductThumbnail objectName={p.images?.[0]?.objectName} alt={p.name} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -698,7 +675,7 @@ export default function ProductsPage() {
                   {editImages.map((img) => (
                     <div key={img.id} className="relative group border border-stroke bg-page">
                       <div className="aspect-square flex items-center justify-center overflow-hidden">
-                        <ImageWithFallback src={img.url} alt={img.altText || "Product image"} className="w-full h-full object-cover" />
+                        <ImageWithFallback objectName={img.objectName} alt={img.altText || "Product image"} className="w-full h-full object-cover" />
                       </div>
                       <button
                         type="button"
@@ -1047,7 +1024,7 @@ export default function ProductsPage() {
                 <div key={img.id} className="relative group border border-stroke bg-page">
                   <div className="aspect-square flex items-center justify-center overflow-hidden">
                     <ImageWithFallback
-                      src={img.url}
+                      objectName={img.objectName}
                       alt={img.altText || "Product image"}
                       className="w-full h-full object-cover"
                     />
