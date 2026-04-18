@@ -19,7 +19,8 @@ function sanitizeExtension(value: string | undefined): string | undefined {
 }
 
 export function deriveObjectExtension(filename: string, mimeType: string): string {
-  const fromFilename = sanitizeExtension(filename.includes(".") ? filename.split(".").pop() : undefined);
+  const safeFilename = filename.split(/[\\/]/).pop() ?? filename;
+  const fromFilename = sanitizeExtension(safeFilename.includes(".") ? safeFilename.split(".").pop() : undefined);
   if (fromFilename) return fromFilename;
 
   const fromMime = sanitizeExtension(MIME_TO_EXTENSION[mimeType]);
@@ -34,5 +35,14 @@ export function buildTenantObjectName(tenantId: string, filename: string, mimeTy
 }
 
 export function isTenantOwnedObjectName(objectName: string, tenantId: string): boolean {
-  return objectName.startsWith(`${tenantId}-`) || objectName.startsWith(`${tenantId}/`);
+  const firstSlash = objectName.indexOf("/");
+  if (firstSlash > 0) {
+    return objectName.slice(0, firstSlash) === tenantId;
+  }
+
+  const flatMatch = objectName.match(
+    /^(.+)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([a-z0-9]{1,10})$/i
+  );
+  if (!flatMatch) return false;
+  return flatMatch[1] === tenantId;
 }
