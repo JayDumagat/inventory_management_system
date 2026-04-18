@@ -35,6 +35,18 @@ async function ensureBucket(client: Minio.Client, bucket: string): Promise<void>
       await client.makeBucket(bucket);
       console.log(`[MinIO] Created bucket: ${bucket}`);
     }
+    const publicReadPolicy = JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Principal: { AWS: ["*"] },
+          Action: ["s3:GetObject"],
+          Resource: [`arn:aws:s3:::${bucket}/*`],
+        },
+      ],
+    });
+    await client.setBucketPolicy(bucket, publicReadPolicy);
     bucketEnsured = true;
   } catch (err) {
     console.error("[MinIO] Bucket setup error:", err);

@@ -57,14 +57,35 @@ export function relativeTime(date: string): string {
  * blob: URLs) unchanged.
  */
 
-// Known Docker-Compose service hostnames that are not browser-resolvable.
-const INTERNAL_DOCKER_HOSTNAMES = new Set(["minio", "backend", "frontend", "db", "redis"]);
+// Known local/internal service hostnames that are not browser-resolvable for end users.
+const INTERNAL_DOCKER_HOSTNAMES = new Set([
+  "minio",
+  "backend",
+  "frontend",
+  "db",
+  "redis",
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "host.docker.internal",
+  "::1",
+]);
+
+function isPrivateIpHost(hostname: string): boolean {
+  return (
+    /^10\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+  );
+}
 
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
+  if (url.startsWith("/inventory-files/")) return `/storage${url}`;
+  if (url.startsWith("inventory-files/")) return `/storage/${url}`;
   try {
     const parsed = new URL(url);
-    if (INTERNAL_DOCKER_HOSTNAMES.has(parsed.hostname)) {
+    if (INTERNAL_DOCKER_HOSTNAMES.has(parsed.hostname) || isPrivateIpHost(parsed.hostname)) {
       // Re-route through the nginx /storage/ proxy
       return `/storage${parsed.pathname}`;
     }
