@@ -8,7 +8,7 @@ const router = Router({ mergeParams: true });
 
 // Wrap Multer so that size / type errors are returned as structured JSON
 // instead of bubbling up as unhandled Express errors.
-function multerMiddleware(req: Request, res: Response, next: NextFunction): void {
+function handleMulterUpload(req: Request, res: Response, next: NextFunction): void {
   fileUpload.single("file")(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
@@ -26,7 +26,7 @@ function multerMiddleware(req: Request, res: Response, next: NextFunction): void
   });
 }
 
-router.post("/", authenticate, requireTenant("manager"), multerMiddleware, ctrl.uploadFileHandler);
+router.post("/", authenticate, requireTenant("manager"), handleMulterUpload, ctrl.uploadFileHandler);
 router.get("/presign", authenticate, requireTenant(), ctrl.getPresignedUrlHandler);
 router.post("/presign-batch", authenticate, requireTenant(), ctrl.batchPresignedUrlHandler);
 router.delete("/", authenticate, requireTenant("manager"), ctrl.deleteFileHandler);
