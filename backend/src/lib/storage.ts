@@ -114,10 +114,9 @@ export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): strin
       try {
         const parsedBase = new URL(configuredBase);
         const normalizedPath = parsedBase.pathname === "/" ? "" : parsedBase.pathname.replace(/\/+$/, "");
+        const localHostnames = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
         let useRelativePath =
-          parsedBase.hostname === "localhost" ||
-          parsedBase.hostname === "127.0.0.1" ||
-          parsedBase.hostname === "0.0.0.0";
+          localHostnames.has(parsedBase.hostname);
         const frontendUrl = process.env.FRONTEND_URL;
         if (!useRelativePath && frontendUrl) {
           try {
@@ -127,7 +126,7 @@ export function getPublicUrl(objectName: string, bucket = DEFAULT_BUCKET): strin
             // Ignore invalid FRONTEND_URL and keep absolute configured base.
           }
         }
-        base = useRelativePath ? normalizedPath || "/" : `${parsedBase.origin}${normalizedPath}`;
+        base = useRelativePath ? normalizedPath : `${parsedBase.origin}${normalizedPath}`;
       } catch {
         // Keep non-URL configured values unchanged.
       }
