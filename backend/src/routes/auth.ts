@@ -10,5 +10,7 @@ router.get("/me", ctrl.me);
 router.post("/forgot-password", ctrl.forgotPassword);
 router.post("/reset-password", ctrl.resetPassword);
 router.post("/oauth/google", ctrl.googleOAuth);
+router.get("/invite-info", ctrl.inviteInfo);
+router.post("/complete-invite", ctrl.completeInvite);
 
 export default router;

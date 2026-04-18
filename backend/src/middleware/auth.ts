@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../db";
-import { users, tenantUsers } from "../db/schema";
+import { users, tenantUsers, branchStaff } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 
 export type { AuthUser, TenantContext } from "../types/express";
@@ -54,7 +54,33 @@ export const requireTenant = (minRole?: string) => async (req: Request, res: Res
       return;
     }
 
-    req.tenantContext = { tenantId, role: tenantUser.role };
+    // Fetch branch assignments for staff members
+    const branchAssignments = tenantUser.role === "staff"
+      ? await db
+          .select({ branchId: branchStaff.branchId })
+          .from(branchStaff)
+          .where(eq(branchStaff.tenantUserId, tenantUser.id))
+      : [];
+
+    const allowedBranchIds = branchAssignments.map((a) => a.branchId);
+
+    req.tenantContext = {
+      tenantId,
+      role: tenantUser.role,
+      tenantUserId: tenantUser.id,
+      allowedPages: (tenantUser.allowedPages as string[]) ?? [],
+      allowedBranchIds,
+    };
+
+    // Enforce branch access for staff with branch restrictions
+    const requestedBranchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
+    if (requestedBranchId && allowedBranchIds.length > 0) {
+      if (!allowedBranchIds.includes(requestedBranchId)) {
+        res.status(403).json({ error: "Access denied to this branch" });
+        return;
+      }
+    }
+
     next();
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });

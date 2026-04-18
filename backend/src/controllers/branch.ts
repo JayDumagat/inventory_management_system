@@ -1,14 +1,26 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { branches } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { branches, branchStaff } from "../db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { branchSchema } from "../validators/branch";
 
 export async function listBranches(req: Request, res: Response): Promise<void> {
   try {
-    const list = await db.select().from(branches).where(eq(branches.tenantId, req.tenantContext!.tenantId));
+    const { tenantId, role, allowedBranchIds } = req.tenantContext!;
+
+    // Staff with branch restrictions only see their assigned branches
+    if (role === "staff" && allowedBranchIds && allowedBranchIds.length > 0) {
+      const list = await db
+        .select()
+        .from(branches)
+        .where(and(eq(branches.tenantId, tenantId), inArray(branches.id, allowedBranchIds)));
+      res.json(list);
+      return;
+    }
+
+    const list = await db.select().from(branches).where(eq(branches.tenantId, tenantId));
     res.json(list);
   } catch {
     res.status(500).json({ error: "Internal server error" });

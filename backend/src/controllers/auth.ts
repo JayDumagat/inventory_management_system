@@ -3,7 +3,7 @@ import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { db } from "../db";
-import { users } from "../db/schema";
+import { users, tenants, tenantUsers } from "../db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { generateTokens } from "../services/auth";
@@ -315,6 +315,141 @@ export async function googleOAuth(req: Request, res: Response): Promise<void> {
 
     res.json({
       user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function inviteInfo(req: Request, res: Response): Promise<void> {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : undefined;
+    if (!token) {
+      res.status(400).json({ error: "Token required" });
+      return;
+    }
+
+    let payload: { userId: string; tenantId: string; type: string };
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET!) as typeof payload;
+    } catch {
+      res.status(400).json({ error: "Invalid or expired invite link" });
+      return;
+    }
+
+    if (payload.type !== "staff-invite") {
+      res.status(400).json({ error: "Invalid invite token" });
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, payload.userId));
+
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const [tenantRecord] = await db
+      .select({ name: tenants.name })
+      .from(tenants)
+      .where(eq(tenants.id, payload.tenantId));
+
+    res.json({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      tenantName: tenantRecord?.name ?? "",
+    });
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}
+
+export async function completeInvite(req: Request, res: Response): Promise<void> {
+  try {
+    const { inviteToken, password, firstName, lastName } = req.body as {
+      inviteToken: string;
+      password: string;
+      firstName?: string;
+      lastName?: string;
+    };
+
+    if (!inviteToken || !password) {
+      res.status(400).json({ error: "inviteToken and password are required" });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" });
+      return;
+    }
+
+    let payload: { userId: string; tenantId: string; type: string };
+    try {
+      payload = jwt.verify(inviteToken, process.env.JWT_SECRET!) as typeof payload;
+    } catch {
+      res.status(400).json({ error: "Invalid or expired invite link" });
+      return;
+    }
+
+    if (payload.type !== "staff-invite") {
+      res.status(400).json({ error: "Invalid invite token" });
+      return;
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, payload.userId));
+    if (!user || !user.isActive) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const [tenantUser] = await db
+      .select()
+      .from(tenantUsers)
+      .where(and(eq(tenantUsers.tenantId, payload.tenantId), eq(tenantUsers.userId, user.id), eq(tenantUsers.isActive, true)));
+
+    if (!tenantUser) {
+      res.status(403).json({ error: "Invitation is no longer valid" });
+      return;
+    }
+
+    const passwordHash = await argon2.hash(password);
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        passwordHash,
+        firstName: firstName || user.firstName,
+        lastName: lastName || user.lastName,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning();
+
+    const { accessToken, refreshToken } = generateTokens(updatedUser.id, updatedUser.email);
+
+    await createAuditLog({
+      tenantId: payload.tenantId,
+      userId: updatedUser.id,
+      action: "login",
+      resourceType: "user",
+      resourceId: updatedUser.id,
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
+    res.json({
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+      },
       accessToken,
       refreshToken,
     });
