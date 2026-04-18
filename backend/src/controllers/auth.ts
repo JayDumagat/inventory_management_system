@@ -411,7 +411,13 @@ export async function completeInvite(req: Request, res: Response): Promise<void>
     const [tenantUser] = await db
       .select()
       .from(tenantUsers)
-      .where(and(eq(tenantUsers.tenantId, payload.tenantId), eq(tenantUsers.userId, user.id), eq(tenantUsers.isActive, true)));
+      .where(
+        and(
+          eq(tenantUsers.tenantId, payload.tenantId),
+          eq(tenantUsers.userId, user.id),
+          eq(tenantUsers.isActive, true),
+        ),
+      );
 
     if (!tenantUser) {
       res.status(403).json({ error: "Invitation is no longer valid" });

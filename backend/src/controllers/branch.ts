@@ -10,7 +10,8 @@ export async function listBranches(req: Request, res: Response): Promise<void> {
   try {
     const { tenantId, role, allowedBranchIds } = req.tenantContext!;
 
-    // Staff with branch restrictions only see their assigned branches
+    // Staff with explicit branch assignments only see their assigned branches.
+    // Staff with no assignments (no restrictions configured) see all branches.
     if (role === "staff" && allowedBranchIds && allowedBranchIds.length > 0) {
       const list = await db
         .select()

@@ -72,7 +72,10 @@ export const requireTenant = (minRole?: string) => async (req: Request, res: Res
       allowedBranchIds,
     };
 
-    // Enforce branch access for staff with branch restrictions
+    // Enforce branch access for staff with explicit branch restrictions.
+    // If a staff member has no branch assignments they are unrestricted (admin has not
+    // configured branch limits for them yet). Once at least one branch is assigned,
+    // requests for other branches are denied.
     const requestedBranchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
     if (requestedBranchId && allowedBranchIds.length > 0) {
       if (!allowedBranchIds.includes(requestedBranchId)) {

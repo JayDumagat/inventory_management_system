@@ -171,6 +171,11 @@ export default function StaffPage() {
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
   const toast = useToast();
 
+  const handleCloseInviteLink = () => {
+    setInviteLinkOpen(false);
+    setInviteLink(null);
+  };
+
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
     setEditRole(member.role);
@@ -486,7 +491,7 @@ export default function StaffPage() {
       </Modal>
 
       {/* Invite link modal for new (pre-registered) staff members */}
-      <Modal open={inviteLinkOpen} onClose={() => { setInviteLinkOpen(false); setInviteLink(null); }} title="Staff invited">
+      <Modal open={inviteLinkOpen} onClose={handleCloseInviteLink} title="Staff invited">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted">
             Share this invite link with the staff member so they can set their password and join the organization.
@@ -502,7 +507,7 @@ export default function StaffPage() {
             </Button>
           </div>
           <p className="text-xs text-muted">This link expires in 7 days.</p>
-          <Button onClick={() => { setInviteLinkOpen(false); setInviteLink(null); }}>Done</Button>
+          <Button onClick={handleCloseInviteLink}>Done</Button>
         </div>
       </Modal>
     </div>
