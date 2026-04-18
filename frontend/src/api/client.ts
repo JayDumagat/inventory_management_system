@@ -19,8 +19,11 @@ api.interceptors.request.use((config) => {
   const tenantId = localStorage.getItem("currentTenantId");
   if (tenantId) config.headers["x-tenant-id"] = tenantId;
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
-    delete config.headers["Content-Type"];
-    delete config.headers["content-type"];
+    if (typeof config.headers.delete === "function") {
+      config.headers.delete("Content-Type");
+    } else {
+      delete config.headers["Content-Type"];
+    }
   }
   return config;
 });
