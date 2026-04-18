@@ -330,8 +330,8 @@ export async function addProductImage(req: Request, res: Response): Promise<void
       res.status(404).json({ error: "Product not found" });
       return;
     }
-    const { objectName, url, altText, sortOrder } = req.body as {
-      objectName?: string; url?: string; altText?: string; sortOrder?: number;
+    const { objectName, altText, sortOrder } = req.body as {
+      objectName?: string; altText?: string; sortOrder?: number;
     };
     if (!objectName) {
       res.status(400).json({ error: "objectName is required" });
