@@ -44,8 +44,10 @@ docker compose up -d
 docker compose exec backend npm run migrate
 ```
 
-Frontend: http://localhost:5173  
-Backend API: http://localhost:3001
+Frontend (Nginx): http://localhost:5173  
+Backend API (via Nginx): http://localhost:5173/api  
+MinIO API: http://localhost:9000  
+MinIO Console: http://localhost:9001
 
 ### Deploying on Vercel
 
