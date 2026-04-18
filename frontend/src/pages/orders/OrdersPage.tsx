@@ -316,7 +316,7 @@ export default function OrdersPage() {
                         <p className="text-sm font-medium text-ink">{field.productName} — {field.variantName}</p>
                         <p className="text-xs text-muted">{field.sku}</p>
                       </div>
-                      <input type="number" min="1" {...form.register(`items.${i}.quantity`)} className="w-16 border border-stroke bg-panel text-ink px-2 py-1 text-sm text-center outline-none focus:border-primary-500" />
+                      <input type="number" min="1" {...form.register(`items.${i}.quantity`, { valueAsNumber: true })} className="w-16 border border-stroke bg-panel text-ink px-2 py-1 text-sm text-center outline-none focus:border-primary-500" />
                       <p className="text-sm font-medium w-20 text-right text-ink">{formatCurrency((form.watch(`items.${i}.quantity`) || 1) * field.unitPrice)}</p>
                       <button type="button" onClick={() => remove(i)} className="text-red-400 hover:text-red-600">
                         <Trash2 className="w-4 h-4" />
@@ -348,8 +348,8 @@ export default function OrdersPage() {
             className="flex flex-col gap-4"
           >
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Tax amount" type="number" step="0.01" min="0" {...form.register("taxAmount")} />
-              <Input label="Discount amount" type="number" step="0.01" min="0" {...form.register("discountAmount")} />
+              <Input label="Tax amount" type="number" step="0.01" min="0" {...form.register("taxAmount", { valueAsNumber: true })} />
+              <Input label="Discount amount" type="number" step="0.01" min="0" {...form.register("discountAmount", { valueAsNumber: true })} />
             </div>
             <Input label="Notes" {...form.register("notes")} />
             <div className="flex gap-3 justify-end pt-2">
