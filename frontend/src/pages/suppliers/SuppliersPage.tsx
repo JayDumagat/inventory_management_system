@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatDate } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -47,6 +48,7 @@ const schema = z.object({
 type SupplierForm = z.infer<typeof schema>;
 
 export default function SuppliersPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
@@ -57,6 +59,7 @@ export default function SuppliersPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<{ open: boolean; supplier?: Supplier }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<Supplier | null>(null);
+  const [page, setPage] = useState(1);
 
   const form = useForm<SupplierForm>({ resolver: zodResolver(schema) });
 
@@ -107,6 +110,17 @@ export default function SuppliersPage() {
     ),
     [suppliers, search]
   );
+
+  const pagedFiltered = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [filtered.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
   <div className="space-y-4">
@@ -192,6 +206,7 @@ export default function SuppliersPage() {
         </div>
       ) : (
         <div className="bg-panel border border-stroke overflow-hidden">
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-stroke text-left">
@@ -204,7 +219,7 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s) => (
+              {pagedFiltered.map((s) => (
                 <tr key={s.id} className="border-b border-stroke hover:bg-hover transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
@@ -268,7 +283,61 @@ export default function SuppliersPage() {
               ))}
             </tbody>
           </table>
+          </div>
+          <div className="md:hidden divide-y divide-stroke">
+            {pagedFiltered.map((s) => (
+              <div key={s.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">
+                      {s.name[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink truncate">{s.name}</p>
+                      {s.contactName && <p className="text-xs text-muted truncate">{s.contactName}</p>}
+                    </div>
+                  </div>
+                  <div className="mt-1.5 space-y-1">
+                    {s.email && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted">
+                        <Mail className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{s.email}</span>
+                      </div>
+                    )}
+                    {(s.city || s.country) && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        <span>{[s.city, s.country].filter(Boolean).join(", ")}</span>
+                      </div>
+                    )}
+                    <div>
+                      <Badge variant={s.isActive ? "success" : "default"}>{s.isActive ? "Active" : "Inactive"}</Badge>
+                    </div>
+                  </div>
+                </div>
+                {canManage && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => openModal(s)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(s)}>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          totalItems={filtered.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="suppliers"
+        />
       )}
 
       {/* Add / Edit modal */}

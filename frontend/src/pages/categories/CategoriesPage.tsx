@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { Plus, Pencil, Trash2, Tag, Search, FolderTree, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
@@ -45,12 +46,14 @@ function CategoryActions({
 }
 
 export default function CategoriesPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const [modal, setModal] = useState<{ open: boolean; category?: Category }>({ open: false });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const toast = useToast();
 
   const { data: categories = [], isLoading } = useQuery<Category[]>({
@@ -88,10 +91,20 @@ export default function CategoriesPage() {
     [categories, search]
   );
 
-  const topLevel = filtered.filter((c) => !c.parentId);
-  const subCategories = filtered.filter((c) => !!c.parentId);
+  const pagedFiltered = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+  const topLevel = pagedFiltered.filter((c) => !c.parentId);
+  const subCategories = pagedFiltered.filter((c) => !!c.parentId);
   const topCount = categories.filter((c) => !c.parentId).length;
   const subCount = categories.filter((c) => !!c.parentId).length;
+
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [filtered.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
   <div className="space-y-4">
@@ -263,7 +276,7 @@ export default function CategoriesPage() {
 
           {/* Mobile card list */}
           <div className="sm:hidden divide-y divide-stroke">
-            {filtered.map((c) => {
+            {pagedFiltered.map((c) => {
               const parent = c.parentId ? categories.find((p) => p.id === c.parentId) : null;
               const isTop = !c.parentId;
               return (
@@ -297,6 +310,15 @@ export default function CategoriesPage() {
             })}
           </div>
         </Card>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          totalItems={filtered.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="categories"
+        />
       )}
 
       {/* Add / Edit modal */}

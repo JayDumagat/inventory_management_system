@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,8 +9,10 @@ import { useBranchStore } from "../../stores/branchStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
-import { Card, CardContent } from "../../components/ui/Card";import { Modal } from "../../components/ui/Modal";
+import { Card, CardContent } from "../../components/ui/Card";
+import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { formatCurrency, formatDate } from "../../lib/utils";
@@ -51,6 +53,7 @@ const createOrderSchema = z.object({
 type CreateOrderForm = z.infer<typeof createOrderSchema>;
 
 export default function OrdersPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
@@ -62,6 +65,7 @@ export default function OrdersPage() {
   const [refundModal, setRefundModal] = useState<{ open: boolean; order?: Order }>({ open: false });
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
+  const [page, setPage] = useState(1);
 
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["orders", tid, currentBranch?.id],
@@ -164,6 +168,15 @@ export default function OrdersPage() {
     refunded: [],
   };
 
+  const pagedOrders = useMemo(
+    () => orders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [orders, page]
+  );
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [orders.length, page, PAGE_SIZE]);
+
   if (isLoading) return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -178,12 +191,12 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Sales Orders</h1>
           <p className="text-muted text-sm mt-1">{orders.length} orders</p>
         </div>
-        <Button onClick={() => setCreateModal(true)} className="gap-2" disabled={!currentBranch}>
+        <Button onClick={() => setCreateModal(true)} className="gap-2 self-start sm:self-auto" disabled={!currentBranch}>
           <Plus className="w-4 h-4" /> New order
         </Button>
       </div>
@@ -208,7 +221,7 @@ export default function OrdersPage() {
             </div>
           </CardContent>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stroke text-left">
@@ -222,7 +235,7 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
+                {pagedOrders.map((o) => (
                   <tr key={o.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-6 py-3 font-mono text-xs font-medium text-ink">{o.orderNumber}</td>
                     <td className="px-6 py-3 text-muted">{o.customerName || "—"}</td>
@@ -259,8 +272,55 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden divide-y divide-stroke">
+            {pagedOrders.map((o) => (
+              <div key={o.id} className="px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs font-medium text-ink">{o.orderNumber}</p>
+                    <p className="text-sm text-ink mt-0.5">{o.customerName || "No customer"}</p>
+                    <p className="text-xs text-muted">{o.branch?.name || "—"}</p>
+                  </div>
+                  <Badge variant={statusColor[o.status]}>{o.status}</Badge>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-ink">{formatCurrency(o.totalAmount)}</p>
+                  <p className="text-xs text-muted">{formatDate(o.createdAt)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setViewOrder(o)}>
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                  {nextStatuses[o.status]?.map((s) => (
+                    <Button key={s} variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: o.id, status: s })}>
+                      {s}
+                    </Button>
+                  ))}
+                  {["delivered", "confirmed", "processing", "shipped"].includes(o.status) && (
+                    <Button variant="ghost" size="sm" onClick={() => setRefundModal({ open: true, order: o })}>
+                      <RefreshCw className="w-4 h-4 text-yellow-500" />
+                    </Button>
+                  )}
+                  {["draft", "cancelled"].includes(o.status) && (
+                    <Button variant="ghost" size="sm" onClick={() => { if (confirm("Delete order?")) deleteOrder.mutate(o.id); }}>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
+      {orders.length > 0 && (
+        <Pagination
+          totalItems={orders.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="orders"
+        />
+      )}
 
       {/* Create order modal */}
       <Modal open={createModal} onClose={closeCreateModal} title={`New sales order — Step ${createStep} of 3`} size="lg">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
@@ -7,9 +7,10 @@ import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
-import { Plus, Trash2, Eye, FileText, X } from "lucide-react";
+import { Plus, Trash2, Eye, FileText, X, Search, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
 interface InvoiceItem {
@@ -60,6 +61,7 @@ const STATUS_VARIANT: Record<string, "default" | "success" | "warning" | "danger
 type NewItem = { description: string; quantity: number; unitPrice: number; totalPrice: number };
 
 export default function InvoicesPage() {
+  const PAGE_SIZE = 10;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
@@ -72,6 +74,8 @@ export default function InvoicesPage() {
   const [form, setForm] = useState({ customerName: "", customerEmail: "", customerPhone: "", customerAddress: "", taxAmount: "0", discountAmount: "0", notes: "", dueDate: "" });
   const [createError, setCreateError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const toast = useToast();
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -168,18 +172,47 @@ export default function InvoicesPage() {
 );
 
   const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
+  const filteredInvoices = useMemo(
+    () => invoices.filter((inv) =>
+      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.customerName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (inv.customerEmail ?? "").toLowerCase().includes(search.toLowerCase())
+    ),
+    [invoices, search]
+  );
+  const pagedInvoices = useMemo(
+    () => filteredInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredInvoices, page]
+  );
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [filteredInvoices.length, page, PAGE_SIZE]);
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Invoices</h1>
           <p className="text-muted text-sm mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</p>
         </div>
-        <Button onClick={() => { resetForm(); setCreateOpen(true); }} size="sm">
+        <Button onClick={() => { resetForm(); setCreateOpen(true); }} size="sm" className="self-start sm:self-auto">
           <Plus className="w-3.5 h-3.5 mr-1.5" /> New Invoice
         </Button>
       </div>
+      {invoices.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search invoices by number, customer, or email…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
+          />
+        </div>
+      )}
 
       {invoices.length === 0 ? (
         <Card>
@@ -192,9 +225,17 @@ export default function InvoicesPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : filteredInvoices.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="w-8 h-8 text-muted mx-auto mb-3" />
+            <p className="text-sm font-medium text-ink mb-1">No results found</p>
+            <p className="text-sm text-muted">No invoices match &ldquo;{search}&rdquo;</p>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stroke">
@@ -208,7 +249,7 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => (
+                {pagedInvoices.map((inv) => (
                   <tr key={inv.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-4 py-3 font-mono font-medium text-ink">{inv.invoiceNumber}</td>
                     <td className="px-4 py-3 text-ink">{inv.customerName ?? <span className="text-muted">—</span>}</td>
@@ -245,7 +286,56 @@ export default function InvoicesPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden divide-y divide-stroke">
+            {pagedInvoices.map((inv) => (
+              <div key={inv.id} className="px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono font-medium text-ink text-sm">{inv.invoiceNumber}</p>
+                    <p className="text-sm text-ink mt-0.5">{inv.customerName || "No customer"}</p>
+                  </div>
+                  <Badge variant={STATUS_VARIANT[inv.status]}>{inv.status}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-ink">{formatCurrency(inv.totalAmount)}</p>
+                  <p className="text-xs text-muted">{inv.dueDate ? formatDate(inv.dueDate) : "No due date"}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted">{formatDate(inv.createdAt)}</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={inv.status}
+                      onChange={(e) => { setStatusUpdating(inv.id); updateStatusMutation.mutate({ id: inv.id, status: e.target.value }); }}
+                      disabled={statusUpdating === inv.id}
+                      className="text-xs border border-stroke bg-page text-ink px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                    >
+                      {["draft", "sent", "paid", "overdue", "cancelled"].map((s) => (
+                        <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => setViewInvoice(inv)} className="p-1.5 text-muted hover:text-ink hover:bg-hover transition-colors">
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    {inv.status === "draft" && (
+                      <button onClick={() => setDeleteTarget(inv)} className="p-1.5 text-muted hover:text-red-600 hover:bg-red-50 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
+      )}
+      {filteredInvoices.length > 0 && (
+        <Pagination
+          totalItems={filteredInvoices.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="invoices"
+        />
       )}
 
       {/* Create Modal */}
@@ -277,7 +367,7 @@ export default function InvoicesPage() {
 
           {!fromOrderId && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="Customer Name" value={form.customerName} onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))} />
                 <Input label="Customer Email" type="email" value={form.customerEmail} onChange={(e) => setForm((f) => ({ ...f, customerEmail: e.target.value }))} />
                 <Input label="Phone" value={form.customerPhone} onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))} />
@@ -290,8 +380,8 @@ export default function InvoicesPage() {
                 <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Line Items</p>
                 <div className="space-y-2">
                   {items.map((item, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-5">
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end border border-stroke p-2 sm:p-0 sm:border-0">
+                      <div className="sm:col-span-5">
                         <input
                           placeholder="Description"
                           value={item.description}
@@ -299,7 +389,7 @@ export default function InvoicesPage() {
                           className="w-full text-sm border border-stroke bg-page text-ink px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary-400 placeholder:text-muted"
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="sm:col-span-2">
                         <input
                           type="number"
                           min="1"
@@ -309,7 +399,7 @@ export default function InvoicesPage() {
                           className="w-full text-sm border border-stroke bg-page text-ink px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary-400"
                         />
                       </div>
-                      <div className="col-span-2">
+                      <div className="sm:col-span-2">
                         <input
                           type="number"
                           min="0"
@@ -320,10 +410,10 @@ export default function InvoicesPage() {
                           className="w-full text-sm border border-stroke bg-page text-ink px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary-400"
                         />
                       </div>
-                      <div className="col-span-2 text-sm text-muted text-right">
+                      <div className="sm:col-span-2 text-sm text-muted sm:text-right">
                         {formatCurrency(item.totalPrice)}
                       </div>
-                      <div className="col-span-1 flex justify-center">
+                      <div className="sm:col-span-1 flex justify-start sm:justify-center">
                         {items.length > 1 && (
                           <button onClick={() => setItems((p) => p.filter((_, i) => i !== idx))} className="p-1 text-muted hover:text-red-600">
                             <X className="w-3.5 h-3.5" />
@@ -341,7 +431,7 @@ export default function InvoicesPage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="Tax Amount ($)" type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
                 <Input label="Discount ($)" type="number" min="0" step="0.01" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
               </div>

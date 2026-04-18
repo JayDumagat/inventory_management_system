@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,7 @@ import { Select } from "../../components/ui/Select";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { formatCurrency, cn, resolveImageUrl } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -64,6 +65,7 @@ function ImageWithFallback({ src, alt, className }: { src: string; alt: string; 
 }
 
 export default function ProductsPage() {
+  const PAGE_SIZE = 8;
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
@@ -78,6 +80,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [productStep, setProductStep] = useState<1 | 2>(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [page, setPage] = useState(1);
 
   // Attribute management state
   const [attrProductId, setAttrProductId] = useState<string | null>(null);
@@ -410,6 +413,15 @@ export default function ProductsPage() {
     ),
     [products, search]
   );
+  const pagedFiltered = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (page > totalPages) setPage(totalPages);
+  }, [filtered.length, page, PAGE_SIZE]);
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -496,7 +508,7 @@ export default function ProductsPage() {
         </Card>
       ) : (
         <div className="space-y-2.5">
-          {filtered.map((p) => (
+          {pagedFiltered.map((p) => (
             <Card key={p.id}>
               {/* Product header */}
               <div
@@ -635,6 +647,15 @@ export default function ProductsPage() {
             </Card>
           ))}
         </div>
+      )}
+      {filtered.length > 0 && (
+        <Pagination
+          totalItems={filtered.length}
+          page={page}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+          itemLabel="products"
+        />
       )}
 
       {/* Product modal */}
