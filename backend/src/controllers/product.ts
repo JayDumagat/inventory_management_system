@@ -7,7 +7,7 @@ import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
 import { getPublicUrl } from "../lib/storage";
 
-function toPublicImageUrl<T extends { objectName: string; url: string }>(image: T): T {
+function toPublicImageUrl<T extends { objectName: string }>(image: T): T & { url: string } {
   return { ...image, url: getPublicUrl(image.objectName) };
 }
 
@@ -345,7 +345,7 @@ export async function addProductImage(req: Request, res: Response): Promise<void
       altText: altText || null,
       sortOrder: sortOrder ?? 0,
     }).returning();
-    res.status(201).json(toPublicImageUrl(image));
+    res.status(201).json(image);
   } catch (error) {
     handleControllerError(error, res);
   }
