@@ -42,7 +42,7 @@ export function usePresignedUrl(objectName: string | undefined | null) {
       .then((r) => {
         if (cancelled) return;
         const presignedUrl = resolveImageUrl(r.data.url as string) ?? null;
-        setCachedPresignedUrl(cacheKey, presignedUrl ?? "");
+        if (presignedUrl) setCachedPresignedUrl(cacheKey, presignedUrl);
         setUrl(presignedUrl);
       })
       .catch(() => {
@@ -65,7 +65,7 @@ export function usePresignedUrl(objectName: string | undefined | null) {
         params: { object: objectName },
       });
       const fresh = resolveImageUrl(r.data.url as string) ?? null;
-      setCachedPresignedUrl(cacheKey, fresh ?? "");
+      if (fresh) setCachedPresignedUrl(cacheKey, fresh);
       setUrl(fresh);
       return fresh;
     } catch {
