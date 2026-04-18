@@ -45,6 +45,33 @@ export function relativeTime(date: string): string {
   return `${days}d ago`;
 }
 
+/**
+ * Normalise a stored product image URL for browser use.
+ *
+ * When running under Docker Compose, `getPublicUrl` on the backend may have
+ * already written the correct `/storage/…` path.  However, images that were
+ * stored before `MINIO_PUBLIC_BASE_URL` was configured will have an internal
+ * URL like `http://minio:9000/inventory-files/…` which the browser cannot
+ * resolve.  This helper rewrites those internal URLs to go through the nginx
+ * `/storage/` proxy, and returns all other URLs (relative paths, CDN URLs,
+ * blob: URLs) unchanged.
+ */
+export function resolveImageUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    // Internal Docker service hostnames have no dots (e.g. "minio", "backend").
+    // Localhost is directly accessible from the developer's browser, so leave it alone.
+    if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") {
+      // Re-route through the nginx /storage/ proxy: strip the leading origin
+      return `/storage${parsed.pathname}`;
+    }
+  } catch {
+    // Not a valid absolute URL (relative path, blob:, etc.) – return as-is
+  }
+  return url;
+}
+
 export function formatDateTime(date: string | Date, timezoneOverride?: string) {
   const { timezone } = useThemeStore.getState();
   const tz = timezoneOverride ?? timezone;

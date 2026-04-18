@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, resolveImageUrl } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -51,14 +51,15 @@ interface CustomerResult {
 
 function ProductImageThumbnail({ src, alt }: { src?: string; alt: string }) {
   const [error, setError] = useState(false);
-  if (!src || error) {
+  const resolved = resolveImageUrl(src);
+  if (!resolved || error) {
     return (
       <div role="img" aria-label="Product image unavailable">
         <ShoppingCart aria-hidden="true" className="w-6 h-6 text-primary-400" />
       </div>
     );
   }
-  return <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
+  return <img src={resolved} alt={alt} className="w-full h-full object-cover" onError={() => setError(true)} />;
 }
 
 function getPrimaryProductImageUrl(product: Product): string | undefined {
