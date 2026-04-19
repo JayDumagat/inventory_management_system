@@ -177,6 +177,13 @@ export default function POSPage() {
     enabled: !!tid && !!selectedCustomerId && !!loyaltyConfig?.isEnabled,
   });
 
+  useEffect(() => {
+    if (!loyaltyConfig?.isEnabled || !selectedCustomerId) {
+      setLoyaltyPointsToRedeem(0);
+      setLoyaltyDiscount(0);
+    }
+  }, [loyaltyConfig?.isEnabled, selectedCustomerId]);
+
   // Close customer dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -336,14 +343,24 @@ export default function POSPage() {
     }
   };
 
-  const applyLoyaltyPoints = () => {
-    if (!customerLoyalty || !loyaltyConfig) return;
+  const applyLoyaltyPoints = async () => {
+    if (!customerLoyalty || !loyaltyConfig || !selectedCustomerId || !tid) return;
     const pts = loyaltyPointsToRedeem;
     if (pts <= 0) return;
-    const dollarValue = pts / Number(loyaltyConfig.pointsPerRedemptionDollar);
-    const maxCover = subtotal * (loyaltyConfig.maximumRedeemPercent / 100);
-    const finalDiscount = Math.min(dollarValue, maxCover, subtotal);
-    setLoyaltyDiscount(Math.round(finalDiscount * 100) / 100);
+    try {
+      const { data } = await api.post(`/api/tenants/${tid}/loyalty/preview-redemption`, {
+        customerId: selectedCustomerId,
+        points: pts,
+        subtotal,
+      });
+      setLoyaltyPointsToRedeem(data.pointsToRedeem);
+      setLoyaltyDiscount(data.discountAmount);
+      toast.success("Loyalty points applied");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e.response?.data?.error ?? "Unable to redeem loyalty points");
+      setLoyaltyDiscount(0);
+    }
   };
 
   const handleCheckout = () => {

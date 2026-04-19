@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -15,12 +16,15 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import {
-  Building2, Palette, CreditCard, Users, Bell, Shield,
+  Building2, Palette, CreditCard, Users, Bell, Shield, Zap, TrendingUp, Clock, FileText,
   CheckCircle, Sun, Moon, Monitor, Plus, Pencil, Trash2,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, formatCurrency } from "../../lib/utils";
 import type { AccentColor, ThemeMode } from "../../stores/themeStore";
 import { useToast } from "../../hooks/useToast";
+import type {
+  Invoice, PlanDefinition, SubscriptionHistoryEntry, SubscriptionUsage, TenantSubscription,
+} from "../../types";
 
 const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: string; description: string }[] = [
   { key: "olive",   label: "Olive Garden",  color: "#606c38", bg: "#fefae0", description: "Warm earthy tones" },
@@ -51,6 +55,12 @@ interface StaffMember {
   lastName: string;
   createdAt: string;
   branches: { id: string; name: string }[];
+}
+
+interface SubscriptionData {
+  subscription: TenantSubscription;
+  plan: PlanDefinition;
+  usage: SubscriptionUsage;
 }
 
 const inviteSchema = z.object({
@@ -97,12 +107,15 @@ const ROLE_PERMISSIONS = [
 export default function OrganizationPage() {
   const { currentTenant, setCurrentTenant } = useTenantStore();
   const { user: currentUser } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const theme = useTheme();
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
 
-  const [tab, setTab] = useState<Tab>("general");
+  const initialTab = searchParams.get("tab");
+  const isTab = (value: string | null): value is Tab => !!value && TABS.some((t) => t.value === value);
+  const [tab, setTab] = useState<Tab>(isTab(initialTab) ? initialTab : "general");
 
   // General tab state
   const [orgName, setOrgName] = useState(currentTenant?.name || "");
@@ -153,6 +166,44 @@ export default function OrganizationPage() {
   const canInvite = ["owner", "admin", "manager"].includes(myRole);
   const toast = useToast();
 
+  const { data: subscriptionData, isLoading: subLoading } = useQuery<SubscriptionData>({
+    queryKey: ["subscription", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/subscription`).then((r) => r.data),
+    enabled: !!tid,
+  });
+
+  const { data: plans = [] } = useQuery<PlanDefinition[]>({
+    queryKey: ["plans"],
+    queryFn: () => api.get("/api/subscription/plans").then((r) => r.data),
+    enabled: tab === "subscriptions",
+  });
+
+  const { data: subscriptionHistory = [] } = useQuery<SubscriptionHistoryEntry[]>({
+    queryKey: ["subscription-history", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/subscription/history`).then((r) => r.data),
+    enabled: !!tid && tab === "subscriptions" && canManage,
+  });
+
+  const { data: invoices = [] } = useQuery<Invoice[]>({
+    queryKey: ["invoices", tid, "subscription-tab"],
+    queryFn: () => api.get(`/api/tenants/${tid}/invoices`).then((r) => r.data),
+    enabled: !!tid && tab === "subscriptions",
+  });
+
+  const changePlan = useMutation({
+    mutationFn: (planKey: string) => api.patch(`/api/tenants/${tid}/subscription`, { planKey }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["subscription", tid] });
+      qc.invalidateQueries({ queryKey: ["subscription-history", tid] });
+      toast.success("Subscription plan updated");
+    },
+    onError: (err: { response?: { data?: { error?: string } } }) => {
+      toast.error(err.response?.data?.error ?? "Failed to update subscription");
+    },
+  });
+
+  const canEditSidebarBranding = subscriptionData?.subscription.planKey === "enterprise";
+
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
     setEditRole(member.role);
@@ -189,12 +240,29 @@ export default function OrganizationPage() {
     setSavingOrg(true);
     setOrgError("");
     try {
-      const { data: updated } = await api.patch(`/api/tenants/${currentTenant.id}`, {
-        name: orgName,
-        description: orgDesc,
-        logoUrl: orgLogo || undefined,
-      });
-      setCurrentTenant({ ...currentTenant, name: updated.name, ...(updated.logoUrl && { logoUrl: updated.logoUrl }) });
+      const payload: Record<string, unknown> = {};
+      if (orgDesc !== (currentTenant.description || "")) payload.description = orgDesc;
+      if (canEditSidebarBranding) {
+        if (orgName !== currentTenant.name) payload.name = orgName;
+        const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
+        if (orgLogo !== currentLogo) payload.logoUrl = orgLogo || undefined;
+      }
+      if (Object.keys(payload).length === 0) {
+        setOrgSuccess(true);
+        setTimeout(() => setOrgSuccess(false), 3000);
+        return;
+      }
+
+      const { data: updated } = await api.patch(`/api/tenants/${currentTenant.id}`, payload);
+      const nextTenant = {
+        ...currentTenant,
+        name: updated.name ?? currentTenant.name,
+        description: updated.description ?? currentTenant.description,
+      } as typeof currentTenant & { logoUrl?: string };
+      if (Object.prototype.hasOwnProperty.call(updated, "logoUrl")) {
+        nextTenant.logoUrl = updated.logoUrl ?? undefined;
+      }
+      setCurrentTenant(nextTenant);
       qc.invalidateQueries({ queryKey: ["tenants"] });
       setOrgSuccess(true);
       setTimeout(() => setOrgSuccess(false), 3000);
@@ -223,7 +291,10 @@ export default function OrganizationPage() {
         {TABS.map((t) => (
           <button
             key={t.value}
-            onClick={() => setTab(t.value)}
+            onClick={() => {
+              setTab(t.value);
+              setSearchParams({ tab: t.value });
+            }}
             className={cn(
               "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               tab === t.value
@@ -258,7 +329,12 @@ export default function OrganizationPage() {
                 Organization saved
               </div>
             )}
-            <Input label="Organization name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+            <Input label="Organization name" value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!canEditSidebarBranding} />
+            {!canEditSidebarBranding && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2">
+                Name and logo shown in the sidebar can only be changed on the Enterprise tier.
+              </p>
+            )}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-muted">URL slug</label>
               <div className="px-3 py-2 border border-stroke bg-page text-muted text-sm font-mono">
@@ -277,6 +353,7 @@ export default function OrganizationPage() {
                 placeholder="https://example.com/logo.png"
                 value={orgLogo}
                 onChange={(e) => setOrgLogo(e.target.value)}
+                disabled={!canEditSidebarBranding}
               />
               {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
@@ -315,7 +392,11 @@ export default function OrganizationPage() {
                 placeholder="https://example.com/logo.png"
                 value={orgLogo}
                 onChange={(e) => setOrgLogo(e.target.value)}
+                disabled={!canEditSidebarBranding}
               />
+              {!canEditSidebarBranding && (
+                <p className="text-xs text-amber-700">Logo customization requires the Enterprise plan.</p>
+              )}
               {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
                   <img
@@ -395,34 +476,130 @@ export default function OrganizationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="p-4 border border-stroke bg-page flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-ink">Free Plan</p>
-                <p className="text-xs text-muted mt-0.5">Your current plan</p>
-              </div>
-              <Badge variant="success">Active</Badge>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-ink">Included features:</p>
-              {[
-                "Unlimited products",
-                "Up to 5 branches",
-                "Basic reports",
-                "Batch & expiry tracking",
-                "Stock movement history",
-              ].map((f) => (
-                <div key={f} className="flex items-center gap-2 text-sm text-muted">
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  {f}
+            {subLoading || !subscriptionData ? (
+              <SkeletonTable />
+            ) : (
+              <>
+                <div className="p-4 border border-stroke bg-page flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-primary-500" />
+                    <p className="text-sm font-semibold text-ink">{subscriptionData.plan.name}</p>
+                    <Badge variant={subscriptionData.subscription.status === "active" ? "success" : "warning"}>
+                      {subscriptionData.subscription.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted">
+                    {subscriptionData.plan.monthlyPrice === 0
+                      ? "Free"
+                      : `${formatCurrency(subscriptionData.plan.monthlyPrice)}/mo · ${formatCurrency(subscriptionData.plan.annualPrice)}/yr`}
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="pt-2">
-              <div className="flex items-center gap-3">
-                <Button disabled className="gap-2">Upgrade to Pro</Button>
-                <span className="text-xs bg-stroke text-muted px-2 py-0.5">Coming soon</span>
-              </div>
-            </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="border border-stroke p-3">
+                    <p className="text-xs text-muted">Billing information</p>
+                    <p className="text-sm font-medium text-ink mt-1">{currentTenant?.name}</p>
+                  </div>
+                  <div className="border border-stroke p-3">
+                    <p className="text-xs text-muted">Payment method</p>
+                    <p className="text-sm font-medium text-ink mt-1">Not configured</p>
+                  </div>
+                  <div className="border border-stroke p-3">
+                    <p className="text-xs text-muted">Expiration / renewal</p>
+                    <p className="text-sm font-medium text-ink mt-1">
+                      {subscriptionData.subscription.currentPeriodEnd
+                        ? new Date(subscriptionData.subscription.currentPeriodEnd).toLocaleDateString()
+                        : "No expiration"}
+                    </p>
+                  </div>
+                </div>
+
+                {canManage && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-ink flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Change plan
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {plans.map((p) => {
+                        const isCurrent = p.key === subscriptionData.subscription.planKey;
+                        return (
+                          <div key={p.key} className={cn("border p-3", isCurrent ? "border-primary-400 bg-primary-50" : "border-stroke")}>
+                            <p className="text-sm font-semibold text-ink">{p.name}</p>
+                            <p className="text-xs text-muted mt-0.5">
+                              {p.monthlyPrice === 0 ? "Free" : `${formatCurrency(p.monthlyPrice)}/mo`}
+                            </p>
+                            <div className="mt-2">
+                              <Button
+                                size="sm"
+                                variant={isCurrent ? "outline" : "default"}
+                                disabled={isCurrent || changePlan.isPending}
+                                onClick={() => changePlan.mutate(p.key)}
+                              >
+                                {isCurrent ? "Current plan" : "Switch"}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border border-stroke">
+                  <div className="px-4 py-3 border-b border-stroke flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-muted" />
+                    <p className="text-sm font-medium text-ink">Invoices</p>
+                  </div>
+                  {invoices.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-muted">No invoices found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-stroke text-left">
+                            <th className="px-4 py-2 text-xs text-muted">Invoice</th>
+                            <th className="px-4 py-2 text-xs text-muted">Status</th>
+                            <th className="px-4 py-2 text-xs text-muted">Total</th>
+                            <th className="px-4 py-2 text-xs text-muted">Due</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoices.slice(0, 10).map((inv) => (
+                            <tr key={inv.id} className="border-b border-stroke">
+                              <td className="px-4 py-2 text-ink">{inv.invoiceNumber}</td>
+                              <td className="px-4 py-2 text-muted capitalize">{inv.status}</td>
+                              <td className="px-4 py-2 text-ink">{formatCurrency(inv.totalAmount)}</td>
+                              <td className="px-4 py-2 text-muted">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {subscriptionData.subscription.cancelAtPeriodEnd && (
+                  <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 p-3">
+                    <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                    <p>Your subscription is set to cancel at period end.</p>
+                  </div>
+                )}
+
+                {canManage && subscriptionHistory.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-ink">Subscription history</p>
+                    <div className="space-y-1">
+                      {subscriptionHistory.slice(0, 8).map((h) => (
+                        <div key={h.id} className="text-xs text-muted border-b border-stroke pb-1">
+                          <span className="text-ink">{h.fromPlan} → {h.toPlan}</span> · {new Date(h.effectiveAt).toLocaleDateString()}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       )}

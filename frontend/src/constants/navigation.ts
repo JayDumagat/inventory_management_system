@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, GitBranch, Users, BarChart2, Ruler, Building2,
   ArrowRightLeft, Truck, ShoppingBag, CreditCard, Plug, Code,
-  TrendingUp, FileText, Gift, Star, Zap,
+  TrendingUp, FileText, Gift, Star,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -35,7 +35,6 @@ export const navItems: NavItem[] = [
   { label: "Audit Log",       icon: ClipboardList,   href: "/audit",           roles: null },
   { label: "Integrations",    icon: Plug,            href: "/integrations",    roles: ["owner", "admin"] },
   { label: "API",             icon: Code,            href: "/api-keys",        roles: ["owner", "admin"] },
-  { label: "Subscription",    icon: Zap,             href: "/subscription",    roles: ["owner", "admin"] },
   { label: "Organization",    icon: Building2,       href: "/organization",    roles: ["owner", "admin", "manager"] },
 ];
 
