@@ -144,6 +144,7 @@ export default function POSPage() {
   // ── Loyalty redemption state ──────────────────────────────────────────────
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [isApplyingLoyalty, setIsApplyingLoyalty] = useState(false);
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -208,7 +209,9 @@ export default function POSPage() {
       const data = res.data;
       const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
       const disc = parseFloat(discountInput) || 0;
-      const tot = Math.max(0, sub - disc - loyaltyDiscount);
+      const activeLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
+      const activeLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
+      const tot = Math.max(0, sub - disc - activeLoyaltyDiscount);
       const paid = paymentMethod === "Cash" ? (parseFloat(cashInput) || tot) : tot;
 
       setLastReceipt({
@@ -216,7 +219,7 @@ export default function POSPage() {
         items: [...cart],
         subtotal: sub,
         discount: disc,
-        loyaltyDiscount,
+        loyaltyDiscount: activeLoyaltyDiscount,
         total: tot,
         paymentMethod,
         paid,
@@ -225,7 +228,7 @@ export default function POSPage() {
         date: new Date().toLocaleString(),
         promotionCode: appliedPromo?.promotionCode,
         loyaltyPointsEarned: data.loyaltyPointsEarned,
-        loyaltyPointsRedeemed: loyaltyPointsToRedeem || undefined,
+        loyaltyPointsRedeemed: activeLoyaltyPoints || undefined,
       });
 
       // If there's a customer name but no selected customer, auto-create the customer
@@ -299,7 +302,10 @@ export default function POSPage() {
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = parseFloat(discountInput) || 0;
   const promoDiscount = appliedPromo?.discountAmount ?? 0;
-  const total = Math.max(0, subtotal - discount - promoDiscount - loyaltyDiscount);
+  const loyaltyRedemptionEnabled = !!loyaltyConfig?.isEnabled && !!selectedCustomerId && !!customerLoyalty;
+  const appliedLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
+  const appliedLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
+  const total = Math.max(0, subtotal - discount - promoDiscount - appliedLoyaltyDiscount);
   const cashTendered = parseFloat(cashInput) || 0;
   const change = paymentMethod === "Cash" ? Math.max(0, cashTendered - total) : 0;
 
@@ -336,14 +342,27 @@ export default function POSPage() {
     }
   };
 
-  const applyLoyaltyPoints = () => {
-    if (!customerLoyalty || !loyaltyConfig) return;
+  const applyLoyaltyPoints = async () => {
+    if (!customerLoyalty || !loyaltyConfig || !selectedCustomerId || !tid) return;
     const pts = loyaltyPointsToRedeem;
     if (pts <= 0) return;
-    const dollarValue = pts / Number(loyaltyConfig.pointsPerRedemptionDollar);
-    const maxCover = subtotal * (loyaltyConfig.maximumRedeemPercent / 100);
-    const finalDiscount = Math.min(dollarValue, maxCover, subtotal);
-    setLoyaltyDiscount(Math.round(finalDiscount * 100) / 100);
+    setIsApplyingLoyalty(true);
+    try {
+      const { data } = await api.post(`/api/tenants/${tid}/loyalty/preview-redemption`, {
+        customerId: selectedCustomerId,
+        points: pts,
+        subtotal,
+      });
+      setLoyaltyPointsToRedeem(data.pointsToRedeem);
+      setLoyaltyDiscount(data.discountAmount);
+      toast.success("Loyalty points applied");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e.response?.data?.error ?? "Unable to redeem loyalty points");
+      setLoyaltyDiscount(0);
+    } finally {
+      setIsApplyingLoyalty(false);
+    }
   };
 
   const handleCheckout = () => {
@@ -359,8 +378,8 @@ export default function POSPage() {
       customerName: customerName || undefined,
       customerId: selectedCustomerId || undefined,
       discountAmount: discount + promoDiscount,
-      loyaltyDiscountAmount: loyaltyDiscount,
-      loyaltyPointsRedeemed: loyaltyPointsToRedeem || undefined,
+      loyaltyDiscountAmount: appliedLoyaltyDiscount,
+      loyaltyPointsRedeemed: appliedLoyaltyPoints || undefined,
       promotionId: appliedPromo?.promotionId ?? undefined,
       promotionCode: appliedPromo?.promotionCode ?? undefined,
       notes: `POS sale — ${paymentMethod}`,
@@ -588,21 +607,21 @@ export default function POSPage() {
                 {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
               </div>
               {/* Loyalty points */}
-              {loyaltyConfig?.isEnabled && selectedCustomerId && customerLoyalty && (
+              {loyaltyRedemptionEnabled && (
                 <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1 text-amber-700">
                       <Star className="w-3 h-3" />
                       <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
                     </div>
-                    {loyaltyDiscount > 0 && (
+                    {appliedLoyaltyDiscount > 0 && (
                       <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
                         <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
-                  {loyaltyDiscount > 0 ? (
-                    <p className="text-xs text-amber-700">Redeeming {loyaltyPointsToRedeem} {loyaltyConfig.pointsLabel} = -{formatCurrency(loyaltyDiscount)}</p>
+                  {appliedLoyaltyDiscount > 0 ? (
+                    <p className="text-xs text-amber-700">Redeeming {appliedLoyaltyPoints} {loyaltyConfig.pointsLabel} = -{formatCurrency(appliedLoyaltyDiscount)}</p>
                   ) : (
                     <div className="flex gap-1">
                       <input
@@ -616,9 +635,10 @@ export default function POSPage() {
                       />
                       <button
                         onClick={applyLoyaltyPoints}
+                        disabled={isApplyingLoyalty}
                         className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
                       >
-                        Redeem
+                        {isApplyingLoyalty ? "Applying..." : "Redeem"}
                       </button>
                     </div>
                   )}
@@ -634,10 +654,10 @@ export default function POSPage() {
                   <span>-{formatCurrency(promoDiscount)}</span>
                 </div>
               )}
-              {loyaltyDiscount > 0 && (
+              {appliedLoyaltyDiscount > 0 && (
                 <div className="flex justify-between text-xs text-amber-600">
                   <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty</span>
-                  <span>-{formatCurrency(loyaltyDiscount)}</span>
+                  <span>-{formatCurrency(appliedLoyaltyDiscount)}</span>
                 </div>
               )}
             </>
@@ -765,10 +785,10 @@ export default function POSPage() {
                 <span>-{formatCurrency(promoDiscount)}</span>
               </div>
             )}
-            {loyaltyDiscount > 0 && (
+            {appliedLoyaltyDiscount > 0 && (
               <div className="flex justify-between text-amber-600">
-                <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty ({loyaltyPointsToRedeem} pts)</span>
-                <span>-{formatCurrency(loyaltyDiscount)}</span>
+                <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty ({appliedLoyaltyPoints} pts)</span>
+                <span>-{formatCurrency(appliedLoyaltyDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-ink text-base border-t border-stroke pt-1 mt-1">

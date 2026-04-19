@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { tenants, tenantUsers, branches } from "../db/schema";
+import { tenants, tenantUsers, branches, tenantSubscriptions } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -108,6 +108,28 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
     }
 
     const body = updateTenantSchema.parse(req.body);
+
+    const wantsBrandingChange = body.name !== undefined || body.logoUrl !== undefined;
+    if (wantsBrandingChange) {
+      const [sub] = await db
+        .select({ planKey: tenantSubscriptions.planKey })
+        .from(tenantSubscriptions)
+        .where(eq(tenantSubscriptions.tenantId, tenantId));
+      const [tenantPlan] = await db
+        .select({ plan: tenants.plan })
+        .from(tenants)
+        .where(eq(tenants.id, tenantId));
+      const planKey = sub?.planKey ?? tenantPlan?.plan;
+      if (planKey !== "enterprise") {
+        res.status(402).json({
+          error: "Updating organization name and logo requires the Enterprise plan",
+          requiredPlan: "enterprise",
+          currentPlan: planKey ?? "free",
+        });
+        return;
+      }
+    }
+
     const [updated] = await db.update(tenants).set({ ...body, updatedAt: new Date() }).where(eq(tenants.id, tenantId)).returning();
 
     res.json(updated);

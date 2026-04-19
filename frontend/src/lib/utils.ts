@@ -7,8 +7,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number | string, currencyOverride?: string) {
-  const currency = currencyOverride ?? useThemeStore.getState().currency;
-  return new Intl.NumberFormat("en-US", {
+  const { currency: userCurrency, language } = useThemeStore.getState();
+  const currency = currencyOverride ?? userCurrency;
+  const localeMap: Record<string, string> = {
+    en: "en-US",
+    es: "es-ES",
+    fr: "fr-FR",
+    de: "de-DE",
+    ja: "ja-JP",
+    zh: "zh-CN",
+    pt: "pt-BR",
+    ar: "ar-SA",
+  };
+  const locale = localeMap[language] ?? "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   }).format(Number(amount));

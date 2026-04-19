@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const dateTimeInputSchema = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  if (typeof value !== "string") return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString();
+}, z.string().datetime().optional());
+
 export const promotionSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(1000).optional().or(z.literal("")).transform(v => v || undefined),
@@ -17,8 +25,8 @@ export const promotionSchema = z.object({
   specificCustomerId: z.string().uuid().optional(),
   usageLimitTotal: z.number().int().min(1).optional(),
   usageLimitPerCustomer: z.number().int().min(1).optional(),
-  startsAt: z.string().datetime().optional().or(z.literal("")).transform(v => v || undefined),
-  endsAt: z.string().datetime().optional().or(z.literal("")).transform(v => v || undefined),
+  startsAt: dateTimeInputSchema,
+  endsAt: dateTimeInputSchema,
   isActive: z.boolean().optional().default(true),
   stackable: z.boolean().optional().default(false),
   priority: z.number().int().min(0).optional().default(0),

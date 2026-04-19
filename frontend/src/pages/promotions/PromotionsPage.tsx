@@ -40,6 +40,27 @@ const schema = z.object({
 type PromotionForm = z.input<typeof schema>;
 type PromotionFormOutput = z.output<typeof schema>;
 
+function sanitizePromotionPayload(data: PromotionFormOutput): PromotionFormOutput {
+  const toOptionalNumber = (value: number | undefined) => (
+    value === undefined || Number.isNaN(value) ? undefined : value
+  );
+  const toOptionalIso = (value: string | undefined) => {
+    if (!value) return undefined;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  };
+
+  return {
+    ...data,
+    minimumOrderAmount: toOptionalNumber(data.minimumOrderAmount),
+    maximumDiscountAmount: toOptionalNumber(data.maximumDiscountAmount),
+    usageLimitTotal: toOptionalNumber(data.usageLimitTotal),
+    usageLimitPerCustomer: toOptionalNumber(data.usageLimitPerCustomer),
+    startsAt: toOptionalIso(data.startsAt),
+    endsAt: toOptionalIso(data.endsAt),
+  };
+}
+
 function getStatusBadge(promo: Promotion) {
   if (!promo.isActive) return <Badge variant="default">Inactive</Badge>;
   const now = new Date();
@@ -82,8 +103,8 @@ export default function PromotionsPage() {
   const save = useMutation({
     mutationFn: (data: PromotionFormOutput) =>
       modal.promo
-        ? api.patch(`/api/tenants/${tid}/promotions/${modal.promo.id}`, data).then((r) => r.data)
-        : api.post(`/api/tenants/${tid}/promotions`, data).then((r) => r.data),
+        ? api.patch(`/api/tenants/${tid}/promotions/${modal.promo.id}`, sanitizePromotionPayload(data)).then((r) => r.data)
+        : api.post(`/api/tenants/${tid}/promotions`, sanitizePromotionPayload(data)).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["promotions", tid] });
       closeModal();

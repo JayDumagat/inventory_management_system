@@ -35,7 +35,6 @@ import LandingPage from "./pages/landing/LandingPage";
 import PricingPage from "./pages/pricing/PricingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InvoicesPage from "./pages/invoices/InvoicesPage";
-import SubscriptionPage from "./pages/subscription/SubscriptionPage";
 import PromotionsPage from "./pages/promotions/PromotionsPage";
 import LoyaltyPage from "./pages/loyalty/LoyaltyPage";
 
@@ -98,7 +97,7 @@ export default function App() {
               <Route path="/pos" element={<POSPage />} />
               <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="/api-keys" element={<APIPage />} />
-              <Route path="/subscription" element={<SubscriptionPage />} />
+              <Route path="/subscription" element={<Navigate to="/organization?tab=subscriptions" replace />} />
               <Route path="/promotions" element={<PromotionsPage />} />
               <Route path="/loyalty" element={<LoyaltyPage />} />
             </Route>
