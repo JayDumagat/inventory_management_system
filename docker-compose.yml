@@ -1,108 +1,108 @@
-services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: database
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  services:
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: password
+        POSTGRES_DB: database
+      ports:
+        - "5432:5432"
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    redis:
+      image: redis:7-alpine
+      restart: unless-stopped
+      ports:
+        - "6379:6379"
+      volumes:
+        - redis_data:/data
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
 
-  minio:
-    image: minio/minio:latest
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+    minio:
+      image: minio/minio:latest
+      restart: unless-stopped
+      command: server /data --console-address ":9001"
+      environment:
+        MINIO_ROOT_USER: minioadmin
+        MINIO_ROOT_PASSWORD: minioadmin123
+      ports:
+        - "9000:9000"
+        - "9001:9001"
+      volumes:
+        - minio_data:/data
+      healthcheck:
+        test: ["CMD", "mc", "ready", "local"]
+        interval: 10s
+        timeout: 10s
+        retries: 5
 
-  migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: node dist/db/migrate.js
-    environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/database
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
+    migrate:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      command: node dist/db/migrate.js
+      environment:
+        DATABASE_URL: postgresql://postgres:password@db:5432/database
+      depends_on:
+        db:
+          condition: service_healthy
+      restart: "no"
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/database
-      JWT_SECRET: change-this-in-production-super-secret
-      JWT_REFRESH_SECRET: change-this-refresh-secret-in-production
-      PORT: 3001
-      NODE_ENV: development
-      FRONTEND_URL: http://localhost:5173
-      REDIS_URL: redis://redis:6379
-      MINIO_ENDPOINT: minio
-      MINIO_PORT: "9000"
-      MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin123
-      MINIO_BUCKET: inventory-files
-    ports:
-      - "3001:3001"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    volumes:
-      - ./backend/src:/app/src
+    backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      restart: unless-stopped
+      environment:
+        DATABASE_URL: postgresql://postgres:password@db:5432/database
+        JWT_SECRET: change-this-in-production-super-secret
+        JWT_REFRESH_SECRET: change-this-refresh-secret-in-production
+        PORT: 3001
+        NODE_ENV: development
+        FRONTEND_URL: http://localhost:5173
+        REDIS_URL: redis://redis:6379
+        MINIO_ENDPOINT: minio
+        MINIO_PORT: "9000"
+        MINIO_USE_SSL: "false"
+        MINIO_ACCESS_KEY: minioadmin
+        MINIO_SECRET_KEY: minioadmin123
+        MINIO_BUCKET: inventory-files
+      ports:
+        - "3001:3001"
+      depends_on:
+        db:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+        migrate:
+          condition: service_completed_successfully
+      volumes:
+        - ./backend/src:/app/src
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    environment:
-      VITE_API_URL: http://localhost:3001
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
+    frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+      restart: unless-stopped
+      environment:
+        VITE_API_URL: http://localhost:3001
+      ports:
+        - "5173:80"
+      depends_on:
+        - backend
 
-volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
+  volumes:
+    postgres_data:
+    redis_data:
+    minio_data:
