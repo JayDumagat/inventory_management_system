@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingCart,
   ClipboardList, GitBranch, Users, BarChart2, Ruler, Building2,
   ArrowRightLeft, Truck, ShoppingBag, CreditCard, Plug, Code,
-  TrendingUp, FileText,
+  TrendingUp, FileText, Gift, Star, Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,9 +30,12 @@ export const navItems: NavItem[] = [
   { label: "Staff",           icon: Users,           href: "/staff",           roles: ["owner", "admin", "manager"] },
   { label: "Reports",         icon: BarChart2,       href: "/reports",         roles: null },
   { label: "Analytics",       icon: TrendingUp,      href: "/analytics",       roles: null },
+  { label: "Promotions",      icon: Gift,            href: "/promotions",      roles: ["owner", "admin", "manager"] },
+  { label: "Loyalty",         icon: Star,            href: "/loyalty",         roles: ["owner", "admin", "manager"] },
   { label: "Audit Log",       icon: ClipboardList,   href: "/audit",           roles: null },
   { label: "Integrations",    icon: Plug,            href: "/integrations",    roles: ["owner", "admin"] },
   { label: "API",             icon: Code,            href: "/api-keys",        roles: ["owner", "admin"] },
+  { label: "Subscription",    icon: Zap,             href: "/subscription",    roles: ["owner", "admin"] },
   { label: "Organization",    icon: Building2,       href: "/organization",    roles: ["owner", "admin", "manager"] },
 ];
 
@@ -52,5 +55,7 @@ export const ALL_PAGES = [
   { href: "/branches", label: "Branches" },
   { href: "/reports", label: "Reports" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/promotions", label: "Promotions" },
+  { href: "/loyalty", label: "Loyalty" },
   { href: "/audit", label: "Audit Log" },
 ];

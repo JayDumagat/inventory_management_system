@@ -13,6 +13,7 @@ import { transactions } from "./transactions";
 import { integrations } from "./integrations";
 import { apiKeys } from "./apiKeys";
 import { invoices } from "./invoices";
+import { tenantSubscriptions } from "./subscriptions";
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -45,7 +46,7 @@ export const branchStaff = pgTable("branch_staff", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const tenantsRelations = relations(tenants, ({ many }) => ({
+export const tenantsRelations = relations(tenants, ({ many, one }) => ({
   tenantUsers: many(tenantUsers),
   branches: many(branches),
   categories: many(categories),
@@ -58,6 +59,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   integrations: many(integrations),
   apiKeys: many(apiKeys),
   invoices: many(invoices),
+  subscription: one(tenantSubscriptions, { fields: [tenants.id], references: [tenantSubscriptions.tenantId] }),
 }));
 
 export const tenantUsersRelations = relations(tenantUsers, ({ one }) => ({

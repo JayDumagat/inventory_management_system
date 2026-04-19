@@ -9,6 +9,8 @@ export interface TenantContext {
   tenantUserId: string;
   allowedPages: string[];
   allowedBranchIds: string[];
+  planKey: string;
+  addonLimits: Record<string, number>;
 }
 
 declare global {

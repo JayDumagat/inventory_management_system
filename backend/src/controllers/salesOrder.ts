@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { salesOrders, salesOrderItems, inventory, stockMovements, refunds, transactions } from "../db/schema";
+import {
+  salesOrders, salesOrderItems, inventory, stockMovements, refunds, transactions,
+  promotions, promotionUsage, loyaltyConfig, loyaltyLedger, customers,
+} from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -31,7 +34,9 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     const tenantId = req.tenantContext!.tenantId;
 
     const subtotal = body.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-    const totalAmount = subtotal + (body.taxAmount ?? 0) - (body.discountAmount ?? 0);
+    const promoDiscount = body.discountAmount ?? 0;
+    const loyaltyDiscount = body.loyaltyDiscountAmount ?? 0;
+    const totalAmount = subtotal + (body.taxAmount ?? 0) - promoDiscount - loyaltyDiscount;
 
     // Validate total is positive
     if (totalAmount < 0) {
@@ -78,9 +83,13 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       customerPhone: body.customerPhone,
       subtotal: String(subtotal),
       taxAmount: String(body.taxAmount ?? 0),
-      discountAmount: String(body.discountAmount ?? 0),
+      discountAmount: String(promoDiscount),
       totalAmount: String(totalAmount),
       notes,
+      promotionId: body.promotionId ?? undefined,
+      promotionCode: body.promotionCode ?? undefined,
+      loyaltyPointsRedeemed: body.loyaltyPointsRedeemed ?? 0,
+      loyaltyDiscountAmount: String(loyaltyDiscount),
       createdBy: req.user!.id,
     }).returning();
 
@@ -130,6 +139,87 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
         notes: notes ?? null,
         createdBy: req.user!.id,
       });
+
+      // ── Promotion usage tracking ──────────────────────────────────────────
+      if (body.promotionId) {
+        await db.insert(promotionUsage).values({
+          promotionId: body.promotionId,
+          tenantId,
+          orderId: order.id,
+          customerId: body.customerId ?? undefined,
+          discountApplied: String(promoDiscount),
+        }).catch(() => {}); // non-fatal
+
+        // Increment usage count
+        const [currentPromo] = await db.select({ usageCount: promotions.usageCount })
+          .from(promotions)
+          .where(eq(promotions.id, body.promotionId));
+        if (currentPromo) {
+          await db.update(promotions)
+            .set({ usageCount: currentPromo.usageCount + 1 })
+            .where(eq(promotions.id, body.promotionId))
+            .catch(() => {});
+        }
+      }
+
+      // ── Loyalty points earn ───────────────────────────────────────────────
+      if (body.customerId) {
+        const [lConfig] = await db.select().from(loyaltyConfig)
+          .where(eq(loyaltyConfig.tenantId, tenantId));
+
+        if (lConfig?.isEnabled) {
+          const [customer] = await db.select().from(customers)
+            .where(and(eq(customers.id, body.customerId), eq(customers.tenantId, tenantId)));
+
+          if (customer) {
+            // Handle loyalty points redemption first
+            let balanceAfterRedeem = customer.loyaltyPoints;
+            if ((body.loyaltyPointsRedeemed ?? 0) > 0) {
+              balanceAfterRedeem = Math.max(0, customer.loyaltyPoints - (body.loyaltyPointsRedeemed ?? 0));
+              await db.update(customers)
+                .set({ loyaltyPoints: balanceAfterRedeem, updatedAt: new Date() })
+                .where(eq(customers.id, customer.id));
+              await db.insert(loyaltyLedger).values({
+                tenantId,
+                customerId: customer.id,
+                orderId: order.id,
+                type: "redeem",
+                points: -(body.loyaltyPointsRedeemed ?? 0),
+                balanceBefore: customer.loyaltyPoints,
+                balanceAfter: balanceAfterRedeem,
+                notes: `Redeemed on order ${order.orderNumber}`,
+                createdBy: req.user!.id,
+              }).catch(() => {});
+            }
+
+            // Earn points on the amount paid (net of all discounts)
+            const pointsEarned = Math.floor(Number(totalAmount) * Number(lConfig.pointsPerDollar));
+            if (pointsEarned > 0) {
+              const newBalance = balanceAfterRedeem + pointsEarned;
+              await db.update(customers)
+                .set({ loyaltyPoints: newBalance, updatedAt: new Date() })
+                .where(eq(customers.id, customer.id));
+              await db.insert(loyaltyLedger).values({
+                tenantId,
+                customerId: customer.id,
+                orderId: order.id,
+                type: "earn",
+                points: pointsEarned,
+                balanceBefore: balanceAfterRedeem,
+                balanceAfter: newBalance,
+                notes: `Earned on order ${order.orderNumber}`,
+                createdBy: req.user!.id,
+              }).catch(() => {});
+
+              // Store points earned on order
+              await db.update(salesOrders)
+                .set({ loyaltyPointsEarned: pointsEarned })
+                .where(eq(salesOrders.id, order.id))
+                .catch(() => {});
+            }
+          }
+        }
+      }
     }
 
     await createAuditLog({ tenantId, userId: req.user!.id, action: "create", resourceType: "sales_order", resourceId: order.id });

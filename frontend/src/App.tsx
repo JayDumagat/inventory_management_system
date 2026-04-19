@@ -35,6 +35,9 @@ import LandingPage from "./pages/landing/LandingPage";
 import PricingPage from "./pages/pricing/PricingPage";
 import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InvoicesPage from "./pages/invoices/InvoicesPage";
+import SubscriptionPage from "./pages/subscription/SubscriptionPage";
+import PromotionsPage from "./pages/promotions/PromotionsPage";
+import LoyaltyPage from "./pages/loyalty/LoyaltyPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -95,6 +98,9 @@ export default function App() {
               <Route path="/pos" element={<POSPage />} />
               <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="/api-keys" element={<APIPage />} />
+              <Route path="/subscription" element={<SubscriptionPage />} />
+              <Route path="/promotions" element={<PromotionsPage />} />
+              <Route path="/loyalty" element={<LoyaltyPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

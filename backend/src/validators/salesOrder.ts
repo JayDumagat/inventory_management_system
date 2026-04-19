@@ -21,6 +21,12 @@ export const createOrderSchema = z.object({
   notes: z.string().max(2000, "Notes too long").optional(),
   paymentMethod: z.string().max(50, "Payment method too long").optional(),
   status: z.enum(["draft", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"], { message: "Invalid order status" }).optional(),
+  // Promotion
+  promotionId: z.string().uuid().optional(),
+  promotionCode: z.string().max(50).optional(),
+  // Loyalty redemption
+  loyaltyPointsRedeemed: z.number().int().min(0).optional().default(0),
+  loyaltyDiscountAmount: z.number().min(0).optional().default(0),
 });
 
 export const updateOrderSchema = z.object({
