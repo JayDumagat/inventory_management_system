@@ -6,7 +6,7 @@ import { cn, relativeTime } from "../lib/utils";
 import {
   LogOut, Menu, GitBranch, ChevronDown, Check,
   Search, Plus, Settings, Bell, User, SlidersHorizontal, X,
-  AlertTriangle, ArrowRightLeft, Package,
+  AlertTriangle, ArrowRightLeft, Package, HelpCircle,
 } from "lucide-react";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { api } from "../api/client";
 import { PreferencesModal } from "../components/ui/PreferencesModal";
 import { navItems } from "../constants/navigation";
 import type { Branch, Notification } from "../types";
+import { SubmitTicketModal } from "../components/SubmitTicketModal";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -27,6 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [ticketOpen, setTicketOpen] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -254,44 +256,56 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1" />
 
-          <div className="relative" ref={notifRef}>
+          <div className="flex items-center gap-0.5">
+            {/* Help / Submit Ticket */}
             <button
-              aria-label="Notifications"
-              onClick={() => setNotifOpen((o) => !o)}
-              className="relative p-1.5 text-muted hover:bg-hover transition-colors"
+              aria-label="Help & Support"
+              onClick={() => setTicketOpen(true)}
+              className="p-1.5 text-muted hover:bg-hover transition-colors"
+              title="Help & Support"
             >
-              <Bell className="w-4 h-4" />
-              {notifications.length > 0 && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
-              )}
+              <HelpCircle className="w-4 h-4" />
             </button>
 
-            {notifOpen && (
-              <div className="absolute right-0 top-full mt-0 w-80 bg-panel border border-stroke overflow-hidden z-50">
-                <div className="px-4 py-3 border-b border-stroke">
-                  <p className="text-sm font-semibold text-ink">Notifications</p>
-                </div>
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-muted">No notifications</div>
-                ) : (
-                  <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((n) => {
-                      const Icon = n.type === "low_stock" ? AlertTriangle : n.type === "transfer" ? ArrowRightLeft : Bell;
-                      const iconColor = n.type === "low_stock" ? "text-yellow-500" : n.type === "transfer" ? "text-blue-500" : "text-muted";
-                      return (
-                        <div key={n.id} className="flex items-start gap-3 px-4 py-3 border-b border-stroke last:border-0 hover:bg-hover transition-colors">
-                          <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${iconColor}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-ink leading-snug">{n.message}</p>
-                            <p className="text-[10px] text-muted mt-0.5">{relativeTime(n.createdAt)}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* Notifications */}
+            <div className="relative" ref={notifRef}>
+              <button
+                aria-label="Notifications"
+                onClick={() => setNotifOpen((o) => !o)}
+                className="relative p-1.5 text-muted hover:bg-hover transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                 )}
-              </div>
-            )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-0 w-80 bg-panel border border-stroke overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-stroke">
+                    <p className="text-sm font-semibold text-ink">Notifications</p>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-muted">No notifications</div>
+                  ) : (
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.map((n) => {
+                        const Icon = n.type === "low_stock" ? AlertTriangle : n.type === "transfer" ? ArrowRightLeft : Bell;
+                        const iconColor = n.type === "low_stock" ? "text-yellow-500" : n.type === "transfer" ? "text-blue-500" : "text-muted";
+                        return (
+                          <div key={n.id} className="flex items-start gap-3 px-4 py-3 border-b border-stroke last:border-0 hover:bg-hover transition-colors">
+                            <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${iconColor}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-ink leading-snug">{n.message}</p>
+                              <p className="text-[10px] text-muted mt-0.5">{relativeTime(n.createdAt)}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Profile dropdown */}
@@ -367,6 +381,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <PreferencesModal open={prefsOpen} onClose={() => setPrefsOpen(false)} />
+      <SubmitTicketModal
+        open={ticketOpen}
+        onClose={() => setTicketOpen(false)}
+        userEmail={user?.email ?? ""}
+        userName={[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
+        tenantId={currentTenant?.id}
+      />
     </div>
   );
 }

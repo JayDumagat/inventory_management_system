@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { RequireAuth, RequireTenant } from "./components/RouteGuard";
+import { SuperadminGuard } from "./components/SuperadminGuard";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import SuperadminLayout from "./layouts/SuperadminLayout";
 
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
@@ -38,9 +40,28 @@ import InvoicesPage from "./pages/invoices/InvoicesPage";
 import PromotionsPage from "./pages/promotions/PromotionsPage";
 import LoyaltyPage from "./pages/loyalty/LoyaltyPage";
 
+// Superadmin pages
+import SuperadminLoginPage from "./pages/superadmin/SuperadminLoginPage";
+import SuperadminDashboardPage from "./pages/superadmin/SuperadminDashboardPage";
+import SuperadminTenantsPage from "./pages/superadmin/SuperadminTenantsPage";
+import SuperadminSubscriptionsPage from "./pages/superadmin/SuperadminSubscriptionsPage";
+import SuperadminPlansPage from "./pages/superadmin/SuperadminPlansPage";
+import SuperadminTicketsPage from "./pages/superadmin/SuperadminTicketsPage";
+import SuperadminStaffPage from "./pages/superadmin/SuperadminStaffPage";
+import SuperadminAuditLogsPage from "./pages/superadmin/SuperadminAuditLogsPage";
+import SuperadminReportsPage from "./pages/superadmin/SuperadminReportsPage";
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
+
+function SuperadminRoute({ children, page }: { children: React.ReactNode; page?: string }) {
+  return (
+    <SuperadminGuard requiredPage={page}>
+      <SuperadminLayout>{children}</SuperadminLayout>
+    </SuperadminGuard>
+  );
+}
 
 export default function App() {
   return (
@@ -101,6 +122,77 @@ export default function App() {
               <Route path="/promotions" element={<PromotionsPage />} />
               <Route path="/loyalty" element={<LoyaltyPage />} />
             </Route>
+
+            {/* Superadmin panel */}
+            <Route path="/superadmin/login" element={<SuperadminLoginPage />} />
+            <Route
+              path="/superadmin/dashboard"
+              element={
+                <SuperadminRoute page="dashboard">
+                  <SuperadminDashboardPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/tenants"
+              element={
+                <SuperadminRoute page="tenants">
+                  <SuperadminTenantsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/subscriptions"
+              element={
+                <SuperadminRoute page="subscriptions">
+                  <SuperadminSubscriptionsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/plans"
+              element={
+                <SuperadminRoute page="plans">
+                  <SuperadminPlansPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/tickets"
+              element={
+                <SuperadminRoute page="tickets">
+                  <SuperadminTicketsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/staff"
+              element={
+                <SuperadminRoute>
+                  <SuperadminStaffPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/audit-logs"
+              element={
+                <SuperadminRoute page="audit-logs">
+                  <SuperadminAuditLogsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/reports"
+              element={
+                <SuperadminRoute page="reports">
+                  <SuperadminReportsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin"
+              element={<Navigate to="/superadmin/dashboard" replace />}
+            />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

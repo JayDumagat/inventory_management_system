@@ -509,3 +509,83 @@ export interface CustomerLoyalty {
   balance: number;
   ledger: LoyaltyLedgerEntry[];
 }
+
+// ─── Superadmin ───────────────────────────────────────────────────────────────
+export interface SuperadminUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "owner" | "staff";
+  isActive: boolean;
+  allowedPages: string[];
+  createdAt?: string;
+}
+
+export interface SuperadminTenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  plan: string;
+  createdAt: string;
+}
+
+export interface SuperadminTenantDetail {
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    isActive: boolean;
+    plan: string;
+    createdAt: string;
+  };
+  subscription: TenantSubscription | null;
+  memberCount: number;
+}
+
+export interface PlatformReports {
+  totalTenants: number;
+  newTenantsLast30Days: number;
+  mrr: number;
+  arr: number;
+  byPlan: { plan: string; count: number }[];
+  byStatus: { status: string; count: number }[];
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+export type TicketStatus = "open" | "in_progress" | "waiting_on_customer" | "resolved" | "closed";
+export type TicketPriority = "low" | "medium" | "high" | "urgent";
+export type TicketCategory = "general" | "billing" | "technical" | "feature_request" | "bug_report" | "account";
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: string;
+  tenantId?: string;
+  submittedByUserId?: string;
+  submitterEmail: string;
+  submitterName?: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+  subject: string;
+  status: TicketStatus;
+  assignedTo?: string;
+  resolvedAt?: string;
+  closedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  tenantName?: string;
+}
+
+export interface TicketMessage {
+  id: string;
+  ticketId: string;
+  senderType: "tenant_user" | "superadmin";
+  senderId?: string;
+  senderEmail?: string;
+  senderName?: string;
+  body: string;
+  isInternal: boolean;
+  createdAt: string;
+}

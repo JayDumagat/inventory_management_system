@@ -13,11 +13,19 @@ export interface TenantContext {
   addonLimits: Record<string, number>;
 }
 
+export interface SuperadminContext {
+  id: string;
+  email: string;
+  role: string;
+  allowedPages: string[];
+}
+
 declare global {
   namespace Express {
     interface Request {
       user?: AuthUser;
       tenantContext?: TenantContext;
+      superadmin?: SuperadminContext;
     }
   }
 }
