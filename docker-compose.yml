@@ -78,6 +78,7 @@
         MINIO_ACCESS_KEY: minioadmin
         MINIO_SECRET_KEY: minioadmin123
         MINIO_BUCKET: inventory-files
+        MINIO_PUBLIC_BASE_URL: /storage
       ports:
         - "3001:3001"
       depends_on:

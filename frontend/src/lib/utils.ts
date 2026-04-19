@@ -72,6 +72,16 @@ const INTERNAL_SERVICE_HOSTNAMES = new Set([
 ]);
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const DEFAULT_MINIO_PORT = "9000";
+const STORAGE_PREFIX = "/storage/";
+
+function resolveMinioPort(port: string | undefined): string {
+  const normalized = port?.trim();
+  if (normalized && /^\d+$/.test(normalized)) {
+    const numericPort = Number(normalized);
+    if (numericPort >= 1 && numericPort <= 65535) return normalized;
+  }
+  return DEFAULT_MINIO_PORT;
+}
 
 function isPrivateIpHost(hostname: string): boolean {
   return (
@@ -83,6 +93,23 @@ function isPrivateIpHost(hostname: string): boolean {
 
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
+  if (url.startsWith(STORAGE_PREFIX)) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL;
+    if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
+      try {
+        const apiBase = new URL(apiBaseUrl);
+        if (INTERNAL_SERVICE_HOSTNAMES.has(apiBase.hostname) || isPrivateIpHost(apiBase.hostname)) {
+          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
+          const storagePath = url.slice(STORAGE_PREFIX.length);
+          if (!storagePath) return undefined;
+          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${storagePath}`;
+        }
+      } catch {
+        // Keep /storage path when API URL parsing fails
+      }
+    }
+    return url;
+  }
   if (url.startsWith("/inventory-files/")) return `/storage${url}`;
   if (url.startsWith("inventory-files/")) return `/storage/${url}`;
   try {
@@ -94,7 +121,7 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
         try {
           const apiBase = new URL(apiBaseUrl);
-          const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
+          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
           return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
         } catch {
           // Fall back to /storage proxy path if API URL parsing fails
