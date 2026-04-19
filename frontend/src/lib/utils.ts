@@ -91,7 +91,8 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       const pathWithQuery = `${parsed.pathname}${parsed.search}${parsed.hash}`;
       if (parsed.pathname.startsWith(STORAGE_PREFIX)) return pathWithQuery;
       // Re-route through the nginx /storage/ proxy
-      return `/storage${pathWithQuery}`;
+      const normalizedPath = pathWithQuery.startsWith("/") ? pathWithQuery.slice(1) : pathWithQuery;
+      return `${STORAGE_PREFIX}${normalizedPath}`;
     }
   } catch {
     // Not a valid absolute URL (relative path, blob:, etc.) – return as-is
