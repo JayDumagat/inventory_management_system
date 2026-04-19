@@ -26,6 +26,8 @@ import customersRouter from "./customers";
 import subscriptionsRouter from "./subscriptions";
 import promotionsRouter from "./promotions";
 import loyaltyRouter from "./loyalty";
+import ticketsRouter from "./tickets";
+import superadminRouter from "./superadmin";
 
 export function registerRoutes(app: Express): void {
   app.use("/api/auth", limiter, authRouter);
@@ -53,6 +55,9 @@ export function registerRoutes(app: Express): void {
   app.use("/api/tenants/:tenantId/subscription", limiter, subscriptionsRouter);
   app.use("/api/tenants/:tenantId/promotions", limiter, promotionsRouter);
   app.use("/api/tenants/:tenantId/loyalty", limiter, loyaltyRouter);
+  app.use("/api/tenants/:tenantId/tickets", limiter, ticketsRouter);
   // Public plans listing (no tenant required)
   app.use("/api/subscription", limiter, subscriptionsRouter);
+  // Superadmin panel
+  app.use("/api/superadmin", limiter, superadminRouter);
 }

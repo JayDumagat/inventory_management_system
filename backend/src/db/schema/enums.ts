@@ -26,3 +26,15 @@ export const promotionDiscountTypeEnum = pgEnum("promotion_discount_type", [
 export const loyaltyTxTypeEnum = pgEnum("loyalty_tx_type", [
   "earn", "redeem", "adjust", "expire",
 ]);
+
+// ── Superadmin ────────────────────────────────────────────────────────────────
+export const superadminRoleEnum = pgEnum("superadmin_role", ["owner", "staff"]);
+
+// ── Support tickets ───────────────────────────────────────────────────────────
+export const ticketStatusEnum = pgEnum("ticket_status", [
+  "open", "in_progress", "waiting_on_customer", "resolved", "closed",
+]);
+export const ticketPriorityEnum = pgEnum("ticket_priority", ["low", "medium", "high", "urgent"]);
+export const ticketCategoryEnum = pgEnum("ticket_category", [
+  "general", "billing", "technical", "feature_request", "bug_report", "account",
+]);
