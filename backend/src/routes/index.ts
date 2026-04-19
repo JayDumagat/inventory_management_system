@@ -23,6 +23,9 @@ import apiKeysRouter from "./apiKeys";
 import uploadsRouter from "./uploads";
 import invoicesRouter from "./invoices";
 import customersRouter from "./customers";
+import subscriptionsRouter from "./subscriptions";
+import promotionsRouter from "./promotions";
+import loyaltyRouter from "./loyalty";
 
 export function registerRoutes(app: Express): void {
   app.use("/api/auth", limiter, authRouter);
@@ -47,4 +50,9 @@ export function registerRoutes(app: Express): void {
   app.use("/api/tenants/:tenantId/invoices", limiter, invoicesRouter);
   app.use("/api/tenants/:tenantId/uploads", limiter, uploadsRouter);
   app.use("/api/tenants/:tenantId/customers", limiter, customersRouter);
+  app.use("/api/tenants/:tenantId/subscription", limiter, subscriptionsRouter);
+  app.use("/api/tenants/:tenantId/promotions", limiter, promotionsRouter);
+  app.use("/api/tenants/:tenantId/loyalty", limiter, loyaltyRouter);
+  // Public plans listing (no tenant required)
+  app.use("/api/subscription", limiter, subscriptionsRouter);
 }

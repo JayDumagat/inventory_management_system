@@ -8,6 +8,7 @@ interface Tenant {
   description?: string;
   role: string;
   allowedPages?: string[] | null;
+  plan?: string;
 }
 
 interface TenantState {

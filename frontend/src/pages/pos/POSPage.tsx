@@ -8,11 +8,11 @@ import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
 import { formatCurrency } from "../../lib/utils";
-import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users } from "lucide-react";
+import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users, Tag, Star, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 import { usePresignedUrl } from "../../hooks/usePresignedUrl";
-import type { ProductImage } from "../../types";
+import type { ProductImage, ApplyPromotionResult, LoyaltyConfig, CustomerLoyalty } from "../../types";
 
 interface Product {
   id: string;
@@ -35,12 +35,16 @@ interface ReceiptData {
   items: CartItem[];
   subtotal: number;
   discount: number;
+  loyaltyDiscount: number;
   total: number;
   paymentMethod: string;
   change: number;
   paid: number;
   customerName?: string;
   date: string;
+  promotionCode?: string;
+  loyaltyPointsEarned?: number;
+  loyaltyPointsRedeemed?: number;
 }
 
 interface CustomerResult {
@@ -133,6 +137,13 @@ export default function POSPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [checkoutErrors, setCheckoutErrors] = useState<string[]>([]);
+  // ── Promo code state ──────────────────────────────────────────────────────
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<ApplyPromotionResult | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  // ── Loyalty redemption state ──────────────────────────────────────────────
+  const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -149,6 +160,21 @@ export default function POSPage() {
     queryKey: ["customers-search", tid, customerSearch],
     queryFn: () => api.get(`/api/tenants/${tid}/customers/search`, { params: { q: customerSearch } }).then((r) => r.data),
     enabled: !!tid && showCustomerDropdown,
+  });
+
+  // ── Loyalty config ────────────────────────────────────────────────────────
+  const { data: loyaltyConfig } = useQuery<LoyaltyConfig>({
+    queryKey: ["loyalty-config", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/loyalty/config`).then((r) => r.data),
+    enabled: !!tid,
+    staleTime: 60_000,
+  });
+
+  // ── Customer loyalty balance ───────────────────────────────────────────────
+  const { data: customerLoyalty } = useQuery<CustomerLoyalty>({
+    queryKey: ["loyalty-customer", tid, selectedCustomerId],
+    queryFn: () => api.get(`/api/tenants/${tid}/loyalty/customers/${selectedCustomerId}`).then((r) => r.data),
+    enabled: !!tid && !!selectedCustomerId && !!loyaltyConfig?.isEnabled,
   });
 
   // Close customer dropdown on outside click
@@ -170,6 +196,10 @@ export default function POSPage() {
       customerId?: string;
       items: { variantId: string; productName: string; variantName: string; sku: string; quantity: number; unitPrice: number }[];
       discountAmount: number;
+      loyaltyDiscountAmount?: number;
+      loyaltyPointsRedeemed?: number;
+      promotionId?: string;
+      promotionCode?: string;
       notes: string;
       paymentMethod: string;
       status: string;
@@ -178,7 +208,7 @@ export default function POSPage() {
       const data = res.data;
       const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
       const disc = parseFloat(discountInput) || 0;
-      const tot = Math.max(0, sub - disc);
+      const tot = Math.max(0, sub - disc - loyaltyDiscount);
       const paid = paymentMethod === "Cash" ? (parseFloat(cashInput) || tot) : tot;
 
       setLastReceipt({
@@ -186,12 +216,16 @@ export default function POSPage() {
         items: [...cart],
         subtotal: sub,
         discount: disc,
+        loyaltyDiscount,
         total: tot,
         paymentMethod,
         paid,
         change: paymentMethod === "Cash" ? Math.max(0, paid - tot) : 0,
         customerName: customerName || undefined,
         date: new Date().toLocaleString(),
+        promotionCode: appliedPromo?.promotionCode,
+        loyaltyPointsEarned: data.loyaltyPointsEarned,
+        loyaltyPointsRedeemed: loyaltyPointsToRedeem || undefined,
       });
 
       // If there's a customer name but no selected customer, auto-create the customer
@@ -210,6 +244,11 @@ export default function POSPage() {
       setCheckoutModal(false);
       setReceiptModal(true);
       setCheckoutErrors([]);
+      setAppliedPromo(null);
+      setPromoCode("");
+      setPromoError(null);
+      setLoyaltyPointsToRedeem(0);
+      setLoyaltyDiscount(0);
       qc.invalidateQueries({ queryKey: ["orders", tid] });
       qc.invalidateQueries({ queryKey: ["customers", tid] });
       qc.invalidateQueries({ queryKey: ["customers-search", tid] });
@@ -259,25 +298,37 @@ export default function POSPage() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = parseFloat(discountInput) || 0;
-  const total = Math.max(0, subtotal - discount);
+  const promoDiscount = appliedPromo?.discountAmount ?? 0;
+  const total = Math.max(0, subtotal - discount - promoDiscount - loyaltyDiscount);
   const cashTendered = parseFloat(cashInput) || 0;
   const change = paymentMethod === "Cash" ? Math.max(0, cashTendered - total) : 0;
 
-  const validateCheckout = useCallback((): string[] => {
-    const errors: string[] = [];
-    if (cart.length === 0) errors.push("Cart is empty");
-    if (!currentBranch) errors.push("No branch selected");
-    if (total <= 0) errors.push("Total must be greater than 0");
-    if (discount > subtotal) errors.push("Discount cannot exceed subtotal");
-    if (paymentMethod === "Cash") {
-      if (!cashInput || cashTendered <= 0) {
-        errors.push("Enter the cash tendered amount");
-      } else if (cashTendered < total) {
-        errors.push("Cash tendered must be at least " + formatCurrency(total));
-      }
+  const applyPromoCode = async () => {
+    if (!promoCode.trim() || !tid) return;
+    setPromoError(null);
+    try {
+      const result = await api.post(`/api/tenants/${tid}/promotions/apply`, {
+        code: promoCode.trim(),
+        subtotal,
+        customerId: selectedCustomerId ?? undefined,
+      });
+      setAppliedPromo(result.data);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      setPromoError(e.response?.data?.error ?? "Invalid promo code");
+      setAppliedPromo(null);
     }
-    return errors;
-  }, [cart, currentBranch, total, discount, subtotal, paymentMethod, cashInput, cashTendered]);
+  };
+
+  const applyLoyaltyPoints = () => {
+    if (!customerLoyalty || !loyaltyConfig) return;
+    const pts = loyaltyPointsToRedeem;
+    if (pts <= 0) return;
+    const dollarValue = pts / Number(loyaltyConfig.pointsPerRedemptionDollar);
+    const maxCover = subtotal * (loyaltyConfig.maximumRedeemPercent / 100);
+    const finalDiscount = Math.min(dollarValue, maxCover, subtotal);
+    setLoyaltyDiscount(Math.round(finalDiscount * 100) / 100);
+  };
 
   const handleCheckout = () => {
     const errors = validateCheckout();
@@ -291,7 +342,11 @@ export default function POSPage() {
       branchId: currentBranch.id,
       customerName: customerName || undefined,
       customerId: selectedCustomerId || undefined,
-      discountAmount: discount,
+      discountAmount: discount + promoDiscount,
+      loyaltyDiscountAmount: loyaltyDiscount,
+      loyaltyPointsRedeemed: loyaltyPointsToRedeem || undefined,
+      promotionId: appliedPromo?.promotionId ?? undefined,
+      promotionCode: appliedPromo?.promotionCode ?? undefined,
       notes: `POS sale — ${paymentMethod}`,
       paymentMethod,
       status: "delivered",
@@ -484,10 +539,91 @@ export default function POSPage() {
               {discount > subtotal && (
                 <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
               )}
+              {/* Promo code */}
+              <div>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
+                    <div className="flex items-center gap-1.5">
+                      <Tag className="w-3 h-3" />
+                      <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
+                    </div>
+                    <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
+                      placeholder="Promo code"
+                      className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
+                      onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
+                    />
+                    <button
+                      onClick={applyPromoCode}
+                      className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+                {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
+              </div>
+              {/* Loyalty points */}
+              {loyaltyConfig?.isEnabled && selectedCustomerId && customerLoyalty && (
+                <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1 text-amber-700">
+                      <Star className="w-3 h-3" />
+                      <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
+                    </div>
+                    {loyaltyDiscount > 0 && (
+                      <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  {loyaltyDiscount > 0 ? (
+                    <p className="text-xs text-amber-700">Redeeming {loyaltyPointsToRedeem} {loyaltyConfig.pointsLabel} = -{formatCurrency(loyaltyDiscount)}</p>
+                  ) : (
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={customerLoyalty.balance}
+                        value={loyaltyPointsToRedeem || ""}
+                        onChange={(e) => setLoyaltyPointsToRedeem(parseInt(e.target.value) || 0)}
+                        placeholder="Points to redeem"
+                        className="flex-1 border border-amber-300 bg-white text-ink px-2 py-0.5 text-xs outline-none focus:border-amber-500"
+                      />
+                      <button
+                        onClick={applyLoyaltyPoints}
+                        className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
+                      >
+                        Redeem
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between text-base font-bold text-ink border-t border-stroke pt-2">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
               </div>
+              {promoDiscount > 0 && (
+                <div className="flex justify-between text-xs text-green-600">
+                  <span className="flex items-center gap-1"><Tag className="w-3 h-3" />Promo</span>
+                  <span>-{formatCurrency(promoDiscount)}</span>
+                </div>
+              )}
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-xs text-amber-600">
+                  <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty</span>
+                  <span>-{formatCurrency(loyaltyDiscount)}</span>
+                </div>
+              )}
             </>
           )}
           <Button
@@ -607,6 +743,18 @@ export default function POSPage() {
                 <span>Discount</span><span>-{formatCurrency(discount)}</span>
               </div>
             )}
+            {promoDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{appliedPromo?.promotionName}</span>
+                <span>-{formatCurrency(promoDiscount)}</span>
+              </div>
+            )}
+            {loyaltyDiscount > 0 && (
+              <div className="flex justify-between text-amber-600">
+                <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty ({loyaltyPointsToRedeem} pts)</span>
+                <span>-{formatCurrency(loyaltyDiscount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-ink text-base border-t border-stroke pt-1 mt-1">
               <span>Total</span><span>{formatCurrency(total)}</span>
             </div>
@@ -669,6 +817,12 @@ export default function POSPage() {
               <div className="border-t border-stroke my-2" />
               {lastReceipt.discount > 0 && (
                 <div className="flex justify-between text-muted"><span>Discount</span><span>-{formatCurrency(lastReceipt.discount)}</span></div>
+              )}
+              {(lastReceipt.loyaltyDiscount ?? 0) > 0 && (
+                <div className="flex justify-between text-amber-600"><span>Loyalty discount</span><span>-{formatCurrency(lastReceipt.loyaltyDiscount)}</span></div>
+              )}
+              {lastReceipt.promotionCode && (
+                <div className="flex justify-between text-green-600"><span>Promo: {lastReceipt.promotionCode}</span><span></span></div>
               )}
               <div className="flex justify-between font-bold text-ink text-sm">
                 <span>Total</span><span>{formatCurrency(lastReceipt.total)}</span>

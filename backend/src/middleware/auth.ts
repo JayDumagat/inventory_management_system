@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { db } from "../db";
 import { users, tenantUsers, branchStaff } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { attachSubscription } from "./entitlement";
 
 export type { AuthUser, TenantContext } from "../types/express";
 
@@ -64,18 +65,21 @@ export const requireTenant = (minRole?: string) => async (req: Request, res: Res
 
     const allowedBranchIds = branchAssignments.map((a) => a.branchId);
 
+    // Attach subscription / plan info
+    const planCtx: { planKey?: string; addonLimits?: Record<string, number> } = {};
+    await attachSubscription(tenantId, planCtx);
+
     req.tenantContext = {
       tenantId,
       role: tenantUser.role,
       tenantUserId: tenantUser.id,
       allowedPages: (tenantUser.allowedPages as string[]) ?? [],
       allowedBranchIds,
+      planKey: planCtx.planKey ?? "free",
+      addonLimits: planCtx.addonLimits ?? {},
     };
 
     // Enforce branch access for staff with explicit branch restrictions.
-    // If a staff member has no branch assignments they are unrestricted (admin has not
-    // configured branch limits for them yet). Once at least one branch is assigned,
-    // requests for other branches are denied.
     const requestedBranchId = typeof req.query.branchId === "string" ? req.query.branchId : undefined;
     if (requestedBranchId && allowedBranchIds.length > 0) {
       if (!allowedBranchIds.includes(requestedBranchId)) {

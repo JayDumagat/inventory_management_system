@@ -17,3 +17,6 @@ export * from "./apiKeys";
 export * from "./invoices";
 export * from "./customers";
 export * from "./productImages";
+export * from "./subscriptions";
+export * from "./promotions";
+export * from "./loyalty";

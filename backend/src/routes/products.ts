@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { authenticate, requireTenant } from "../middleware/auth";
+import { requireQuota } from "../middleware/entitlement";
 import * as ctrl from "../controllers/product";
 
 const router = Router({ mergeParams: true });
 
 router.get("/", authenticate, requireTenant(), ctrl.listProducts);
-router.post("/", authenticate, requireTenant("manager"), ctrl.createProduct);
+router.post("/", authenticate, requireTenant("manager"), requireQuota("products"), ctrl.createProduct);
 router.get("/:productId", authenticate, requireTenant(), ctrl.getProduct);
 router.patch("/:productId", authenticate, requireTenant("manager"), ctrl.updateProduct);
 router.delete("/:productId", authenticate, requireTenant("manager"), ctrl.deleteProduct);

@@ -20,6 +20,13 @@ export const salesOrders = pgTable("sales_orders", {
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
+  // Promotion applied to this order
+  promotionId: uuid("promotion_id"),
+  promotionCode: text("promotion_code"),
+  // Loyalty points
+  loyaltyPointsEarned: integer("loyalty_points_earned").notNull().default(0),
+  loyaltyPointsRedeemed: integer("loyalty_points_redeemed").notNull().default(0),
+  loyaltyDiscountAmount: decimal("loyalty_discount_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   createdBy: uuid("created_by").references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
