@@ -73,6 +73,15 @@ const INTERNAL_SERVICE_HOSTNAMES = new Set([
 const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
 const DEFAULT_MINIO_PORT = "9000";
 
+function resolveMinioPort(port: string | undefined): string {
+  const normalized = port?.trim();
+  if (normalized && /^\d+$/.test(normalized)) {
+    const numericPort = Number(normalized);
+    if (numericPort >= 1 && numericPort <= 65535) return normalized;
+  }
+  return DEFAULT_MINIO_PORT;
+}
+
 function isPrivateIpHost(hostname: string): boolean {
   return (
     /^10\./.test(hostname) ||
@@ -89,7 +98,7 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       try {
         const apiBase = new URL(apiBaseUrl);
         if (INTERNAL_SERVICE_HOSTNAMES.has(apiBase.hostname) || isPrivateIpHost(apiBase.hostname)) {
-          const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
+          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
           return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${url.replace(/^\/storage\//, "")}`;
         }
       } catch {
@@ -109,7 +118,7 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
       if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
         try {
           const apiBase = new URL(apiBaseUrl);
-          const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
+          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
           return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
         } catch {
           // Fall back to /storage proxy path if API URL parsing fails
