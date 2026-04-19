@@ -303,6 +303,22 @@ export default function POSPage() {
   const cashTendered = parseFloat(cashInput) || 0;
   const change = paymentMethod === "Cash" ? Math.max(0, cashTendered - total) : 0;
 
+  const validateCheckout = useCallback((): string[] => {
+    const errors: string[] = [];
+    if (cart.length === 0) errors.push("Cart is empty");
+    if (!currentBranch) errors.push("No branch selected");
+    if (total <= 0) errors.push("Total must be greater than 0");
+    if (discount > subtotal) errors.push("Discount cannot exceed subtotal");
+    if (paymentMethod === "Cash") {
+      if (!cashInput || cashTendered <= 0) {
+        errors.push("Enter the cash tendered amount");
+      } else if (cashTendered < total) {
+        errors.push("Cash tendered must be at least " + formatCurrency(total));
+      }
+    }
+    return errors;
+  }, [cart, currentBranch, total, discount, subtotal, paymentMethod, cashInput, cashTendered]);
+
   const applyPromoCode = async () => {
     if (!promoCode.trim() || !tid) return;
     setPromoError(null);

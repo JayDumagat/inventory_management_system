@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
-import { useAuthStore } from "../../stores/authStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
@@ -67,7 +66,6 @@ function UsageBar({ current, limit, label }: { current: number; limit: number; l
 
 export default function SubscriptionPage() {
   const { currentTenant } = useTenantStore();
-  const { user } = useAuthStore();
   const tid = currentTenant?.id;
   const role = currentTenant?.role;
   const qc = useQueryClient();
@@ -131,9 +129,6 @@ export default function SubscriptionPage() {
 
   const { subscription, plan, addons, usage } = data;
   const currentPlanKey = subscription.planKey;
-
-  // suppress unused variable warning – user object needed for future personalization
-  void user;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">

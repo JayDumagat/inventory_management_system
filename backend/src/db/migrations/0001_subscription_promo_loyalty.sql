@@ -175,7 +175,7 @@ INSERT INTO "plan_catalog" ("key", "name", "monthly_price", "annual_price", "lim
    '["pos", "products", "inventory", "sales_orders", "categories", "units", "customers", "audit_log", "reports_basic", "dashboard"]'),
   ('pro', 'Pro', '29', '290',
    '{"branches": 5, "products": -1, "api_keys": 10, "invoices_per_month": 100}',
-   '["pos", "products", "inventory", "sales_orders", "categories", "units", "customers", "audit_log", "reports_basic", "reports_advanced", "analytics", "invoices", "api_keys", "integrations", "purchase_orders", "suppliers", "batches", "dashboard"]'),
+   '["pos", "products", "inventory", "sales_orders", "categories", "units", "customers", "audit_log", "reports_basic", "reports_advanced", "analytics", "invoices", "api_keys", "integrations", "purchase_orders", "suppliers", "batches", "dashboard", "promotions", "loyalty"]'),
   ('enterprise', 'Enterprise', '99', '990',
    '{"branches": -1, "products": -1, "api_keys": -1, "invoices_per_month": -1}',
    '["pos", "products", "inventory", "sales_orders", "categories", "units", "customers", "audit_log", "reports_basic", "reports_advanced", "analytics", "invoices", "api_keys", "integrations", "purchase_orders", "suppliers", "batches", "dashboard", "white_label", "custom_integrations", "sla"]');
