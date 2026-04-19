@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superadminApi } from "../../api/superadminClient";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { useToast } from "../../hooks/useToast";
 import type { SuperadminTenantRow, SuperadminTenantDetail } from "../../types";
