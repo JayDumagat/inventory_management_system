@@ -41,7 +41,7 @@ async function ensureBucket(client: Minio.Client, bucket: string): Promise<void>
       Statement: [
         {
           Effect: "Allow",
-          Principal: { AWS: ["*"] },
+          Principal: "*",
           Action: ["s3:GetObject"],
           Resource: [`arn:aws:s3:::${bucket}/*`],
         },
@@ -74,17 +74,15 @@ export async function uploadFile(
   }
 }
 
-// Images are served via the nginx /storage/ proxy to a public-read MinIO bucket,
-// so no signed URL is required. This function returns the same static proxy path
-// as getPublicUrl() (e.g. /storage/inventory-files/<objectName>) which nginx
-// forwards to http://minio:9000/.
 export async function getPresignedUrl(
   objectName: string,
   bucket = DEFAULT_BUCKET,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _expirySeconds = 3600
 ): Promise<string | null> {
-  return getPublicUrl(objectName, bucket);
+  // Since the bucket is configured with a public read policy ("Principal": "*"),
+  // we do not need S3 signature query parameters just to view images.
+  // We return the proxy path so Vite and Nginx route it directly to MinIO.
+  return `/storage/${bucket}/${objectName}`;
 }
 
 export async function deleteFile(

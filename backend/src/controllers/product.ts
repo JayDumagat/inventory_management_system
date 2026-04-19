@@ -5,13 +5,14 @@ import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
-import { getPublicUrl } from "../lib/storage";
+import { getPublicUrl, getPresignedUrl } from "../lib/storage";
 import { isTenantOwnedObjectName } from "../lib/storageObjectName";
 import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
 import { presignCacheKey } from "./upload";
 
-function toPublicImageUrl<T extends { objectName: string }>(image: T): T & { url: string } {
-  return { ...image, url: getPublicUrl(image.objectName) };
+async function toPresignedImageUrl<T extends { objectName: string }>(image: T): Promise<T & { url: string }> {
+  const presigned = await getPresignedUrl(image.objectName);
+  return { ...image, url: presigned || getPublicUrl(image.objectName) };
 }
 
 export async function listProducts(req: Request, res: Response): Promise<void> {
@@ -20,10 +21,11 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
       where: eq(products.tenantId, req.tenantContext!.tenantId),
       with: { variants: true, category: true, images: true },
     });
-    res.json(list.map((product) => ({
+    const result = await Promise.all(list.map(async (product) => ({
       ...product,
-      images: product.images?.map(toPublicImageUrl),
+      images: product.images ? await Promise.all(product.images.map(toPresignedImageUrl)) : [],
     })));
+    res.json(result);
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }
@@ -50,9 +52,10 @@ export async function getProduct(req: Request, res: Response): Promise<void> {
       res.status(404).json({ error: "Product not found" });
       return;
     }
+    const mappedImages = product.images ? await Promise.all(product.images.map(toPresignedImageUrl)) : [];
     res.json({
       ...product,
-      images: product.images?.map(toPublicImageUrl),
+      images: mappedImages,
     });
   } catch {
     res.status(500).json({ error: "Internal server error" });
@@ -328,7 +331,7 @@ export async function listProductImages(req: Request, res: Response): Promise<vo
     }
 
     const cacheKey = productImagesCacheKey(tenantId, productId);
-    const cached = await cacheGet<ReturnType<typeof toPublicImageUrl>[]>(cacheKey);
+    const cached = await cacheGet<Awaited<ReturnType<typeof toPresignedImageUrl>>[]>(cacheKey);
     if (cached) {
       res.json(cached);
       return;
@@ -337,7 +340,7 @@ export async function listProductImages(req: Request, res: Response): Promise<vo
     const images = await db.select().from(productImages)
       .where(eq(productImages.productId, productId))
       .orderBy(productImages.sortOrder);
-    const result = images.map(toPublicImageUrl);
+    const result = await Promise.all(images.map(toPresignedImageUrl));
     await cacheSet(cacheKey, result, PRODUCT_IMAGES_CACHE_TTL);
     res.json(result);
   } catch {
