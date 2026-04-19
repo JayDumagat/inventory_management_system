@@ -83,6 +83,21 @@ function isPrivateIpHost(hostname: string): boolean {
 
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
+  if (url.startsWith("/storage/")) {
+    const apiBaseUrl = import.meta.env.VITE_API_URL;
+    if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
+      try {
+        const apiBase = new URL(apiBaseUrl);
+        if (INTERNAL_SERVICE_HOSTNAMES.has(apiBase.hostname) || isPrivateIpHost(apiBase.hostname)) {
+          const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
+          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${url.replace(/^\/storage\/+/, "")}`;
+        }
+      } catch {
+        // Keep /storage path when API URL parsing fails
+      }
+    }
+    return url;
+  }
   if (url.startsWith("/inventory-files/")) return `/storage${url}`;
   if (url.startsWith("inventory-files/")) return `/storage/${url}`;
   try {
