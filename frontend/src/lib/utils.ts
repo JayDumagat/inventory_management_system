@@ -90,7 +90,7 @@ export function resolveImageUrl(url: string | undefined | null): string | undefi
         const apiBase = new URL(apiBaseUrl);
         if (INTERNAL_SERVICE_HOSTNAMES.has(apiBase.hostname) || isPrivateIpHost(apiBase.hostname)) {
           const minioPort = import.meta.env.VITE_MINIO_PORT || DEFAULT_MINIO_PORT;
-          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${url.replace(/^\/storage\/+/, "")}`;
+          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${url.replace(/^\/storage\//, "")}`;
         }
       } catch {
         // Keep /storage path when API URL parsing fails
