@@ -532,7 +532,7 @@ export default function OrganizationPage() {
                             <div className="mt-2">
                               <Button
                                 size="sm"
-                                variant={isCurrent ? "outline" : "default"}
+                                variant={isCurrent ? "outline" : "primary"}
                                 disabled={isCurrent || changePlan.isPending}
                                 onClick={() => changePlan.mutate(p.key)}
                               >
