@@ -144,6 +144,7 @@ export default function POSPage() {
   // ── Loyalty redemption state ──────────────────────────────────────────────
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [isApplyingLoyalty, setIsApplyingLoyalty] = useState(false);
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -345,6 +346,7 @@ export default function POSPage() {
     if (!customerLoyalty || !loyaltyConfig || !selectedCustomerId || !tid) return;
     const pts = loyaltyPointsToRedeem;
     if (pts <= 0) return;
+    setIsApplyingLoyalty(true);
     try {
       const { data } = await api.post(`/api/tenants/${tid}/loyalty/preview-redemption`, {
         customerId: selectedCustomerId,
@@ -358,6 +360,8 @@ export default function POSPage() {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e.response?.data?.error ?? "Unable to redeem loyalty points");
       setLoyaltyDiscount(0);
+    } finally {
+      setIsApplyingLoyalty(false);
     }
   };
 
@@ -631,9 +635,10 @@ export default function POSPage() {
                       />
                       <button
                         onClick={applyLoyaltyPoints}
+                        disabled={isApplyingLoyalty}
                         className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
                       >
-                        Redeem
+                        {isApplyingLoyalty ? "Applying..." : "Redeem"}
                       </button>
                     </div>
                   )}
