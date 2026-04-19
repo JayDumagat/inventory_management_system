@@ -13,7 +13,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
-import { Gift, Plus, Pencil, Trash2, BarChart2, Tag, Percent, DollarSign } from "lucide-react";
+import { Gift, Plus, Pencil, Trash2, BarChart2, Percent, DollarSign } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Promotion } from "../../types";
 
@@ -23,7 +23,7 @@ const schema = z.object({
   code: z.string().max(50).optional().or(z.literal("")),
   type: z.enum(["percentage_off", "fixed_amount", "bogo", "free_shipping", "tiered"]),
   discountType: z.enum(["percentage", "fixed"]),
-  discountValue: z.number({ invalid_type_error: "Required" }).min(0),
+  discountValue: z.number({ error: "Required" }).min(0),
   minimumOrderAmount: z.number().min(0).optional(),
   maximumDiscountAmount: z.number().min(0).optional(),
   scope: z.enum(["order", "category"]).default("order"),
@@ -37,7 +37,8 @@ const schema = z.object({
   priority: z.number().int().min(0).default(0),
 });
 
-type PromotionForm = z.infer<typeof schema>;
+type PromotionForm = z.input<typeof schema>;
+type PromotionFormOutput = z.output<typeof schema>;
 
 function getStatusBadge(promo: Promotion) {
   if (!promo.isActive) return <Badge variant="default">Inactive</Badge>;
@@ -70,7 +71,7 @@ export default function PromotionsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Promotion | null>(null);
   const [usagePromo, setUsagePromo] = useState<Promotion | null>(null);
 
-  const form = useForm<PromotionForm>({ resolver: zodResolver(schema) });
+  const form = useForm<PromotionForm, unknown, PromotionFormOutput>({ resolver: zodResolver(schema) });
 
   const { data: promotions = [], isLoading } = useQuery<Promotion[]>({
     queryKey: ["promotions", tid],
@@ -79,7 +80,7 @@ export default function PromotionsPage() {
   });
 
   const save = useMutation({
-    mutationFn: (data: PromotionForm) =>
+    mutationFn: (data: PromotionFormOutput) =>
       modal.promo
         ? api.patch(`/api/tenants/${tid}/promotions/${modal.promo.id}`, data).then((r) => r.data)
         : api.post(`/api/tenants/${tid}/promotions`, data).then((r) => r.data),
