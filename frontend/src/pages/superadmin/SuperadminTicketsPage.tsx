@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { superadminApi } from "../../api/superadminClient";
 import { Button } from "../../components/ui/Button";
-import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
 import { Badge } from "../../components/ui/Badge";
 import { useToast } from "../../hooks/useToast";

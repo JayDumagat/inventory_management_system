@@ -63,13 +63,6 @@ export default function SuperadminSubscriptionsPage() {
     onError: () => toast.error("Failed to update subscription"),
   });
 
-  const statusBadge = (status: string) => {
-    if (status === "active") return "success";
-    if (status === "trialing") return "info";
-    if (status === "canceled" || status === "overdue") return "danger";
-    return "warning";
-  };
-
   const planBadgeClass = (plan: string) => {
     if (plan === "enterprise") return "bg-purple-100 text-purple-700";
     if (plan === "pro") return "bg-blue-100 text-blue-700";
