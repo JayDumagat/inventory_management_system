@@ -70,18 +70,7 @@ const INTERNAL_SERVICE_HOSTNAMES = new Set([
   "0.0.0.0",
   "::1",
 ]);
-const ABSOLUTE_URL_PATTERN = /^https?:\/\//i;
-const DEFAULT_MINIO_PORT = "9000";
 const STORAGE_PREFIX = "/storage/";
-
-function resolveMinioPort(port: string | undefined): string {
-  const normalized = port?.trim();
-  if (normalized && /^\d+$/.test(normalized)) {
-    const numericPort = Number(normalized);
-    if (numericPort >= 1 && numericPort <= 65535) return normalized;
-  }
-  return DEFAULT_MINIO_PORT;
-}
 
 function isPrivateIpHost(hostname: string): boolean {
   return (
@@ -93,42 +82,17 @@ function isPrivateIpHost(hostname: string): boolean {
 
 export function resolveImageUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
-  if (url.startsWith(STORAGE_PREFIX)) {
-    const apiBaseUrl = import.meta.env.VITE_API_URL;
-    if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
-      try {
-        const apiBase = new URL(apiBaseUrl);
-        if (INTERNAL_SERVICE_HOSTNAMES.has(apiBase.hostname) || isPrivateIpHost(apiBase.hostname)) {
-          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
-          const storagePath = url.slice(STORAGE_PREFIX.length);
-          if (!storagePath) return undefined;
-          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}/${storagePath}`;
-        }
-      } catch {
-        // Keep /storage path when API URL parsing fails
-      }
-    }
-    return url;
-  }
+  if (url.startsWith(STORAGE_PREFIX)) return url;
   if (url.startsWith("/inventory-files/")) return `/storage${url}`;
   if (url.startsWith("inventory-files/")) return `/storage/${url}`;
   try {
     const parsed = new URL(url);
     if (INTERNAL_SERVICE_HOSTNAMES.has(parsed.hostname) || isPrivateIpHost(parsed.hostname)) {
-      const apiBaseUrl = import.meta.env.VITE_API_URL;
-      // If frontend is configured to talk directly to an absolute API URL (e.g. http://localhost:3001),
-      // /storage may not be available on the frontend host. In that case, route to the API host on MinIO port.
-      if (typeof apiBaseUrl === "string" && ABSOLUTE_URL_PATTERN.test(apiBaseUrl)) {
-        try {
-          const apiBase = new URL(apiBaseUrl);
-          const minioPort = resolveMinioPort(import.meta.env.VITE_MINIO_PORT);
-          return `${apiBase.protocol}//${apiBase.hostname}:${minioPort}${parsed.pathname}`;
-        } catch {
-          // Fall back to /storage proxy path if API URL parsing fails
-        }
-      }
+      const pathWithQuery = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      if (parsed.pathname.startsWith(STORAGE_PREFIX)) return pathWithQuery;
       // Re-route through the nginx /storage/ proxy
-      return `/storage${parsed.pathname}`;
+      const normalizedPath = pathWithQuery.startsWith("/") ? pathWithQuery.slice(1) : pathWithQuery;
+      return `${STORAGE_PREFIX}${normalizedPath}`;
     }
   } catch {
     // Not a valid absolute URL (relative path, blob:, etc.) – return as-is
