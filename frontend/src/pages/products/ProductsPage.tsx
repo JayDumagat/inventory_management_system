@@ -29,13 +29,17 @@ interface Product {
   category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
 
+const DEFAULT_SKU_BASE = "PRD";
+const SKU_PRODUCT_SEGMENT_LENGTH = 12;
+const SKU_VARIANT_SEGMENT_LENGTH = 12;
+
 function skuSegment(value: string, max = 8): string {
   return value.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, max);
 }
 
 function autoVariantSku(productName: string, variantName: string): string {
-  const base = skuSegment(productName, 12) || "PRD";
-  const variantCode = skuSegment(variantName, 12);
+  const base = skuSegment(productName, SKU_PRODUCT_SEGMENT_LENGTH) || DEFAULT_SKU_BASE;
+  const variantCode = skuSegment(variantName, SKU_VARIANT_SEGMENT_LENGTH);
   if (!variantCode) return `${base}-001`;
   return `${base}-${variantCode}-001`;
 }

@@ -120,7 +120,7 @@ export default function TransactionsPage() {
   const netBalance = totalIncome - totalExpense;
 
   const exportTransactions = () => {
-    const escapeCsv = (value: string) => `"${value.replace(/"/g, "\"\"")}"`;
+    const escapeCsvField = (value: string) => `"${value.replace(/"/g, "\"\"")}"`;
     const headers = ["Date", "Type", "Description", "Branch", "Amount", "Reference Type", "Reference ID", "Notes"];
     const rows = filtered.map((t) => [
       formatDate(t.createdAt),
@@ -132,7 +132,7 @@ export default function TransactionsPage() {
       t.referenceId || "",
       t.notes || "",
     ]);
-    const csv = [headers, ...rows].map((row) => row.map((col) => escapeCsv(col)).join(",")).join("\n");
+    const csv = [headers, ...rows].map((row) => row.map((col) => escapeCsvField(col)).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

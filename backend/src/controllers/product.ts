@@ -10,7 +10,7 @@ import { isTenantOwnedObjectName } from "../lib/storageObjectName";
 import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
 import { presignCacheKey } from "./upload";
 
-function skuCode(value: string, max = 8): string {
+function normalizeSkuPart(value: string, max = 8): string {
   return value
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "")
@@ -18,8 +18,8 @@ function skuCode(value: string, max = 8): string {
 }
 
 function generateVariantSku(productName: string, optionValues: string[], sequence: number): string {
-  const base = skuCode(productName, 12) || "PRD";
-  const optionCodes = optionValues.map((v) => skuCode(v, 6)).filter(Boolean);
+  const base = normalizeSkuPart(productName, 12) || "PRD";
+  const optionCodes = optionValues.map((v) => normalizeSkuPart(v, 6)).filter(Boolean);
   return `${base}${optionCodes.length ? `-${optionCodes.join("-")}` : ""}-${String(sequence).padStart(3, "0")}`;
 }
 
@@ -29,11 +29,24 @@ type AttributeWithOptions = {
   options: { id: string; value: string; sortOrder: number }[];
 };
 
-function buildAttributeCombinations(attributes: AttributeWithOptions[]): Array<{ values: string[]; map: Record<string, string> }> {
-  if (attributes.length === 0) return [];
-  const result: Array<{ values: string[]; map: Record<string, string> }> = [];
+type AttributeValueMap = Record<string, string>;
 
-  const walk = (index: number, values: string[], map: Record<string, string>) => {
+function serializeAttributeMap(map: AttributeValueMap): string {
+  return JSON.stringify(
+    Object.keys(map)
+      .sort()
+      .reduce<AttributeValueMap>((acc, key) => {
+        acc[key] = map[key];
+        return acc;
+      }, {})
+  );
+}
+
+function buildAttributeCombinations(attributes: AttributeWithOptions[]): Array<{ values: string[]; map: AttributeValueMap }> {
+  if (attributes.length === 0) return [];
+  const result: Array<{ values: string[]; map: AttributeValueMap }> = [];
+
+  const walk = (index: number, values: string[], map: AttributeValueMap) => {
     if (index === attributes.length) {
       result.push({ values: [...values], map: { ...map } });
       return;
@@ -380,9 +393,9 @@ export async function generateVariantsFromAttributes(req: Request, res: Response
 
     const combinations = buildAttributeCombinations(usableAttrs);
     const existing = await db.select().from(productVariants).where(eq(productVariants.productId, productId));
-    const existingKeys = new Set(existing.map((v) => JSON.stringify(v.attributes ?? {})));
+    const existingKeys = new Set(existing.map((v) => serializeAttributeMap((v.attributes ?? {}) as AttributeValueMap)));
 
-    const toCreate = combinations.filter((combo) => !existingKeys.has(JSON.stringify(combo.map)));
+    const toCreate = combinations.filter((combo) => !existingKeys.has(serializeAttributeMap(combo.map)));
     if (toCreate.length === 0) {
       res.json({ created: 0, variants: [] });
       return;

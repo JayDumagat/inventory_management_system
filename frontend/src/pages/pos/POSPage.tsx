@@ -75,11 +75,20 @@ function getPrimaryProductImageObjectName(product: Product): string | undefined 
 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   const isDetailed = receipt.template === "detailed";
   const itemsHTML = receipt.items.map((i) =>
     `<tr>
-      <td style="text-align:left;padding:2px 0">${i.productName} (${i.variantName})${isDetailed ? `<div style="font-size:10px;color:#555">SKU: ${i.sku}</div>` : ""}</td>
+      <td style="text-align:left;padding:2px 0">${escapeHtml(i.productName)} (${escapeHtml(i.variantName)})${isDetailed ? `<div style="font-size:10px;color:#555">SKU: ${escapeHtml(i.sku)}</div>` : ""}</td>
       <td style="text-align:center;padding:2px 4px">${i.quantity}</td>
       <td style="text-align:right;padding:2px 0">${Number(i.price * i.quantity).toFixed(2)}</td>
     </tr>`
@@ -95,12 +104,12 @@ function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   table { width: 100%; border-collapse: collapse; }
   .total-row { font-weight: bold; font-size: 14px; }
 </style></head><body>
-<div class="center bold" style="font-size:16px;margin-bottom:4px">${tenantName}</div>
+<div class="center bold" style="font-size:16px;margin-bottom:4px">${escapeHtml(tenantName)}</div>
 <div class="divider"></div>
-<div><strong>Order:</strong> ${receipt.orderNumber}</div>
-<div><strong>Date:</strong> ${receipt.date}</div>
-${receipt.customerName ? `<div><strong>Customer:</strong> ${receipt.customerName}</div>` : ""}
-<div><strong>Payment:</strong> ${receipt.paymentMethod}</div>
+<div><strong>Order:</strong> ${escapeHtml(receipt.orderNumber)}</div>
+<div><strong>Date:</strong> ${escapeHtml(receipt.date)}</div>
+${receipt.customerName ? `<div><strong>Customer:</strong> ${escapeHtml(receipt.customerName)}</div>` : ""}
+<div><strong>Payment:</strong> ${escapeHtml(receipt.paymentMethod)}</div>
 <div class="divider"></div>
 <table>
   <tr><th style="text-align:left">Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Total</th></tr>
@@ -117,7 +126,7 @@ ${receipt.customerName ? `<div><strong>Customer:</strong> ${receipt.customerName
   ` : ""}
 </table>
 <div class="divider"></div>
-<div class="center" style="margin-top:8px">${receipt.footerMessage || "Thank you for your purchase!"}</div>
+<div class="center" style="margin-top:8px">${escapeHtml(receipt.footerMessage || "Thank you for your purchase!")}</div>
 </body></html>`;
 }
 

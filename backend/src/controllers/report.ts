@@ -11,10 +11,12 @@ function parseReportRange(fromRaw: string | undefined, toRaw: string | undefined
   const from = new Date(parsedFrom);
   const to = new Date(parsedTo);
 
-  if (fromRaw && !fromRaw.includes("T")) {
+  const isDateOnly = (value: string | undefined) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+  if (isDateOnly(fromRaw)) {
     from.setHours(0, 0, 0, 0);
   }
-  if (toRaw && !toRaw.includes("T")) {
+  if (isDateOnly(toRaw)) {
     to.setHours(23, 59, 59, 999);
   }
 
