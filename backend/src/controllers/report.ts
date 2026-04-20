@@ -4,11 +4,31 @@ import { salesOrders, salesOrderItems, inventory, productVariants, products, bra
 import { eq, and, gte, lte, sql, desc, notInArray } from "drizzle-orm";
 import { parseDate } from "../utils/helpers";
 
+function parseReportRange(fromRaw: string | undefined, toRaw: string | undefined): { from: Date; to: Date } {
+  const parsedTo = parseDate(toRaw, new Date());
+  const parsedFrom = parseDate(fromRaw, new Date(parsedTo.getTime() - 30 * 24 * 60 * 60 * 1000));
+
+  const from = new Date(parsedFrom);
+  const to = new Date(parsedTo);
+
+  const isDateOnly = (value: string | undefined) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+  if (isDateOnly(fromRaw)) {
+    from.setHours(0, 0, 0, 0);
+  }
+  if (isDateOnly(toRaw)) {
+    to.setHours(23, 59, 59, 999);
+  }
+
+  return { from, to };
+}
+
 export const salesReport = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenantId = req.tenantContext!.tenantId;
-    const to = parseDate(req.query.to as string, new Date());
-    const from = parseDate(req.query.from as string, new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000));
+    const toRaw = typeof req.query.to === "string" ? req.query.to : undefined;
+    const fromRaw = typeof req.query.from === "string" ? req.query.from : undefined;
+    const { from, to } = parseReportRange(fromRaw, toRaw);
 
     const rows = await db
       .select({
@@ -127,8 +147,9 @@ export const inventoryReport = async (req: Request, res: Response): Promise<void
 export const productsReport = async (req: Request, res: Response): Promise<void> => {
   try {
     const tenantId = req.tenantContext!.tenantId;
-    const to = parseDate(req.query.to as string, new Date());
-    const from = parseDate(req.query.from as string, new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000));
+    const toRaw = typeof req.query.to === "string" ? req.query.to : undefined;
+    const fromRaw = typeof req.query.from === "string" ? req.query.from : undefined;
+    const { from, to } = parseReportRange(fromRaw, toRaw);
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
     const topProducts = await db

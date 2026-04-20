@@ -204,6 +204,16 @@ export default function InventoryPage() {
     onError: () => toast.error("Failed to transfer stock"),
   });
 
+  const updateReorder = useMutation({
+    mutationFn: (data: { variantId: string; branchId: string; quantity: number; reorderPoint: number }) =>
+      api.put(`/api/tenants/${tid}/inventory/set`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventory", tid] });
+      toast.success("Reorder alert updated");
+    },
+    onError: () => toast.error("Failed to update reorder alert"),
+  });
+
   const lookupBarcode = useMutation({
     mutationFn: (code: string) =>
       api.get(`/api/tenants/${tid}/inventory/barcode/${encodeURIComponent(code)}`).then((r) => r.data),
@@ -375,9 +385,10 @@ export default function InventoryPage() {
                     <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">SKU</th>
                     <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Branch</th>
                     <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Qty</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Reorder at</th>
-                    <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
-                  </tr>
+                     <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Reorder at</th>
+                     {canManage && <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Alerts</th>}
+                     <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                   </tr>
                 </thead>
                 <tbody>
                   {pagedInventory.map((item) => {
@@ -390,6 +401,30 @@ export default function InventoryPage() {
                         <td className="px-6 py-3 text-muted">{item.branch?.name}</td>
                         <td className="px-6 py-3 font-bold text-ink">{item.quantity}</td>
                         <td className="px-6 py-3 text-muted">{item.reorderPoint || "—"}</td>
+                        {canManage && (
+                          <td className="px-6 py-3">
+                            <button
+                              type="button"
+                              disabled={!item.variant?.id || !item.branch?.id || updateReorder.isPending}
+                              onClick={() => {
+                                if (!item.variant?.id || !item.branch?.id) return;
+                                updateReorder.mutate({
+                                  variantId: item.variant.id,
+                                  branchId: item.branch.id,
+                                  quantity: item.quantity,
+                                  reorderPoint: item.reorderPoint > 0 ? 0 : 5,
+                                });
+                              }}
+                              className={`px-2 py-1 text-xs border ${
+                                item.reorderPoint > 0
+                                  ? "border-green-200 bg-green-50 text-green-700"
+                                  : "border-stroke text-muted"
+                              }`}
+                            >
+                              {item.reorderPoint > 0 ? "On" : "Off"}
+                            </button>
+                          </td>
+                        )}
                         <td className="px-6 py-3">
                           {low ? <Badge variant="danger">Low stock</Badge> : <Badge variant="success">OK</Badge>}
                         </td>

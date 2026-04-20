@@ -29,6 +29,21 @@ interface Product {
   category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
 
+const DEFAULT_SKU_BASE = "PRD";
+const SKU_PRODUCT_SEGMENT_LENGTH = 12;
+const SKU_VARIANT_SEGMENT_LENGTH = 12;
+
+function skuSegment(value: string, max = 8): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, max);
+}
+
+function autoVariantSku(productName: string, variantName: string): string {
+  const base = skuSegment(productName, SKU_PRODUCT_SEGMENT_LENGTH) || DEFAULT_SKU_BASE;
+  const variantCode = skuSegment(variantName, SKU_VARIANT_SEGMENT_LENGTH);
+  if (!variantCode) return `${base}-001`;
+  return `${base}-${variantCode}-001`;
+}
+
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
@@ -92,6 +107,7 @@ export default function ProductsPage() {
   const [imageModal, setImageModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [imageList, setImageList] = useState<ProductImage[]>([]);
   const [imageUploading, setImageUploading] = useState(false);
+  const [isGeneratingVariants, setIsGeneratingVariants] = useState(false);
   const [formImages, setFormImages] = useState<File[]>([]);
   const [formImagePreviews, setFormImagePreviews] = useState<string[]>([]);
   const [editImages, setEditImages] = useState<ProductImage[]>([]);
@@ -204,6 +220,12 @@ export default function ProductsPage() {
   const openVariantModal = (productId: string, variant?: Variant) => {
     vForm.reset(variant ? { name: variant.name, sku: variant.sku, barcode: variant.barcode ?? "", price: variant.price, costPrice: variant.costPrice } : {});
     setVariantModal({ open: true, productId, variant });
+  };
+
+  const autofillVariantSku = () => {
+    const productName = products.find((p) => p.id === variantModal.productId)?.name ?? pForm.getValues("name") ?? "";
+    const variantName = vForm.getValues("name") || "VARIANT";
+    vForm.setValue("sku", autoVariantSku(productName, variantName), { shouldDirty: true, shouldValidate: true });
   };
 
   const openAttrModal = async (product: Product) => {
@@ -817,6 +839,14 @@ export default function ProductsPage() {
                   error={vForm.formState.errors.sku?.message}
                   helperText="Unique identifier for this variant (min. 2 characters)"
                 />
+                <Input
+                  label="Barcode (optional)"
+                  placeholder="e.g. 012345678901"
+                  {...vForm.register("barcode")}
+                />
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={autofillVariantSku}>Auto-generate SKU</Button>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Selling price"
@@ -858,6 +888,9 @@ export default function ProductsPage() {
             {...vForm.register("name")}
             error={vForm.formState.errors.name?.message}
           />
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={autofillVariantSku}>Auto-generate SKU</Button>
+          </div>
           <Input
             label="SKU"
             placeholder="e.g. PROD-001-RED-L"
@@ -981,6 +1014,29 @@ export default function ProductsPage() {
                 />
                 <Button type="submit" size="sm"><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
               </form>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    if (!attrProductId) return;
+                    setIsGeneratingVariants(true);
+                    try {
+                      const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/variants/generate`);
+                      qc.invalidateQueries({ queryKey: ["products", tid] });
+                      toast.success(`${res.data.created ?? 0} variant(s) generated`);
+                    } catch (err: unknown) {
+                      const e = err as { response?: { data?: { error?: string } } };
+                      toast.error(e.response?.data?.error ?? "Failed to generate variants");
+                    } finally {
+                      setIsGeneratingVariants(false);
+                    }
+                  }}
+                  loading={isGeneratingVariants}
+                >
+                  Generate variants from options
+                </Button>
+              </div>
             </>
           )}
           <div className="flex justify-end pt-2">

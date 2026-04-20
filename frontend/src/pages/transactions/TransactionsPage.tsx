@@ -13,7 +13,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { formatCurrency, formatDate } from "../../lib/utils";
-import { ArrowLeftRight, Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, Search } from "lucide-react";
+import { ArrowLeftRight, Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, Search, Download } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 
@@ -119,6 +119,32 @@ export default function TransactionsPage() {
   const totalExpense = txList.filter((t) => typeSign[t.type] < 0).reduce((s, t) => s + Number(t.amount), 0);
   const netBalance = totalIncome - totalExpense;
 
+  const exportTransactions = () => {
+    const escapeCsvField = (value: string) => `"${value.replace(/"/g, "\"\"")}"`;
+    const headers = ["Date", "Type", "Description", "Branch", "Amount", "Reference Type", "Reference ID", "Notes"];
+    const rows = filtered.map((t) => [
+      formatDate(t.createdAt),
+      t.type,
+      t.description,
+      t.branchName || "",
+      String(Number(t.amount)),
+      t.referenceType || "",
+      t.referenceId || "",
+      t.notes || "",
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map((col) => escapeCsvField(col)).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Transactions exported");
+  };
+
   if (isLoading) return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -133,20 +159,27 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Transactions</h1>
           <p className="text-muted text-sm mt-1">{txList.length} transaction{txList.length !== 1 ? "s" : ""}</p>
         </div>
-        {canManage && (
-          <Button onClick={() => setModal(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> Record transaction
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {txList.length > 0 && (
+            <Button variant="outline" onClick={exportTransactions} className="gap-2">
+              <Download className="w-4 h-4" /> Export CSV
+            </Button>
+          )}
+          {canManage && (
+            <Button onClick={() => setModal(true)} className="gap-2">
+              <Plus className="w-4 h-4" /> Record transaction
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="bg-panel border border-stroke p-4">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-green-500" />
@@ -217,7 +250,30 @@ export default function TransactionsPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-panel border border-stroke overflow-hidden">
+        <>
+        <div className="md:hidden space-y-2">
+          {filtered.map((t) => (
+            <div key={t.id} className="bg-panel border border-stroke p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant={typeColors[t.type]}>{t.type}</Badge>
+                <span className={cn("font-semibold text-sm", typeSign[t.type] > 0 ? "text-green-600" : "text-red-600")}>
+                  {typeSign[t.type] > 0 ? "+" : "-"}{formatCurrency(Math.abs(Number(t.amount)))}
+                </span>
+              </div>
+              <p className="text-sm font-medium text-ink">{t.description}</p>
+              <p className="text-xs text-muted">{t.branchName || "—"} · {formatDate(t.createdAt)}</p>
+              {t.notes && <p className="text-xs text-muted">{t.notes}</p>}
+              {canDelete && (
+                <div className="flex justify-end">
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(t)}>
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="hidden md:block bg-panel border border-stroke overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-stroke text-left">
@@ -258,6 +314,7 @@ export default function TransactionsPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Record transaction modal */}
