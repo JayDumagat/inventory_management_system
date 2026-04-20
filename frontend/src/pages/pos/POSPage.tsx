@@ -45,6 +45,8 @@ interface ReceiptData {
   promotionCode?: string;
   loyaltyPointsEarned?: number;
   loyaltyPointsRedeemed?: number;
+  template?: "compact" | "detailed";
+  footerMessage?: string;
 }
 
 interface CustomerResult {
@@ -74,9 +76,10 @@ function getPrimaryProductImageObjectName(product: Product): string | undefined 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
 
 function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
+  const isDetailed = receipt.template === "detailed";
   const itemsHTML = receipt.items.map((i) =>
     `<tr>
-      <td style="text-align:left;padding:2px 0">${i.productName} (${i.variantName})</td>
+      <td style="text-align:left;padding:2px 0">${i.productName} (${i.variantName})${isDetailed ? `<div style="font-size:10px;color:#555">SKU: ${i.sku}</div>` : ""}</td>
       <td style="text-align:center;padding:2px 4px">${i.quantity}</td>
       <td style="text-align:right;padding:2px 0">${Number(i.price * i.quantity).toFixed(2)}</td>
     </tr>`
@@ -114,7 +117,7 @@ ${receipt.customerName ? `<div><strong>Customer:</strong> ${receipt.customerName
   ` : ""}
 </table>
 <div class="divider"></div>
-<div class="center" style="margin-top:8px">Thank you for your purchase!</div>
+<div class="center" style="margin-top:8px">${receipt.footerMessage || "Thank you for your purchase!"}</div>
 </body></html>`;
 }
 
@@ -145,9 +148,12 @@ export default function POSPage() {
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [isApplyingLoyalty, setIsApplyingLoyalty] = useState(false);
+  const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">("compact");
+  const [receiptFooter, setReceiptFooter] = useState("Thank you for your purchase!");
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
+  const canCustomizeReceipt = ["owner", "manager"].includes((currentTenant?.role || "").toLowerCase());
 
   // Products query
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -229,6 +235,8 @@ export default function POSPage() {
         promotionCode: appliedPromo?.promotionCode,
         loyaltyPointsEarned: data.loyaltyPointsEarned,
         loyaltyPointsRedeemed: activeLoyaltyPoints || undefined,
+        template: receiptTemplate,
+        footerMessage: receiptFooter.trim() || "Thank you for your purchase!",
       });
 
       // If there's a customer name but no selected customer, auto-create the customer
@@ -343,6 +351,7 @@ export default function POSPage() {
   };
 
   const applyLoyaltyPoints = async () => {
+    if (!checkoutModal) return;
     if (!customerLoyalty || !loyaltyConfig || !selectedCustomerId || !tid) return;
     const pts = loyaltyPointsToRedeem;
     if (pts <= 0) return;
@@ -559,91 +568,7 @@ export default function POSPage() {
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-muted flex-shrink-0">Discount</label>
-                <input
-                  type="number"
-                  min="0"
-                  max={subtotal}
-                  step="0.01"
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
-                  className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-sm text-right outline-none focus:border-primary-500"
-                />
-              </div>
-              {discount > subtotal && (
-                <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
-              )}
-              {/* Promo code */}
-              <div>
-                {appliedPromo ? (
-                  <div className="flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
-                    <div className="flex items-center gap-1.5">
-                      <Tag className="w-3 h-3" />
-                      <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
-                    </div>
-                    <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-1">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
-                      placeholder="Promo code"
-                      className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
-                      onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
-                    />
-                    <button
-                      onClick={applyPromoCode}
-                      className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                )}
-                {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
-              </div>
-              {/* Loyalty points */}
-              {loyaltyRedemptionEnabled && (
-                <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 text-amber-700">
-                      <Star className="w-3 h-3" />
-                      <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
-                    </div>
-                    {appliedLoyaltyDiscount > 0 && (
-                      <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                  {appliedLoyaltyDiscount > 0 ? (
-                    <p className="text-xs text-amber-700">Redeeming {appliedLoyaltyPoints} {loyaltyConfig.pointsLabel} = -{formatCurrency(appliedLoyaltyDiscount)}</p>
-                  ) : (
-                    <div className="flex gap-1">
-                      <input
-                        type="number"
-                        min={0}
-                        max={customerLoyalty.balance}
-                        value={loyaltyPointsToRedeem || ""}
-                        onChange={(e) => setLoyaltyPointsToRedeem(parseInt(e.target.value) || 0)}
-                        placeholder="Points to redeem"
-                        className="flex-1 border border-amber-300 bg-white text-ink px-2 py-0.5 text-xs outline-none focus:border-amber-500"
-                      />
-                      <button
-                        onClick={applyLoyaltyPoints}
-                        disabled={isApplyingLoyalty}
-                        className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
-                      >
-                        {isApplyingLoyalty ? "Applying..." : "Redeem"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              <p className="text-xs text-muted">Discounts, promo codes, and loyalty redemption are applied in Checkout.</p>
               <div className="flex justify-between text-base font-bold text-ink border-t border-stroke pt-2">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
@@ -725,6 +650,127 @@ export default function POSPage() {
               </div>
             )}
           </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted">Discount</label>
+            <input
+              type="number"
+              min="0"
+              max={subtotal}
+              step="0.01"
+              value={discountInput}
+              onChange={(e) => setDiscountInput(e.target.value)}
+              className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
+            />
+            {discount > subtotal && (
+              <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted">Promo code</label>
+            {appliedPromo ? (
+              <div className="mt-1 flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
+                <div className="flex items-center gap-1.5">
+                  <Tag className="w-3 h-3" />
+                  <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
+                </div>
+                <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="mt-1 flex gap-1">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
+                  placeholder="Promo code"
+                  className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
+                  onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
+                />
+                <button
+                  onClick={applyPromoCode}
+                  className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
+          </div>
+
+          {loyaltyRedemptionEnabled && (
+            <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1 text-amber-700">
+                  <Star className="w-3 h-3" />
+                  <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
+                </div>
+                {appliedLoyaltyDiscount > 0 && (
+                  <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              {appliedLoyaltyDiscount > 0 ? (
+                <p className="text-xs text-amber-700">Redeeming {appliedLoyaltyPoints} {loyaltyConfig.pointsLabel} = -{formatCurrency(appliedLoyaltyDiscount)}</p>
+              ) : (
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={customerLoyalty.balance}
+                    value={loyaltyPointsToRedeem || ""}
+                    onChange={(e) => setLoyaltyPointsToRedeem(parseInt(e.target.value) || 0)}
+                    placeholder="Points to redeem"
+                    className="flex-1 border border-amber-300 bg-white text-ink px-2 py-0.5 text-xs outline-none focus:border-amber-500"
+                  />
+                  <button
+                    onClick={applyLoyaltyPoints}
+                    disabled={isApplyingLoyalty}
+                    className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
+                  >
+                    {isApplyingLoyalty ? "Applying..." : "Redeem"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {canCustomizeReceipt && (
+            <div className="bg-page border border-stroke p-3 space-y-2">
+              <p className="text-xs font-medium text-muted">Receipt design</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("compact")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "compact" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("detailed")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "detailed" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Detailed
+                </button>
+              </div>
+              <Input
+                label="Footer message"
+                value={receiptFooter}
+                onChange={(e) => setReceiptFooter(e.target.value)}
+                placeholder="Thank you for your purchase!"
+              />
+            </div>
+          )}
 
           <div>
             <p className="text-xs font-medium text-muted mb-2">Payment method</p>

@@ -13,6 +13,7 @@ router.delete("/:productId", authenticate, requireTenant("manager"), ctrl.delete
 
 router.get("/:productId/variants", authenticate, requireTenant(), ctrl.listVariants);
 router.post("/:productId/variants", authenticate, requireTenant("manager"), ctrl.createVariant);
+router.post("/:productId/variants/generate", authenticate, requireTenant("manager"), ctrl.generateVariantsFromAttributes);
 router.patch("/:productId/variants/:variantId", authenticate, requireTenant("manager"), ctrl.updateVariant);
 router.delete("/:productId/variants/:variantId", authenticate, requireTenant("manager"), ctrl.deleteVariant);
 

@@ -51,19 +51,19 @@ export default function ReportsPage() {
   const [dateFrom, setDateFrom] = useState(formatDateInput(thirtyAgo));
   const [dateTo, setDateTo] = useState(formatDateInput(today));
 
-  const { data: sales, isLoading: salesLoading } = useQuery<SalesReport>({
+  const { data: sales, isLoading: salesLoading, isError: salesError, refetch: refetchSales } = useQuery<SalesReport>({
     queryKey: ["reports-sales", tid, dateFrom, dateTo],
     queryFn: () => api.get(`/api/tenants/${tid}/reports/sales?from=${dateFrom}&to=${dateTo}`).then((r) => r.data),
     enabled: !!tid && tab === "sales",
   });
 
-  const { data: inv, isLoading: invLoading } = useQuery<InventoryReport>({
+  const { data: inv, isLoading: invLoading, isError: invError, refetch: refetchInventory } = useQuery<InventoryReport>({
     queryKey: ["reports-inventory", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/reports/inventory`).then((r) => r.data),
     enabled: !!tid && tab === "inventory",
   });
 
-  const { data: prods, isLoading: prodsLoading } = useQuery<ProductsReport>({
+  const { data: prods, isLoading: prodsLoading, isError: prodsError, refetch: refetchProducts } = useQuery<ProductsReport>({
     queryKey: ["reports-products", tid, dateFrom, dateTo],
     queryFn: () => api.get(`/api/tenants/${tid}/reports/products?from=${dateFrom}&to=${dateTo}`).then((r) => r.data),
     enabled: !!tid && tab === "products",
@@ -75,6 +75,15 @@ export default function ReportsPage() {
     { key: "products", label: "Products", icon: Package },
   ];
 
+  const salesByDay = (sales?.byDay ?? []).map((d) => ({
+    ...d,
+    revenue: Number(d.revenue ?? 0),
+  }));
+  const productRows = (prods?.products ?? []).map((p) => ({
+    ...p,
+    totalRevenue: Number(p.totalRevenue ?? 0),
+  }));
+
   return (
     <div className="space-y-5">
       <div>
@@ -83,22 +92,24 @@ export default function ReportsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 border-b border-stroke">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
-              tab === key
-                ? "border-primary-600 text-primary-700"
-                : "border-transparent text-muted hover:text-ink"
-            )}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </button>
-        ))}
+      <div className="overflow-x-auto">
+        <div className="flex items-center gap-1 border-b border-stroke min-w-max">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
+                tab === key
+                  ? "border-primary-600 text-primary-700"
+                  : "border-transparent text-muted hover:text-ink"
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Date range (sales + products tabs) */}
@@ -136,6 +147,13 @@ export default function ReportsPage() {
               {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           </div>
+        ) : salesError ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-sm text-muted mb-3">Unable to load sales report.</p>
+              <button className="text-sm text-primary-700 underline" onClick={() => refetchSales()}>Retry</button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -163,14 +181,14 @@ export default function ReportsPage() {
                 <CardTitle>Revenue by day</CardTitle>
               </CardHeader>
               <CardContent>
-                {(sales?.byDay?.length ?? 0) === 0 ? (
+                {(salesByDay.length ?? 0) === 0 ? (
                   <div className="flex flex-col items-center justify-center h-48 text-muted text-sm">
                     <TrendingUp className="w-8 h-8 mb-2 opacity-30" />
                     No sales data for this period
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={240}>
-                    <AreaChart data={sales?.byDay ?? []}>
+                    <AreaChart data={salesByDay}>
                       <defs>
                         <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="var(--accent-500)" stopOpacity={0.15} />
@@ -193,11 +211,11 @@ export default function ReportsPage() {
                 <CardTitle>Orders by day</CardTitle>
               </CardHeader>
               <CardContent>
-                {(sales?.byDay?.length ?? 0) === 0 ? (
+                {(salesByDay.length ?? 0) === 0 ? (
                   <div className="flex flex-col items-center justify-center h-32 text-muted text-sm">No data</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={sales?.byDay ?? []}>
+                    <BarChart data={salesByDay}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-clr)" />
                       <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} stroke="var(--border-clr)" />
                       <YAxis tick={{ fontSize: 11 }} stroke="var(--border-clr)" />
@@ -221,6 +239,13 @@ export default function ReportsPage() {
               <table className="w-full"><SkeletonTable rows={6} cols={3} /></table>
             </div>
           </div>
+        ) : invError ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-sm text-muted mb-3">Unable to load inventory report.</p>
+              <button className="text-sm text-primary-700 underline" onClick={() => refetchInventory()}>Retry</button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -349,13 +374,20 @@ export default function ReportsPage() {
               <table className="w-full"><SkeletonTable rows={6} cols={4} /></table>
             </div>
           </div>
+        ) : prodsError ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <p className="text-sm text-muted mb-3">Unable to load products report.</p>
+              <button className="text-sm text-primary-700 underline" onClick={() => refetchProducts()}>Retry</button>
+            </CardContent>
+          </Card>
         ) : (
           <Card>
             <CardHeader>
               <CardTitle>Top products by quantity sold</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {(prods?.products?.length ?? 0) === 0 ? (
+              {(productRows.length ?? 0) === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted text-sm">
                   <Package className="w-8 h-8 mb-2 opacity-30" />
                   No sales data for this period
@@ -374,7 +406,7 @@ export default function ReportsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {prods?.products.map((p, i) => (
+                      {productRows.map((p, i) => (
                         <tr key={`${p.productId}-${p.sku}`} className="border-b border-stroke last:border-0 hover:bg-hover transition-colors">
                           <td className="px-5 py-3 text-muted">{i + 1}</td>
                           <td className="px-5 py-3 font-medium text-ink">{p.productName}</td>

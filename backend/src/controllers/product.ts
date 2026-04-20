@@ -10,6 +10,45 @@ import { isTenantOwnedObjectName } from "../lib/storageObjectName";
 import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
 import { presignCacheKey } from "./upload";
 
+function skuCode(value: string, max = 8): string {
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, max);
+}
+
+function generateVariantSku(productName: string, optionValues: string[], sequence: number): string {
+  const base = skuCode(productName, 12) || "PRD";
+  const optionCodes = optionValues.map((v) => skuCode(v, 6)).filter(Boolean);
+  return `${base}${optionCodes.length ? `-${optionCodes.join("-")}` : ""}-${String(sequence).padStart(3, "0")}`;
+}
+
+type AttributeWithOptions = {
+  id: string;
+  name: string;
+  options: { id: string; value: string; sortOrder: number }[];
+};
+
+function buildAttributeCombinations(attributes: AttributeWithOptions[]): Array<{ values: string[]; map: Record<string, string> }> {
+  if (attributes.length === 0) return [];
+  const result: Array<{ values: string[]; map: Record<string, string> }> = [];
+
+  const walk = (index: number, values: string[], map: Record<string, string>) => {
+    if (index === attributes.length) {
+      result.push({ values: [...values], map: { ...map } });
+      return;
+    }
+    const attribute = attributes[index];
+    const sortedOptions = [...attribute.options].sort((a, b) => a.sortOrder - b.sortOrder);
+    for (const option of sortedOptions) {
+      walk(index + 1, [...values, option.value], { ...map, [attribute.name]: option.value });
+    }
+  };
+
+  walk(0, [], {});
+  return result;
+}
+
 async function toPresignedImageUrl<T extends { objectName: string }>(image: T): Promise<T & { url: string }> {
   const presigned = await getPresignedUrl(image.objectName);
   return { ...image, url: presigned || getPublicUrl(image.objectName) };
@@ -310,6 +349,59 @@ export async function deleteAttributeOption(req: Request, res: Response): Promis
     res.json({ message: "Option deleted" });
   } catch {
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function generateVariantsFromAttributes(req: Request, res: Response): Promise<void> {
+  try {
+    const tenantId = req.tenantContext!.tenantId;
+    const productId = req.params.productId as string;
+
+    const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+
+    const attrs = await db.query.productAttributes.findMany({
+      where: eq(productAttributes.productId, productId),
+      with: { options: true },
+      orderBy: (a, { asc }) => [asc(a.sortOrder)],
+    });
+
+    const usableAttrs = attrs
+      .map((a) => ({ ...a, options: a.options ?? [] }))
+      .filter((a) => a.options.length > 0);
+
+    if (usableAttrs.length === 0) {
+      res.status(400).json({ error: "Add at least one attribute with options before generating variants" });
+      return;
+    }
+
+    const combinations = buildAttributeCombinations(usableAttrs);
+    const existing = await db.select().from(productVariants).where(eq(productVariants.productId, productId));
+    const existingKeys = new Set(existing.map((v) => JSON.stringify(v.attributes ?? {})));
+
+    const toCreate = combinations.filter((combo) => !existingKeys.has(JSON.stringify(combo.map)));
+    if (toCreate.length === 0) {
+      res.json({ created: 0, variants: [] });
+      return;
+    }
+
+    const created = await db.insert(productVariants).values(
+      toCreate.map((combo, index) => ({
+        productId,
+        name: combo.values.join(" / "),
+        sku: generateVariantSku(product.name, combo.values, existing.length + index + 1),
+        price: "0",
+        costPrice: "0",
+        attributes: combo.map,
+      }))
+    ).returning();
+
+    res.status(201).json({ created: created.length, variants: created });
+  } catch (error) {
+    handleControllerError(error, res);
   }
 }
 
