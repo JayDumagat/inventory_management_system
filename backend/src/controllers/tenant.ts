@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { tenants, tenantUsers, branches, tenantSubscriptions } from "../db/schema";
+import { tenants, tenantUsers, branches, tenantSubscriptions, loyaltyConfig } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { createTenantSchema, updateTenantSchema } from "../validators/tenant";
+import { hasFeature } from "../lib/planConfig";
 
 export async function listTenants(req: Request, res: Response): Promise<void> {
   try {
@@ -110,6 +111,34 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
     }
 
     const body = updateTenantSchema.parse(req.body);
+
+    const targetPlan = body.plan;
+    if (targetPlan) {
+      await db.transaction(async (tx) => {
+        const [sub] = await tx
+          .select({ id: tenantSubscriptions.id })
+          .from(tenantSubscriptions)
+          .where(eq(tenantSubscriptions.tenantId, tenantId));
+
+        if (sub) {
+          await tx
+            .update(tenantSubscriptions)
+            .set({ planKey: targetPlan, updatedAt: new Date() })
+            .where(eq(tenantSubscriptions.tenantId, tenantId));
+        } else {
+          await tx
+            .insert(tenantSubscriptions)
+            .values({ tenantId, planKey: targetPlan, status: "active" });
+        }
+
+        if (!hasFeature(targetPlan, "loyalty")) {
+          await tx
+            .update(loyaltyConfig)
+            .set({ isEnabled: false, updatedAt: new Date() })
+            .where(eq(loyaltyConfig.tenantId, tenantId));
+        }
+      });
+    }
 
     const wantsBrandingChange = body.name !== undefined || body.logoUrl !== undefined;
     if (wantsBrandingChange) {
