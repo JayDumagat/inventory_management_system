@@ -112,7 +112,8 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
 
     const body = updateTenantSchema.parse(req.body);
 
-    if (body.plan) {
+    const targetPlan = body.plan;
+    if (targetPlan) {
       await db.transaction(async (tx) => {
         const [sub] = await tx
           .select({ id: tenantSubscriptions.id })
@@ -122,15 +123,15 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
         if (sub) {
           await tx
             .update(tenantSubscriptions)
-            .set({ planKey: body.plan, updatedAt: new Date() })
+            .set({ planKey: targetPlan, updatedAt: new Date() })
             .where(eq(tenantSubscriptions.tenantId, tenantId));
         } else {
           await tx
             .insert(tenantSubscriptions)
-            .values({ tenantId, planKey: body.plan, status: "active" });
+            .values({ tenantId, planKey: targetPlan, status: "active" });
         }
 
-        if (!hasFeature(body.plan, "loyalty")) {
+        if (!hasFeature(targetPlan, "loyalty")) {
           await tx
             .update(loyaltyConfig)
             .set({ isEnabled: false, updatedAt: new Date() })
