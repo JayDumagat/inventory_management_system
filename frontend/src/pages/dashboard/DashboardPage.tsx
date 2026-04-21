@@ -8,7 +8,10 @@ import { formatCurrency, formatDate } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Package, ShoppingCart, DollarSign, AlertTriangle, TrendingUp } from "lucide-react";
+import { Package, ShoppingCart, DollarSign, AlertTriangle, TrendingUp, Megaphone } from "lucide-react";
+import sponsoredInventoryImage from "../../assets/sponsored-inventory.svg";
+import sponsoredPaymentImage from "../../assets/sponsored-payment.svg";
+import sponsoredAnalyticsImage from "../../assets/sponsored-analytics.svg";
 
 interface DashboardStats {
   stats: {
@@ -32,6 +35,27 @@ const statusColor: Record<string, "default" | "success" | "warning" | "danger" |
   draft: "default", confirmed: "info", processing: "warning",
   shipped: "info", delivered: "success", cancelled: "danger", refunded: "warning",
 };
+
+const sponsoredContents = [
+  {
+    id: "inventory-scanner",
+    title: "Smart Barcode Scanner",
+    description: "Speed up receiving and stock takes with mobile-first barcode workflows.",
+    image: sponsoredInventoryImage,
+  },
+  {
+    id: "payments-terminal",
+    title: "Next-Day Payouts",
+    description: "Accept in-store payments with lower fees and faster payout schedules.",
+    image: sponsoredPaymentImage,
+  },
+  {
+    id: "analytics-suite",
+    title: "Advanced Insights Pack",
+    description: "Unlock demand forecasts and branch-level trends with AI-powered analytics.",
+    image: sponsoredAnalyticsImage,
+  },
+];
 
 export default function DashboardPage() {
   const { currentTenant } = useTenantStore();
@@ -160,6 +184,27 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Megaphone className="w-4 h-4 text-primary-500" />
+            Sponsored content
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {sponsoredContents.map((item) => (
+            <article key={item.id} className="border border-stroke bg-panel overflow-hidden">
+              <img src={item.image} alt={item.title} className="w-full h-32 object-cover border-b border-stroke" />
+              <div className="p-3 space-y-2">
+                <Badge variant="info">Sponsored</Badge>
+                <p className="text-sm font-semibold text-ink">{item.title}</p>
+                <p className="text-xs text-muted">{item.description}</p>
+              </div>
+            </article>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Recent orders */}
       <Card>
