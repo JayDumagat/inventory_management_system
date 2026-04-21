@@ -1,19 +1,12 @@
 {
-  "version": "7",
+  "version": "1",
   "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
       "version": "7",
-      "when": 1776485618444,
-      "tag": "0000_slippery_banshee",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1776485618445,
-      "tag": "0001_subscription_promo_loyalty",
+      "when": 1776608461146,
+      "tag": "0000_peaceful_wolfsbane",
       "breakpoints": true
     }
   ]

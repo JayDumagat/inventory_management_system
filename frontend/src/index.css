@@ -181,6 +181,21 @@ html.theme-teal {
   --accent-900: #134e4a;
 }
 
+html.theme-noir {
+  /* Core Palette */
+  --accent-50:  #f2f2f2;
+  --accent-100: #e6e6e6;
+  --accent-200: #cccccc;
+  --accent-300: #999999;
+  --accent-400: #666666;
+  --accent-500: #001514;
+  --accent-600: #000000;
+  --accent-700: #000000;
+  --accent-800: #000000;
+  --accent-900: #000000;
+}
+
+
 /* ── Base ────────────────────────────────────────────────────── */
 @layer base {
   * {

@@ -79,6 +79,8 @@
         MINIO_SECRET_KEY: minioadmin123
         MINIO_BUCKET: inventory-files
         MINIO_PUBLIC_BASE_URL: /storage
+        SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-jaydumagat@mail.com}
+        SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-Alfeighme23!}
       ports:
         - "3001:3001"
       depends_on:

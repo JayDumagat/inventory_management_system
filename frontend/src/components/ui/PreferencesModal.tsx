@@ -21,6 +21,7 @@ const ACCENT_COLORS: { value: AccentColor; label: string; hex: string; bgHex: st
   { value: "rose",    label: "Rose",          hex: "#e11d48", bgHex: "#fff1f2", description: "Vivid & energetic" },
   { value: "amber",   label: "Amber",         hex: "#d97706", bgHex: "#fffbeb", description: "Warm & golden" },
   { value: "teal",    label: "Teal",          hex: "#0d9488", bgHex: "#f0fdfa", description: "Calm & focused" },
+  { value: "noir",    label: "Noir",          hex: "#001514", bgHex: "#fbfffe", description: "Sleek monochrome" },
 ];
 
 const TIMEZONES = [

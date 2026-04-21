@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 export type ThemeMode = "light" | "dark" | "system";
 export type AccentColor =
   | "olive" | "ocean" | "coastal"
-  | "blue" | "violet" | "emerald" | "rose" | "amber" | "teal";
+  | "blue" | "violet" | "emerald" | "rose" | "amber" | "teal" | "noir";
 
 interface ThemeState {
   mode: ThemeMode;

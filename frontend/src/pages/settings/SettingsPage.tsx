@@ -21,6 +21,7 @@ const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: str
   { key: "rose",    label: "Rose",           color: "#f43f5e", bg: "#fff1f2", description: "Bold rose" },
   { key: "amber",   label: "Amber",          color: "#f59e0b", bg: "#fffbeb", description: "Golden amber" },
   { key: "teal",    label: "Teal",           color: "#14b8a6", bg: "#f0fdfa", description: "Calm teal" },
+  { key: "noir",    label: "Noir",           color: "#001514", bg: "#fbfffe", description: "Sleek monochrome" },
 ];
 
 const TIMEZONES = [

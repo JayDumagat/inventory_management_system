@@ -22,7 +22,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const ALL_THEMES: AccentColor[] = [
   "olive", "ocean", "coastal",
-  "blue", "violet", "emerald", "rose", "amber", "teal",
+  "blue", "violet", "emerald", "rose", "amber", "teal", "noir"
 ];
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
