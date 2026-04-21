@@ -6,6 +6,8 @@ export interface Tenant {
   slug: string;
   description?: string;
   role: string;
+  receiptTemplate?: "compact" | "detailed";
+  receiptFooterMessage?: string;
 }
 
 export interface Branch {

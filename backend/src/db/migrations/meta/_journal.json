@@ -15,6 +15,13 @@
       "when": 1776485618445,
       "tag": "0001_subscription_promo_loyalty",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776764000000,
+      "tag": "0003_receipt_settings",
+      "breakpoints": true
     }
   ]
 }

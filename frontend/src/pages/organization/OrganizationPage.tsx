@@ -121,6 +121,12 @@ export default function OrganizationPage() {
   const [orgName, setOrgName] = useState(currentTenant?.name || "");
   const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
   const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
+  const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">(
+    (currentTenant as { receiptTemplate?: "compact" | "detailed" } | null)?.receiptTemplate === "detailed" ? "detailed" : "compact"
+  );
+  const [receiptFooterMessage, setReceiptFooterMessage] = useState(
+    (currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "Thank you for your purchase!"
+  );
   const [savingOrg, setSavingOrg] = useState(false);
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
@@ -247,6 +253,12 @@ export default function OrganizationPage() {
         const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
         if (orgLogo !== currentLogo) payload.logoUrl = orgLogo || undefined;
       }
+      const currentReceiptTemplate = (currentTenant as { receiptTemplate?: "compact" | "detailed" } | null)?.receiptTemplate === "detailed"
+        ? "detailed"
+        : "compact";
+      const currentReceiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "Thank you for your purchase!");
+      if (receiptTemplate !== currentReceiptTemplate) payload.receiptTemplate = receiptTemplate;
+      if (receiptFooterMessage !== currentReceiptFooter) payload.receiptFooterMessage = receiptFooterMessage;
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
         setTimeout(() => setOrgSuccess(false), 3000);
@@ -261,6 +273,12 @@ export default function OrganizationPage() {
       } as typeof currentTenant & { logoUrl?: string };
       if (Object.prototype.hasOwnProperty.call(updated, "logoUrl")) {
         nextTenant.logoUrl = updated.logoUrl ?? undefined;
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptTemplate")) {
+        (nextTenant as { receiptTemplate?: "compact" | "detailed" }).receiptTemplate = updated.receiptTemplate === "detailed" ? "detailed" : "compact";
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptFooterMessage")) {
+        (nextTenant as { receiptFooterMessage?: string }).receiptFooterMessage = updated.receiptFooterMessage ?? "Thank you for your purchase!";
       }
       setCurrentTenant(nextTenant);
       qc.invalidateQueries({ queryKey: ["tenants"] });
@@ -458,6 +476,50 @@ export default function OrganizationPage() {
                     {theme.accent === s.key && <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="border-t border-stroke pt-5 space-y-3">
+              <p className="text-sm font-medium text-ink">Receipt preferences</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("compact")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "compact" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("detailed")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "detailed" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Detailed
+                </button>
+              </div>
+              <Input
+                label="Receipt footer message"
+                value={receiptFooterMessage}
+                onChange={(e) => setReceiptFooterMessage(e.target.value)}
+                placeholder="Thank you for your purchase!"
+              />
+              {orgError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{orgError}</div>
+              )}
+              {orgSuccess && (
+                <div className="p-3 bg-green-50 border border-green-200 text-sm text-green-700 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                  Personalization saved
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button onClick={handleSaveOrg} loading={savingOrg}>Save personalization</Button>
               </div>
             </div>
           </CardContent>
