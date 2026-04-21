@@ -167,6 +167,7 @@ export default function POSPage() {
   const toast = useToast();
   const { data: subscriptionData } = useSubscription();
   const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : false;
+  const hasPromotionFeature = subscriptionData ? subscriptionData.plan.features.includes("promotions") : false;
   const receiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
   const receiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "").trim() || "Thank you for your purchase!";
 
@@ -229,10 +230,11 @@ export default function POSPage() {
     onSuccess: (res) => {
       const data = res.data;
       const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-      const disc = parseFloat(discountInput) || 0;
+      const disc = hasPromotionFeature ? 0 : (parseFloat(discountInput) || 0);
+      const promoDisc = hasPromotionFeature ? (appliedPromo?.discountAmount ?? 0) : 0;
       const activeLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
       const activeLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
-      const tot = Math.max(0, sub - disc - activeLoyaltyDiscount);
+      const tot = Math.max(0, sub - disc - promoDisc - activeLoyaltyDiscount);
       const paid = paymentMethod === "Cash" ? (parseFloat(cashInput) || tot) : tot;
 
       setLastReceipt({
@@ -247,7 +249,7 @@ export default function POSPage() {
         change: paymentMethod === "Cash" ? Math.max(0, paid - tot) : 0,
         customerName: customerName || undefined,
         date: new Date().toLocaleString(),
-        promotionCode: appliedPromo?.promotionCode,
+        promotionCode: hasPromotionFeature ? appliedPromo?.promotionCode : undefined,
         loyaltyPointsEarned: data.loyaltyPointsEarned,
         loyaltyPointsRedeemed: activeLoyaltyPoints || undefined,
         template: receiptTemplate,
@@ -323,8 +325,8 @@ export default function POSPage() {
   const removeItem = (variantId: string) => setCart((prev) => prev.filter((i) => i.variantId !== variantId));
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const discount = parseFloat(discountInput) || 0;
-  const promoDiscount = appliedPromo?.discountAmount ?? 0;
+  const discount = hasPromotionFeature ? 0 : (parseFloat(discountInput) || 0);
+  const promoDiscount = hasPromotionFeature ? (appliedPromo?.discountAmount ?? 0) : 0;
   const loyaltyRedemptionEnabled = !!loyaltyConfig?.isEnabled && !!selectedCustomerId && !!customerLoyalty;
   const appliedLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
   const appliedLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
@@ -349,7 +351,7 @@ export default function POSPage() {
   }, [cart, currentBranch, total, discount, subtotal, paymentMethod, cashInput, cashTendered]);
 
   const applyPromoCode = async () => {
-    if (!promoCode.trim() || !tid) return;
+    if (!hasPromotionFeature || !promoCode.trim() || !tid) return;
     setPromoError(null);
     try {
       const result = await api.post(`/api/tenants/${tid}/promotions/apply`, {
@@ -404,8 +406,8 @@ export default function POSPage() {
       discountAmount: discount + promoDiscount,
       loyaltyDiscountAmount: appliedLoyaltyDiscount,
       loyaltyPointsRedeemed: appliedLoyaltyPoints || undefined,
-      promotionId: appliedPromo?.promotionId ?? undefined,
-      promotionCode: appliedPromo?.promotionCode ?? undefined,
+      promotionId: hasPromotionFeature ? (appliedPromo?.promotionId ?? undefined) : undefined,
+      promotionCode: hasPromotionFeature ? (appliedPromo?.promotionCode ?? undefined) : undefined,
       notes: `POS sale — ${paymentMethod}`,
       paymentMethod,
       status: "delivered",
@@ -666,54 +668,58 @@ export default function POSPage() {
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted">Discount</label>
-            <input
-              type="number"
-              min="0"
-              max={subtotal}
-              step="0.01"
-              value={discountInput}
-              onChange={(e) => setDiscountInput(e.target.value)}
-              className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
-            />
-            {discount > subtotal && (
-              <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
-            )}
-          </div>
+          {!hasPromotionFeature && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted">Discount</label>
+              <input
+                type="number"
+                min="0"
+                max={subtotal}
+                step="0.01"
+                value={discountInput}
+                onChange={(e) => setDiscountInput(e.target.value)}
+                className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
+              />
+              {discount > subtotal && (
+                <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
+              )}
+            </div>
+          )}
 
-          <div>
-            <label className="text-xs font-medium text-muted">Promo code</label>
-            {appliedPromo ? (
-              <div className="mt-1 flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
-                <div className="flex items-center gap-1.5">
-                  <Tag className="w-3 h-3" />
-                  <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
+          {hasPromotionFeature && (
+            <div>
+              <label className="text-xs font-medium text-muted">Promo code</label>
+              {appliedPromo ? (
+                <div className="mt-1 flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3 h-3" />
+                    <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
+                  </div>
+                  <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
-                <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <div className="mt-1 flex gap-1">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
-                  placeholder="Promo code"
-                  className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
-                  onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
-                />
-                <button
-                  onClick={applyPromoCode}
-                  className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
-                >
-                  Apply
-                </button>
-              </div>
-            )}
-            {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
-          </div>
+              ) : (
+                <div className="mt-1 flex gap-1">
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
+                    placeholder="Promo code"
+                    className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
+                    onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
+                  />
+                  <button
+                    onClick={applyPromoCode}
+                    className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
+              {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
+            </div>
+          )}
 
           {loyaltyRedemptionEnabled && (
             <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
