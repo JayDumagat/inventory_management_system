@@ -13,6 +13,7 @@ import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 import { usePresignedUrl } from "../../hooks/usePresignedUrl";
 import type { ProductImage, ApplyPromotionResult, LoyaltyConfig, CustomerLoyalty } from "../../types";
+import { useSubscription } from "../../hooks/useEntitlements";
 
 interface Product {
   id: string;
@@ -130,6 +131,10 @@ ${receipt.customerName ? `<div><strong>Customer:</strong> ${escapeHtml(receipt.c
 </body></html>`;
 }
 
+function sanitizeReceiptTemplate(value: unknown): "compact" | "detailed" {
+  return value === "detailed" ? "detailed" : "compact";
+}
+
 export default function POSPage() {
   const { currentTenant } = useTenantStore();
   const { currentBranch } = useBranchStore();
@@ -157,12 +162,13 @@ export default function POSPage() {
   const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [isApplyingLoyalty, setIsApplyingLoyalty] = useState(false);
-  const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">("compact");
-  const [receiptFooter, setReceiptFooter] = useState("Thank you for your purchase!");
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
-  const canCustomizeReceipt = ["owner", "manager"].includes((currentTenant?.role || "").toLowerCase());
+  const { data: subscriptionData } = useSubscription();
+  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : false;
+  const receiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
+  const receiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "").trim() || "Thank you for your purchase!";
 
   // Products query
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -182,7 +188,7 @@ export default function POSPage() {
   const { data: loyaltyConfig } = useQuery<LoyaltyConfig>({
     queryKey: ["loyalty-config", tid],
     queryFn: () => api.get(`/api/tenants/${tid}/loyalty/config`).then((r) => r.data),
-    enabled: !!tid,
+    enabled: !!tid && hasLoyaltyFeature,
     staleTime: 60_000,
   });
 
@@ -747,40 +753,6 @@ export default function POSPage() {
             </div>
           )}
 
-          {canCustomizeReceipt && (
-            <div className="bg-page border border-stroke p-3 space-y-2">
-              <p className="text-xs font-medium text-muted">Receipt design</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReceiptTemplate("compact")}
-                  className={cn(
-                    "px-2 py-1.5 text-xs border",
-                    receiptTemplate === "compact" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
-                  )}
-                >
-                  Compact
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReceiptTemplate("detailed")}
-                  className={cn(
-                    "px-2 py-1.5 text-xs border",
-                    receiptTemplate === "detailed" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
-                  )}
-                >
-                  Detailed
-                </button>
-              </div>
-              <Input
-                label="Footer message"
-                value={receiptFooter}
-                onChange={(e) => setReceiptFooter(e.target.value)}
-                placeholder="Thank you for your purchase!"
-              />
-            </div>
-          )}
-
           <div>
             <p className="text-xs font-medium text-muted mb-2">Payment method</p>
             <div className="grid grid-cols-2 gap-2">
@@ -924,7 +896,7 @@ export default function POSPage() {
                   <div className="flex justify-between text-green-600 font-semibold"><span>Change</span><span>{formatCurrency(lastReceipt.change)}</span></div>
                 </>
               )}
-              <div className="text-center text-muted mt-3">Thank you!</div>
+              <div className="text-center text-muted mt-3">{lastReceipt.footerMessage || "Thank you for your purchase!"}</div>
             </div>
             <div className="flex gap-3 w-full">
               <Button variant="outline" className="flex-1 gap-2" onClick={printReceipt}>

@@ -10,6 +10,7 @@ import { handleControllerError } from "../utils/errors";
 import { createOrderSchema, updateOrderSchema, refundSchema } from "../validators/salesOrder";
 import { generateSalesOrderNumber } from "../utils/helpers";
 import { appEvents } from "../lib/events";
+import { hasFeature } from "../lib/planConfig";
 
 export async function listOrders(req: Request, res: Response): Promise<void> {
   try {
@@ -32,10 +33,11 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
   try {
     const body = createOrderSchema.parse(req.body);
     const tenantId = req.tenantContext!.tenantId;
+    const loyaltyFeatureEnabled = hasFeature(req.tenantContext!.planKey ?? "free", "loyalty");
 
     const subtotal = body.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const promoDiscount = body.discountAmount ?? 0;
-    const loyaltyDiscount = body.loyaltyDiscountAmount ?? 0;
+    const loyaltyDiscount = loyaltyFeatureEnabled ? (body.loyaltyDiscountAmount ?? 0) : 0;
     const totalAmount = subtotal + (body.taxAmount ?? 0) - promoDiscount - loyaltyDiscount;
 
     // Validate total is positive
@@ -88,7 +90,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       notes,
       promotionId: body.promotionId ?? undefined,
       promotionCode: body.promotionCode ?? undefined,
-      loyaltyPointsRedeemed: body.loyaltyPointsRedeemed ?? 0,
+      loyaltyPointsRedeemed: loyaltyFeatureEnabled ? (body.loyaltyPointsRedeemed ?? 0) : 0,
       loyaltyDiscountAmount: String(loyaltyDiscount),
       createdBy: req.user!.id,
     }).returning();
@@ -163,7 +165,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       }
 
       // ── Loyalty points earn ───────────────────────────────────────────────
-      if (body.customerId) {
+      if (body.customerId && loyaltyFeatureEnabled) {
         const [lConfig] = await db.select().from(loyaltyConfig)
           .where(eq(loyaltyConfig.tenantId, tenantId));
 

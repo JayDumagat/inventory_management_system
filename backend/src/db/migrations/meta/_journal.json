@@ -8,6 +8,13 @@
       "when": 1776608461146,
       "tag": "0000_peaceful_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776764000000,
+      "tag": "0003_receipt_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ import { SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { Star, Settings, Users, ArrowUpCircle, ArrowDownCircle, RefreshCw } from "lucide-react";
 import type { LoyaltyConfig, CustomerLoyalty } from "../../types";
+import { useSubscription } from "../../hooks/useEntitlements";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TopCustomer {
@@ -51,6 +52,8 @@ export default function LoyaltyPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const canManage = ["owner", "admin", "manager"].includes(role ?? "");
+  const { data: subscriptionData, isLoading: subscriptionLoading } = useSubscription();
+  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : false;
 
   const [configOpen, setConfigOpen] = useState(false);
   const [adjustCustomer, setAdjustCustomer] = useState<TopCustomer | null>(null);
@@ -122,6 +125,19 @@ export default function LoyaltyPage() {
       <div className="p-6 text-center text-muted">
         <Star className="w-12 h-12 mx-auto mb-3 opacity-30" />
         <p>You don't have permission to manage the loyalty program.</p>
+      </div>
+    );
+  }
+
+  if (subscriptionLoading) {
+    return <SkeletonTable />;
+  }
+
+  if (!hasLoyaltyFeature) {
+    return (
+      <div className="p-6 text-center text-muted">
+        <Star className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <p>Your current plan does not include the loyalty program.</p>
       </div>
     );
   }
