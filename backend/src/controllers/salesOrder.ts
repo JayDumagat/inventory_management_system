@@ -33,7 +33,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
   try {
     const body = createOrderSchema.parse(req.body);
     const tenantId = req.tenantContext!.tenantId;
-    const loyaltyFeatureEnabled = hasFeature(req.tenantContext?.planKey ?? "free", "loyalty");
+    const loyaltyFeatureEnabled = hasFeature(req.tenantContext!.planKey ?? "free", "loyalty");
 
     const subtotal = body.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const promoDiscount = body.discountAmount ?? 0;

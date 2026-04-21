@@ -52,8 +52,8 @@ export default function LoyaltyPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const canManage = ["owner", "admin", "manager"].includes(role ?? "");
-  const { data: subscriptionData } = useSubscription();
-  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : true;
+  const { data: subscriptionData, isLoading: subscriptionLoading } = useSubscription();
+  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : false;
 
   const [configOpen, setConfigOpen] = useState(false);
   const [adjustCustomer, setAdjustCustomer] = useState<TopCustomer | null>(null);
@@ -127,6 +127,10 @@ export default function LoyaltyPage() {
         <p>You don't have permission to manage the loyalty program.</p>
       </div>
     );
+  }
+
+  if (subscriptionLoading) {
+    return <SkeletonTable />;
   }
 
   if (!hasLoyaltyFeature) {

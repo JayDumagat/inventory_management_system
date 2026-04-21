@@ -166,7 +166,7 @@ export default function POSPage() {
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const { data: subscriptionData } = useSubscription();
-  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : true;
+  const hasLoyaltyFeature = subscriptionData ? subscriptionData.plan.features.includes("loyalty") : false;
   const receiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
   const receiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "").trim() || "Thank you for your purchase!";
 
