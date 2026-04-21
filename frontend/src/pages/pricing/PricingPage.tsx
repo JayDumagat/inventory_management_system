@@ -79,9 +79,10 @@ export default function PricingPage() {
 
   const upgradeMutation = useMutation({
     mutationFn: (plan: string) =>
-      api.patch(`/api/tenants/${currentTenant!.id}`, { plan }).then((r) => r.data),
+      api.patch(`/api/tenants/${currentTenant!.id}/subscription`, { planKey: plan }).then((r) => r.data),
     onSuccess: (_, plan) => {
       qc.invalidateQueries({ queryKey: ["tenants"] });
+      qc.invalidateQueries({ queryKey: ["subscription", currentTenant!.id] });
       setUpgrading(null);
       setSuccessPlan(plan);
     },
