@@ -230,18 +230,16 @@ export default function POSPage() {
     onSuccess: (res) => {
       const data = res.data;
       const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-      const disc = hasPromotionFeature ? 0 : (parseFloat(discountInput) || 0);
-      const promoDisc = hasPromotionFeature ? (appliedPromo?.discountAmount ?? 0) : 0;
       const activeLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
       const activeLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
-      const tot = Math.max(0, sub - disc - promoDisc - activeLoyaltyDiscount);
+      const tot = Math.max(0, sub - discount - promoDiscount - activeLoyaltyDiscount);
       const paid = paymentMethod === "Cash" ? (parseFloat(cashInput) || tot) : tot;
 
       setLastReceipt({
         orderNumber: data.orderNumber,
         items: [...cart],
         subtotal: sub,
-        discount: disc,
+        discount,
         loyaltyDiscount: activeLoyaltyDiscount,
         total: tot,
         paymentMethod,
@@ -351,7 +349,12 @@ export default function POSPage() {
   }, [cart, currentBranch, total, discount, subtotal, paymentMethod, cashInput, cashTendered]);
 
   const applyPromoCode = async () => {
-    if (!hasPromotionFeature || !promoCode.trim() || !tid) return;
+    if (!hasPromotionFeature) {
+      setAppliedPromo(null);
+      setPromoError(null);
+      return;
+    }
+    if (!promoCode.trim() || !tid) return;
     setPromoError(null);
     try {
       const result = await api.post(`/api/tenants/${tid}/promotions/apply`, {
