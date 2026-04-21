@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
@@ -42,18 +43,21 @@ const sponsoredContents = [
     title: "Smart Barcode Scanner",
     description: "Speed up receiving and stock takes with mobile-first barcode workflows.",
     image: sponsoredInventoryImage,
+    href: "/integrations",
   },
   {
     id: "payments-terminal",
     title: "Next-Day Payouts",
     description: "Accept in-store payments with lower fees and faster payout schedules.",
     image: sponsoredPaymentImage,
+    href: "/settings",
   },
   {
     id: "analytics-suite",
     title: "Advanced Insights Pack",
     description: "Unlock demand forecasts and branch-level trends with AI-powered analytics.",
     image: sponsoredAnalyticsImage,
+    href: "/analytics",
   },
 ];
 
@@ -194,14 +198,19 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {sponsoredContents.map((item) => (
-            <article key={item.id} className="border border-stroke bg-panel overflow-hidden">
-              <img src={item.image} alt={item.title} className="w-full h-32 object-cover border-b border-stroke" />
+            <Link
+              key={item.id}
+              to={item.href}
+              aria-label={`Sponsored: ${item.title}`}
+              className="border border-stroke rounded-lg bg-panel overflow-hidden block hover:bg-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <img src={item.image} alt="" aria-hidden="true" className="w-full h-32 object-cover border-b border-stroke" />
               <div className="p-3 space-y-2">
                 <Badge variant="info">Sponsored</Badge>
                 <p className="text-sm font-semibold text-ink">{item.title}</p>
                 <p className="text-xs text-muted">{item.description}</p>
               </div>
-            </article>
+            </Link>
           ))}
         </CardContent>
       </Card>
