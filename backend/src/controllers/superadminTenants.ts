@@ -160,18 +160,20 @@ export async function overrideTenantSubscription(req: Request, res: Response): P
         .returning();
     }
 
-    // Keep tenants.plan in sync
-    await db
-      .update(tenants)
-      .set({ plan: body.planKey, updatedAt: new Date() })
-      .where(eq(tenants.id, tenantId));
+    // Keep tenants.plan in sync + loyalty disable on non-loyalty plans
+    await db.transaction(async (tx) => {
+      await tx
+        .update(tenants)
+        .set({ plan: body.planKey, updatedAt: new Date() })
+        .where(eq(tenants.id, tenantId));
 
-    if (!hasFeature(body.planKey, "loyalty")) {
-      await db
-        .update(loyaltyConfig)
-        .set({ isEnabled: false, updatedAt: new Date() })
-        .where(eq(loyaltyConfig.tenantId, tenantId));
-    }
+      if (!hasFeature(body.planKey, "loyalty")) {
+        await tx
+          .update(loyaltyConfig)
+          .set({ isEnabled: false, updatedAt: new Date() })
+          .where(eq(loyaltyConfig.tenantId, tenantId));
+      }
+    });
 
     await createAuditLog({
       userId: req.superadmin!.id,

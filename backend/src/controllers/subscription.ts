@@ -132,16 +132,18 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
       .where(eq(tenantSubscriptions.tenantId, tenantId))
       .returning();
 
-    // Keep tenants.plan in sync for backward compatibility
-    await db.update(tenants)
-      .set({ plan: body.scheduleForPeriodEnd ? fromPlan : body.planKey, updatedAt: new Date() })
-      .where(eq(tenants.id, tenantId));
+    // Keep tenants.plan in sync for backward compatibility + loyalty disable on downgrade
+    await db.transaction(async (tx) => {
+      await tx.update(tenants)
+        .set({ plan: body.scheduleForPeriodEnd ? fromPlan : body.planKey, updatedAt: new Date() })
+        .where(eq(tenants.id, tenantId));
 
-    if (!body.scheduleForPeriodEnd && !hasFeature(body.planKey, "loyalty")) {
-      await db.update(loyaltyConfig)
-        .set({ isEnabled: false, updatedAt: new Date() })
-        .where(eq(loyaltyConfig.tenantId, tenantId));
-    }
+      if (!body.scheduleForPeriodEnd && !hasFeature(body.planKey, "loyalty")) {
+        await tx.update(loyaltyConfig)
+          .set({ isEnabled: false, updatedAt: new Date() })
+          .where(eq(loyaltyConfig.tenantId, tenantId));
+      }
+    });
 
     // Record history
     await db.insert(subscriptionHistory).values({
