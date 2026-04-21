@@ -263,7 +263,7 @@ export default function OrganizationPage() {
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
         setTimeout(() => setOrgSuccess(false), 3000);
-        toast("No changes to save");
+        toast.success("No changes to save");
         return;
       }
 
