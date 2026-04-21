@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import {
-  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants,
+  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig,
 } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { changePlanSchema, addAddonSchema, removeAddonSchema } from "../validators/subscription";
-import { getPlanDef, getLimit, PLAN_DEFINITIONS } from "../lib/planConfig";
+import { getPlanDef, getLimit, hasFeature, PLAN_DEFINITIONS } from "../lib/planConfig";
 import { getCount } from "../lib/usageCounter";
 
 // ─── Get current subscription ─────────────────────────────────────────────────
@@ -136,6 +136,12 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
     await db.update(tenants)
       .set({ plan: body.scheduleForPeriodEnd ? fromPlan : body.planKey, updatedAt: new Date() })
       .where(eq(tenants.id, tenantId));
+
+    if (!body.scheduleForPeriodEnd && !hasFeature(body.planKey, "loyalty")) {
+      await db.update(loyaltyConfig)
+        .set({ isEnabled: false, updatedAt: new Date() })
+        .where(eq(loyaltyConfig.tenantId, tenantId));
+    }
 
     // Record history
     await db.insert(subscriptionHistory).values({

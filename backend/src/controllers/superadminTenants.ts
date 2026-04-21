@@ -1,12 +1,13 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import {
-  tenants, tenantUsers, tenantSubscriptions, subscriptionHistory,
+  tenants, tenantUsers, tenantSubscriptions, subscriptionHistory, loyaltyConfig,
 } from "../db/schema";
 import { eq, desc, ilike, and, count, sql } from "drizzle-orm";
 import { handleControllerError } from "../utils/errors";
 import { createAuditLog } from "../services/audit";
 import { z } from "zod";
+import { hasFeature } from "../lib/planConfig";
 
 // ─── List all tenants ─────────────────────────────────────────────────────────
 export async function listAllTenants(req: Request, res: Response): Promise<void> {
@@ -164,6 +165,13 @@ export async function overrideTenantSubscription(req: Request, res: Response): P
       .update(tenants)
       .set({ plan: body.planKey, updatedAt: new Date() })
       .where(eq(tenants.id, tenantId));
+
+    if (!hasFeature(body.planKey, "loyalty")) {
+      await db
+        .update(loyaltyConfig)
+        .set({ isEnabled: false, updatedAt: new Date() })
+        .where(eq(loyaltyConfig.tenantId, tenantId));
+    }
 
     await createAuditLog({
       userId: req.superadmin!.id,
