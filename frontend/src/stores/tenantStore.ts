@@ -9,6 +9,8 @@ interface Tenant {
   role: string;
   allowedPages?: string[] | null;
   plan?: string;
+  receiptTemplate?: "compact" | "detailed";
+  receiptFooterMessage?: string;
 }
 
 interface TenantState {

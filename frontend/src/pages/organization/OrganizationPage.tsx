@@ -72,6 +72,11 @@ const inviteSchema = z.object({
 type InviteForm = z.infer<typeof inviteSchema>;
 
 type Tab = "general" | "personalization" | "subscriptions" | "team" | "notifications" | "security";
+const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase!";
+
+function sanitizeReceiptTemplate(value: unknown): "compact" | "detailed" {
+  return value === "detailed" ? "detailed" : "compact";
+}
 
 function sanitizeImageUrl(url: string): string {
   if (!url) return "";
@@ -121,6 +126,10 @@ export default function OrganizationPage() {
   const [orgName, setOrgName] = useState(currentTenant?.name || "");
   const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
   const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
+  const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">(sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate));
+  const [receiptFooterMessage, setReceiptFooterMessage] = useState(
+    (currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER
+  );
   const [savingOrg, setSavingOrg] = useState(false);
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
@@ -247,9 +256,14 @@ export default function OrganizationPage() {
         const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
         if (orgLogo !== currentLogo) payload.logoUrl = orgLogo || undefined;
       }
+      const currentReceiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
+      const currentReceiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER);
+      if (receiptTemplate !== currentReceiptTemplate) payload.receiptTemplate = receiptTemplate;
+      if (receiptFooterMessage !== currentReceiptFooter) payload.receiptFooterMessage = receiptFooterMessage;
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
         setTimeout(() => setOrgSuccess(false), 3000);
+        toast("No changes to save");
         return;
       }
 
@@ -262,12 +276,20 @@ export default function OrganizationPage() {
       if (Object.prototype.hasOwnProperty.call(updated, "logoUrl")) {
         nextTenant.logoUrl = updated.logoUrl ?? undefined;
       }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptTemplate")) {
+        (nextTenant as { receiptTemplate?: "compact" | "detailed" }).receiptTemplate = sanitizeReceiptTemplate(updated.receiptTemplate);
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptFooterMessage")) {
+        (nextTenant as { receiptFooterMessage?: string }).receiptFooterMessage = updated.receiptFooterMessage ?? DEFAULT_RECEIPT_FOOTER;
+      }
       setCurrentTenant(nextTenant);
       qc.invalidateQueries({ queryKey: ["tenants"] });
       setOrgSuccess(true);
       setTimeout(() => setOrgSuccess(false), 3000);
+      toast.success("Organization settings saved");
     } catch (e: unknown) {
       setOrgError((e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Save failed");
+      toast.error("Failed to save organization settings");
     } finally {
       setSavingOrg(false);
     }
@@ -458,6 +480,41 @@ export default function OrganizationPage() {
                     {theme.accent === s.key && <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="border-t border-stroke pt-5 space-y-3">
+              <p className="text-sm font-medium text-ink">Receipt preferences</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("compact")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "compact" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptTemplate("detailed")}
+                  className={cn(
+                    "px-2 py-1.5 text-xs border",
+                    receiptTemplate === "detailed" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
+                  )}
+                >
+                  Detailed
+                </button>
+              </div>
+              <Input
+                label="Receipt footer message"
+                value={receiptFooterMessage}
+                onChange={(e) => setReceiptFooterMessage(e.target.value)}
+                placeholder={DEFAULT_RECEIPT_FOOTER}
+              />
+              <div className="flex justify-end">
+                <Button onClick={handleSaveOrg} loading={savingOrg}>Save personalization</Button>
               </div>
             </div>
           </CardContent>

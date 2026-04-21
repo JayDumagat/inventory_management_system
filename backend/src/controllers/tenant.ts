@@ -15,6 +15,8 @@ export async function listTenants(req: Request, res: Response): Promise<void> {
         slug: tenants.slug,
         description: tenants.description,
         logoUrl: tenants.logoUrl,
+        receiptTemplate: tenants.receiptTemplate,
+        receiptFooterMessage: tenants.receiptFooterMessage,
         isActive: tenants.isActive,
         createdAt: tenants.createdAt,
         role: tenantUsers.role,

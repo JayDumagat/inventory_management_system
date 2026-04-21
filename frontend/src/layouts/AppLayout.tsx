@@ -15,6 +15,7 @@ import { PreferencesModal } from "../components/ui/PreferencesModal";
 import { navItems } from "../constants/navigation";
 import type { Branch, Notification } from "../types";
 import { SubmitTicketModal } from "../components/SubmitTicketModal";
+import { useSubscription } from "../hooks/useEntitlements";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -33,6 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const tid = currentTenant?.id;
+  const { data: subscriptionData } = useSubscription();
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["branches", tid],
@@ -90,12 +92,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const allowedPages = currentTenant?.allowedPages;
 
   const visibleNavItems = useMemo(() => navItems.filter((item) => {
+    if (item.href === "/loyalty" && subscriptionData && !subscriptionData.plan.features.includes("loyalty")) return false;
     if (item.roles && !item.roles.includes(myRole)) return false;
     if (myRole === "staff" && allowedPages && allowedPages.length > 0) {
       return allowedPages.includes(item.href);
     }
     return true;
-  }), [myRole, allowedPages]);
+  }), [myRole, allowedPages, subscriptionData]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-page">
