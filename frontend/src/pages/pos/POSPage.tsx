@@ -35,6 +35,7 @@ interface ReceiptData {
   orderNumber: string;
   items: CartItem[];
   subtotal: number;
+  taxAmount: number;
   discount: number;
   loyaltyDiscount: number;
   total: number;
@@ -123,6 +124,7 @@ ${receipt.customerName ? `<div><strong>Customer:</strong> ${escapeHtml(receipt.c
 <div class="divider"></div>
 <table>
   <tr><td>Subtotal</td><td style="text-align:right">${Number(receipt.subtotal).toFixed(2)}</td></tr>
+  ${receipt.taxAmount > 0 ? `<tr><td>Tax</td><td style="text-align:right">+${Number(receipt.taxAmount).toFixed(2)}</td></tr>` : ""}
   ${receipt.discount > 0 ? `<tr><td>Discount</td><td style="text-align:right">-${Number(receipt.discount).toFixed(2)}</td></tr>` : ""}
   <tr class="total-row"><td>TOTAL</td><td style="text-align:right">${Number(receipt.total).toFixed(2)}</td></tr>
   ${receipt.paymentMethod === "Cash" ? `
@@ -159,6 +161,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [discountInput, setDiscountInput] = useState("0");
+  const [taxRateInput, setTaxRateInput] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [cashInput, setCashInput] = useState("");
   const [checkoutModal, setCheckoutModal] = useState(false);
@@ -236,6 +239,7 @@ export default function POSPage() {
       customerId?: string;
       items: { variantId: string; productName: string; variantName: string; sku: string; quantity: number; unitPrice: number }[];
       discountAmount: number;
+      taxAmount?: number;
       loyaltyDiscountAmount?: number;
       loyaltyPointsRedeemed?: number;
       promotionId?: string;
@@ -249,13 +253,14 @@ export default function POSPage() {
       const sub = cart.reduce((s, i) => s + i.price * i.quantity, 0);
       const activeLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
       const activeLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
-      const tot = Math.max(0, sub - discount - promoDiscount - activeLoyaltyDiscount);
+      const tot = Math.max(0, sub + taxAmount - discount - promoDiscount - activeLoyaltyDiscount);
       const paid = paymentMethod === "Cash" ? (parseFloat(cashInput) || tot) : tot;
 
       setLastReceipt({
         orderNumber: data.orderNumber,
         items: [...cart],
         subtotal: sub,
+        taxAmount,
         discount,
         loyaltyDiscount: activeLoyaltyDiscount,
         total: tot,
@@ -282,6 +287,7 @@ export default function POSPage() {
 
       setCart([]);
       setDiscountInput("0");
+      setTaxRateInput("0");
       setCashInput("");
       setCustomerName("");
       setSelectedCustomerId(null);
@@ -342,12 +348,14 @@ export default function POSPage() {
   const removeItem = (variantId: string) => setCart((prev) => prev.filter((i) => i.variantId !== variantId));
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const discount = hasPromotionFeature ? 0 : (parseFloat(discountInput) || 0);
+  const discount = parseFloat(discountInput) || 0;
+  const taxRate = parseFloat(taxRateInput) || 0;
+  const taxAmount = Math.round(subtotal * taxRate) / 100;
   const promoDiscount = hasPromotionFeature ? (appliedPromo?.discountAmount ?? 0) : 0;
   const loyaltyRedemptionEnabled = !!loyaltyConfig?.isEnabled && !!selectedCustomerId && !!customerLoyalty;
   const appliedLoyaltyDiscount = loyaltyRedemptionEnabled ? loyaltyDiscount : 0;
   const appliedLoyaltyPoints = loyaltyRedemptionEnabled ? loyaltyPointsToRedeem : 0;
-  const total = Math.max(0, subtotal - discount - promoDiscount - appliedLoyaltyDiscount);
+  const total = Math.max(0, subtotal + taxAmount - discount - promoDiscount - appliedLoyaltyDiscount);
   const cashTendered = parseFloat(cashInput) || 0;
   const change = paymentMethod === "Cash" ? Math.max(0, cashTendered - total) : 0;
 
@@ -426,6 +434,7 @@ export default function POSPage() {
       customerName: customerName || undefined,
       customerId: selectedCustomerId || undefined,
       discountAmount: discount + promoDiscount,
+      taxAmount: taxAmount > 0 ? taxAmount : undefined,
       loyaltyDiscountAmount: appliedLoyaltyDiscount,
       loyaltyPointsRedeemed: appliedLoyaltyPoints || undefined,
       promotionId: hasPromotionFeature ? (appliedPromo?.promotionId ?? undefined) : undefined,
@@ -607,11 +616,44 @@ export default function POSPage() {
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <p className="text-xs text-muted">Discounts, promo codes, and loyalty redemption are applied in Checkout.</p>
-              <div className="flex justify-between text-base font-bold text-ink border-t border-stroke pt-2">
-                <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+              {/* Inline discount input */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted flex-shrink-0 w-20">Discount</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value)}
+                  className="flex-1 border border-stroke bg-panel text-ink px-2 py-1 text-xs text-right outline-none focus:border-primary-500"
+                />
               </div>
+              {/* Inline tax rate input */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted flex-shrink-0 w-20">Tax %</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={taxRateInput}
+                  onChange={(e) => setTaxRateInput(e.target.value)}
+                  className="flex-1 border border-stroke bg-panel text-ink px-2 py-1 text-xs text-right outline-none focus:border-primary-500"
+                />
+              </div>
+              {/* Breakdown rows */}
+              {discount > 0 && (
+                <div className="flex justify-between text-xs text-muted">
+                  <span>Discount</span>
+                  <span>-{formatCurrency(discount)}</span>
+                </div>
+              )}
+              {taxAmount > 0 && (
+                <div className="flex justify-between text-xs text-muted">
+                  <span>Tax ({taxRate}%)</span>
+                  <span>+{formatCurrency(taxAmount)}</span>
+                </div>
+              )}
               {promoDiscount > 0 && (
                 <div className="flex justify-between text-xs text-green-600">
                   <span className="flex items-center gap-1"><Tag className="w-3 h-3" />Promo</span>
@@ -624,6 +666,10 @@ export default function POSPage() {
                   <span>-{formatCurrency(appliedLoyaltyDiscount)}</span>
                 </div>
               )}
+              <div className="flex justify-between text-base font-bold text-ink border-t border-stroke pt-2">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
+              </div>
             </>
           )}
           <Button
@@ -638,247 +684,285 @@ export default function POSPage() {
       </div>
 
       {/* Checkout modal */}
-      <Modal open={checkoutModal} onClose={() => setCheckoutModal(false)} title="Checkout" size="sm">
-        <div className="flex flex-col gap-4">
-          {/* Customer name with search/autocomplete */}
-          <div className="relative">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted">Customer name (optional)</label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
-                <input
-                  ref={customerInputRef}
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => handleCustomerInput(e.target.value)}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder="Search or type new customer name…"
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500"
-                />
+      <Modal open={checkoutModal} onClose={() => setCheckoutModal(false)} title="Checkout" size="xl">
+        <div className="flex gap-6">
+          {/* Left: form fields */}
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
+            {/* Customer name with search/autocomplete */}
+            <div className="relative">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Customer name (optional)</label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none" />
+                  <input
+                    ref={customerInputRef}
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => handleCustomerInput(e.target.value)}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    placeholder="Search or type new customer name…"
+                    className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                {selectedCustomerId && (
+                  <p className="text-xs text-green-600">Linked to existing customer</p>
+                )}
+                {customerName.trim() && !selectedCustomerId && (
+                  <p className="text-xs text-muted">New customer will be created automatically</p>
+                )}
               </div>
-              {selectedCustomerId && (
-                <p className="text-xs text-green-600">Linked to existing customer</p>
-              )}
-              {customerName.trim() && !selectedCustomerId && (
-                <p className="text-xs text-muted">New customer will be created automatically</p>
+              {showCustomerDropdown && customerResults.length > 0 && (
+                <div
+                  ref={customerDropdownRef}
+                  className="absolute top-full left-0 right-0 z-10 mt-1 bg-panel border border-stroke shadow-lg max-h-40 overflow-y-auto"
+                >
+                  {customerResults.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => selectCustomer(c)}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-hover flex items-center gap-2 transition-colors"
+                    >
+                      <div className="w-6 h-6 bg-primary-50 border border-primary-200 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">
+                        {c.name[0]?.toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-ink font-medium truncate">{c.name}</p>
+                        {(c.email || c.phone) && (
+                          <p className="text-xs text-muted truncate">{c.email || c.phone}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            {showCustomerDropdown && customerResults.length > 0 && (
-              <div
-                ref={customerDropdownRef}
-                className="absolute top-full left-0 right-0 z-10 mt-1 bg-panel border border-stroke shadow-lg max-h-40 overflow-y-auto"
-              >
-                {customerResults.map((c) => (
+
+            {/* Discount & Tax */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Discount</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value)}
+                  className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
+                />
+                {discount > subtotal && (
+                  <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Tax %</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={taxRateInput}
+                  onChange={(e) => setTaxRateInput(e.target.value)}
+                  className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
+                />
+              </div>
+            </div>
+
+            {hasPromotionFeature && (
+              <div>
+                <label className="text-xs font-medium text-muted">Promo code</label>
+                {appliedPromo ? (
+                  <div className="mt-1 flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
+                    <div className="flex items-center gap-1.5">
+                      <Tag className="w-3 h-3" />
+                      <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
+                    </div>
+                    <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-1 flex gap-1">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
+                      placeholder="Promo code"
+                      className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
+                      onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
+                    />
+                    <button
+                      onClick={applyPromoCode}
+                      className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+                {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
+              </div>
+            )}
+
+            {loyaltyRedemptionEnabled && (
+              <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1 text-amber-700">
+                    <Star className="w-3 h-3" />
+                    <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
+                  </div>
+                  {appliedLoyaltyDiscount > 0 && (
+                    <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {appliedLoyaltyDiscount > 0 ? (
+                  <p className="text-xs text-amber-700">Redeeming {appliedLoyaltyPoints} {loyaltyConfig.pointsLabel} = -{formatCurrency(appliedLoyaltyDiscount)}</p>
+                ) : (
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={customerLoyalty.balance}
+                      value={loyaltyPointsToRedeem || ""}
+                      onChange={(e) => setLoyaltyPointsToRedeem(parseInt(e.target.value) || 0)}
+                      placeholder="Points to redeem"
+                      className="flex-1 border border-amber-300 bg-white text-ink px-2 py-0.5 text-xs outline-none focus:border-amber-500"
+                    />
+                    <button
+                      onClick={applyLoyaltyPoints}
+                      disabled={isApplyingLoyalty}
+                      className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
+                    >
+                      {isApplyingLoyalty ? "Applying..." : "Redeem"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs font-medium text-muted mb-2">Payment method</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((m) => (
                   <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => selectCustomer(c)}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-hover flex items-center gap-2 transition-colors"
+                    key={m}
+                    onClick={() => { setPaymentMethod(m); setCheckoutErrors([]); }}
+                    className={cn(
+                      "px-3 py-2 text-sm font-medium border transition-colors",
+                      paymentMethod === m
+                        ? "border-primary-600 bg-primary-50 text-primary-700"
+                        : "border-stroke bg-panel text-muted hover:bg-hover hover:text-ink"
+                    )}
                   >
-                    <div className="w-6 h-6 bg-primary-50 border border-primary-200 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">
-                      {c.name[0]?.toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-ink font-medium truncate">{c.name}</p>
-                      {(c.email || c.phone) && (
-                        <p className="text-xs text-muted truncate">{c.email || c.phone}</p>
-                      )}
-                    </div>
+                    {m}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {!hasPromotionFeature && (
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted">Discount</label>
-              <input
-                type="number"
-                min="0"
-                max={subtotal}
-                step="0.01"
-                value={discountInput}
-                onChange={(e) => setDiscountInput(e.target.value)}
-                className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
-              />
-              {discount > subtotal && (
-                <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
-              )}
             </div>
-          )}
 
-          {hasPromotionFeature && (
-            <div>
-              <label className="text-xs font-medium text-muted">Promo code</label>
-              {appliedPromo ? (
-                <div className="mt-1 flex items-center justify-between bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
-                  <div className="flex items-center gap-1.5">
-                    <Tag className="w-3 h-3" />
-                    <span>{appliedPromo.promotionName} (-{formatCurrency(appliedPromo.discountAmount)})</span>
-                  </div>
-                  <button onClick={() => { setAppliedPromo(null); setPromoCode(""); }} title="Remove promo">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-1 flex gap-1">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
-                    placeholder="Promo code"
-                    className="flex-1 border border-stroke bg-page text-ink px-2 py-1 text-xs outline-none focus:border-primary-500"
-                    onKeyDown={(e) => e.key === "Enter" && applyPromoCode()}
-                  />
-                  <button
-                    onClick={applyPromoCode}
-                    className="px-2 py-1 text-xs bg-primary-100 text-primary-700 border border-primary-200 hover:bg-primary-200 transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-              {promoError && <p className="text-xs text-red-500 mt-0.5">{promoError}</p>}
-            </div>
-          )}
-
-          {loyaltyRedemptionEnabled && (
-            <div className="bg-amber-50 border border-amber-200 p-2 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1 text-amber-700">
-                  <Star className="w-3 h-3" />
-                  <span>{customerLoyalty.balance} {loyaltyConfig.pointsLabel} available</span>
-                </div>
-                {appliedLoyaltyDiscount > 0 && (
-                  <button onClick={() => { setLoyaltyDiscount(0); setLoyaltyPointsToRedeem(0); }} className="text-xs text-red-500">
-                    <X className="w-3 h-3" />
-                  </button>
+            {paymentMethod === "Cash" && (
+              <div>
+                <Input
+                  label="Cash tendered *"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={cashInput}
+                  onChange={(e) => { setCashInput(e.target.value); setCheckoutErrors([]); }}
+                  placeholder={formatCurrency(total)}
+                  error={
+                    cashInput && parseFloat(cashInput) < total
+                      ? `Must be at least ${formatCurrency(total)}`
+                      : undefined
+                  }
+                />
+                {cashInput && parseFloat(cashInput) >= total && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Change: {formatCurrency(Math.max(0, parseFloat(cashInput) - total))}
+                  </p>
                 )}
               </div>
-              {appliedLoyaltyDiscount > 0 ? (
-                <p className="text-xs text-amber-700">Redeeming {appliedLoyaltyPoints} {loyaltyConfig.pointsLabel} = -{formatCurrency(appliedLoyaltyDiscount)}</p>
-              ) : (
-                <div className="flex gap-1">
-                  <input
-                    type="number"
-                    min={0}
-                    max={customerLoyalty.balance}
-                    value={loyaltyPointsToRedeem || ""}
-                    onChange={(e) => setLoyaltyPointsToRedeem(parseInt(e.target.value) || 0)}
-                    placeholder="Points to redeem"
-                    className="flex-1 border border-amber-300 bg-white text-ink px-2 py-0.5 text-xs outline-none focus:border-amber-500"
-                  />
-                  <button
-                    onClick={applyLoyaltyPoints}
-                    disabled={isApplyingLoyalty}
-                    className="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
-                  >
-                    {isApplyingLoyalty ? "Applying..." : "Redeem"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          <div>
-            <p className="text-xs font-medium text-muted mb-2">Payment method</p>
-            <div className="grid grid-cols-2 gap-2">
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setPaymentMethod(m); setCheckoutErrors([]); }}
-                  className={cn(
-                    "px-3 py-2 text-sm font-medium border transition-colors",
-                    paymentMethod === m
-                      ? "border-primary-600 bg-primary-50 text-primary-700"
-                      : "border-stroke bg-panel text-muted hover:bg-hover hover:text-ink"
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
+            {/* Validation errors */}
+            {checkoutErrors.length > 0 && (
+              <div className="bg-red-50 border border-red-200 p-3 space-y-1">
+                {checkoutErrors.map((err, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-red-600">
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={() => setCheckoutModal(false)}>Cancel</Button>
+              <Button
+                onClick={handleCheckout}
+                loading={checkout.isPending}
+                disabled={!currentBranch || cart.length === 0}
+                className="gap-2"
+              >
+                <CreditCard className="w-4 h-4" />
+                Complete sale
+              </Button>
             </div>
           </div>
 
-          {paymentMethod === "Cash" && (
-            <div>
-              <Input
-                label="Cash tendered *"
-                type="number"
-                min={0}
-                step="0.01"
-                value={cashInput}
-                onChange={(e) => { setCashInput(e.target.value); setCheckoutErrors([]); }}
-                placeholder={formatCurrency(total)}
-                error={
-                  cashInput && parseFloat(cashInput) < total
-                    ? `Must be at least ${formatCurrency(total)}`
-                    : undefined
-                }
-              />
-              {cashInput && parseFloat(cashInput) >= total && (
-                <p className="text-xs text-green-600 mt-1">
-                  Change: {formatCurrency(Math.max(0, parseFloat(cashInput) - total))}
-                </p>
-              )}
+          {/* Right: cart items + order summary */}
+          <div className="w-64 flex-shrink-0 flex flex-col gap-3 border-l border-stroke pl-6">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider">Items</p>
+            <div className="flex-1 overflow-y-auto max-h-64 space-y-2 pr-1">
+              {cart.map((item) => (
+                <div key={item.variantId} className="flex items-start justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-ink font-medium truncate">{item.productName}</p>
+                    <p className="text-xs text-muted truncate">{item.variantName}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-ink font-medium">{formatCurrency(item.price * item.quantity)}</p>
+                    <p className="text-xs text-muted">×{item.quantity}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-
-          <div className="bg-page border border-stroke p-3 text-sm space-y-1">
-            <div className="flex justify-between text-muted">
-              <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
-            </div>
-            {discount > 0 && (
+            <div className="border-t border-stroke pt-3 space-y-1.5 text-sm">
               <div className="flex justify-between text-muted">
-                <span>Discount</span><span>-{formatCurrency(discount)}</span>
+                <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
               </div>
-            )}
-            {promoDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{appliedPromo?.promotionName}</span>
-                <span>-{formatCurrency(promoDiscount)}</span>
-              </div>
-            )}
-            {appliedLoyaltyDiscount > 0 && (
-              <div className="flex justify-between text-amber-600">
-                <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty ({appliedLoyaltyPoints} pts)</span>
-                <span>-{formatCurrency(appliedLoyaltyDiscount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-ink text-base border-t border-stroke pt-1 mt-1">
-              <span>Total</span><span>{formatCurrency(total)}</span>
-            </div>
-            {paymentMethod === "Cash" && cashInput && parseFloat(cashInput) >= total && (
-              <div className="flex justify-between text-green-600 font-semibold">
-                <span>Change</span><span>{formatCurrency(change)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Validation errors */}
-          {checkoutErrors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 p-3 space-y-1">
-              {checkoutErrors.map((err, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-red-600">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>{err}</span>
+              {taxAmount > 0 && (
+                <div className="flex justify-between text-muted">
+                  <span>Tax ({taxRate}%)</span><span>+{formatCurrency(taxAmount)}</span>
                 </div>
-              ))}
+              )}
+              {discount > 0 && (
+                <div className="flex justify-between text-muted">
+                  <span>Discount</span><span>-{formatCurrency(discount)}</span>
+                </div>
+              )}
+              {promoDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{appliedPromo?.promotionName}</span>
+                  <span>-{formatCurrency(promoDiscount)}</span>
+                </div>
+              )}
+              {appliedLoyaltyDiscount > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <span className="flex items-center gap-1"><Star className="w-3 h-3" />Loyalty ({appliedLoyaltyPoints} pts)</span>
+                  <span>-{formatCurrency(appliedLoyaltyDiscount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-ink text-base border-t border-stroke pt-1 mt-1">
+                <span>Total</span><span>{formatCurrency(total)}</span>
+              </div>
+              {paymentMethod === "Cash" && cashInput && parseFloat(cashInput) >= total && (
+                <div className="flex justify-between text-green-600 font-semibold">
+                  <span>Change</span><span>{formatCurrency(change)}</span>
+                </div>
+              )}
             </div>
-          )}
-
-          <div className="flex gap-3 justify-end pt-2">
-            <Button variant="outline" onClick={() => setCheckoutModal(false)}>Cancel</Button>
-            <Button
-              onClick={handleCheckout}
-              loading={checkout.isPending}
-              disabled={!currentBranch || cart.length === 0}
-              className="gap-2"
-            >
-              <CreditCard className="w-4 h-4" />
-              Complete sale
-            </Button>
           </div>
         </div>
       </Modal>
@@ -911,6 +995,10 @@ export default function POSPage() {
                 </div>
               ))}
               <div className="border-t border-stroke my-2" />
+              <div className="flex justify-between text-muted"><span>Subtotal</span><span>{formatCurrency(lastReceipt.subtotal)}</span></div>
+              {(lastReceipt.taxAmount ?? 0) > 0 && (
+                <div className="flex justify-between text-muted"><span>Tax</span><span>+{formatCurrency(lastReceipt.taxAmount)}</span></div>
+              )}
               {lastReceipt.discount > 0 && (
                 <div className="flex justify-between text-muted"><span>Discount</span><span>-{formatCurrency(lastReceipt.discount)}</span></div>
               )}
