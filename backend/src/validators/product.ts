@@ -7,6 +7,7 @@ export const productSchema = z.object({
   unitId: z.string().uuid("Invalid unit").optional().nullable(),
   imageUrl: z.string().url("Invalid image URL").optional().nullable(),
   type: z.enum(["physical", "digital", "service", "bundle"], { message: "Invalid product type" }).optional().default("physical"),
+  trackStock: z.boolean().optional(),
 });
 
 export const variantSchema = z.object({
