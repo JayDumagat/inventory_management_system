@@ -141,7 +141,8 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
     }
 
     const wantsBrandingChange = body.name !== undefined || body.logoUrl !== undefined;
-    if (wantsBrandingChange) {
+    const wantsReceiptChange = body.receiptTemplate !== undefined || body.receiptFooterMessage !== undefined;
+    if (wantsBrandingChange || wantsReceiptChange) {
       const [sub] = await db
         .select({ planKey: tenantSubscriptions.planKey })
         .from(tenantSubscriptions)
@@ -151,11 +152,20 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
         .from(tenants)
         .where(eq(tenants.id, tenantId));
       const planKey = sub?.planKey ?? tenantPlan?.plan;
-      if (planKey !== "enterprise") {
+      if (wantsBrandingChange && planKey !== "enterprise") {
         res.status(402).json({
           error: "Updating organization name and logo requires the Enterprise plan",
           requiredPlan: "enterprise",
           currentPlan: planKey ?? "free",
+        });
+        return;
+      }
+      if (wantsReceiptChange && !hasFeature(planKey ?? "free", "receipt_design")) {
+        res.status(402).json({
+          error: "Customizing receipt design requires the Pro or Enterprise plan",
+          feature: "receipt_design",
+          currentPlan: planKey ?? "free",
+          upgradeRequired: true,
         });
         return;
       }
