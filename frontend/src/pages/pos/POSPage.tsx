@@ -48,6 +48,8 @@ interface ReceiptData {
   loyaltyPointsRedeemed?: number;
   template?: "compact" | "detailed";
   footerMessage?: string;
+  logoUrl?: string;
+  showLogo?: boolean;
 }
 
 interface CustomerResult {
@@ -87,6 +89,7 @@ function escapeHtml(value: string): string {
 
 function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   const isDetailed = receipt.template === "detailed";
+  const logo = receipt.showLogo && receipt.logoUrl ? escapeHtml(receipt.logoUrl) : "";
   const itemsHTML = receipt.items.map((i) =>
     `<tr>
       <td style="text-align:left;padding:2px 0">${escapeHtml(i.productName)} (${escapeHtml(i.variantName)})${isDetailed ? `<div style="font-size:10px;color:#555">SKU: ${escapeHtml(i.sku)}</div>` : ""}</td>
@@ -105,6 +108,7 @@ function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   table { width: 100%; border-collapse: collapse; }
   .total-row { font-weight: bold; font-size: 14px; }
 </style></head><body>
+${logo ? `<div class="center" style="margin-bottom:6px"><img src="${logo}" alt="Receipt logo" style="max-height:52px;max-width:220px;object-fit:contain;" /></div>` : ""}
 <div class="center bold" style="font-size:16px;margin-bottom:4px">${escapeHtml(tenantName)}</div>
 <div class="divider"></div>
 <div><strong>Order:</strong> ${escapeHtml(receipt.orderNumber)}</div>
@@ -133,6 +137,17 @@ ${receipt.customerName ? `<div><strong>Customer:</strong> ${escapeHtml(receipt.c
 
 function sanitizeReceiptTemplate(value: unknown): "compact" | "detailed" {
   return value === "detailed" ? "detailed" : "compact";
+}
+
+function sanitizeImageUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
 }
 
 export default function POSPage() {
@@ -170,6 +185,8 @@ export default function POSPage() {
   const hasPromotionFeature = subscriptionData ? subscriptionData.plan.features.includes("promotions") : false;
   const receiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
   const receiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "").trim() || "Thank you for your purchase!";
+  const receiptLogoUrl = sanitizeImageUrl(((currentTenant as { receiptLogoUrl?: string } | null)?.receiptLogoUrl || "").trim());
+  const receiptShowLogo = Boolean((currentTenant as { receiptShowLogo?: boolean } | null)?.receiptShowLogo);
 
   // Products query
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -252,6 +269,8 @@ export default function POSPage() {
         loyaltyPointsRedeemed: activeLoyaltyPoints || undefined,
         template: receiptTemplate,
         footerMessage: receiptFooter.trim() || "Thank you for your purchase!",
+        logoUrl: receiptLogoUrl || undefined,
+        showLogo: receiptShowLogo,
       });
 
       // If there's a customer name but no selected customer, auto-create the customer
@@ -872,6 +891,11 @@ export default function POSPage() {
               <CheckCircle className="w-7 h-7 text-green-500" />
             </div>
             <div id="receipt-content" className="w-full bg-page border border-stroke p-4 font-mono text-xs space-y-1">
+              {lastReceipt.showLogo && lastReceipt.logoUrl && (
+                <div className="text-center mb-2">
+                  <img src={lastReceipt.logoUrl} alt="Receipt logo" className="mx-auto max-h-12 object-contain" />
+                </div>
+              )}
               <div className="text-center font-bold text-sm text-ink mb-3">{currentTenant?.name}</div>
               <div className="flex justify-between text-muted"><span>Order</span><span>{lastReceipt.orderNumber}</span></div>
               <div className="flex justify-between text-muted"><span>Date</span><span>{lastReceipt.date}</span></div>

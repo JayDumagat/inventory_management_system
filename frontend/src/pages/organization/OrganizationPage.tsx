@@ -130,6 +130,8 @@ export default function OrganizationPage() {
   const [receiptFooterMessage, setReceiptFooterMessage] = useState(
     (currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER
   );
+  const [receiptLogoUrl, setReceiptLogoUrl] = useState((currentTenant as { receiptLogoUrl?: string } | null)?.receiptLogoUrl || "");
+  const [receiptShowLogo, setReceiptShowLogo] = useState(Boolean((currentTenant as { receiptShowLogo?: boolean } | null)?.receiptShowLogo));
   const [savingOrg, setSavingOrg] = useState(false);
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
@@ -260,8 +262,12 @@ export default function OrganizationPage() {
       if (canEditReceiptDesign) {
         const currentReceiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
         const currentReceiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER);
+        const currentReceiptLogoUrl = ((currentTenant as { receiptLogoUrl?: string } | null)?.receiptLogoUrl || "");
+        const currentReceiptShowLogo = Boolean((currentTenant as { receiptShowLogo?: boolean } | null)?.receiptShowLogo);
         if (receiptTemplate !== currentReceiptTemplate) payload.receiptTemplate = receiptTemplate;
         if (receiptFooterMessage !== currentReceiptFooter) payload.receiptFooterMessage = receiptFooterMessage;
+        if (receiptLogoUrl !== currentReceiptLogoUrl) payload.receiptLogoUrl = receiptLogoUrl || undefined;
+        if (receiptShowLogo !== currentReceiptShowLogo) payload.receiptShowLogo = receiptShowLogo;
       }
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
@@ -284,6 +290,12 @@ export default function OrganizationPage() {
       }
       if (Object.prototype.hasOwnProperty.call(updated, "receiptFooterMessage")) {
         (nextTenant as { receiptFooterMessage?: string }).receiptFooterMessage = updated.receiptFooterMessage ?? DEFAULT_RECEIPT_FOOTER;
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptLogoUrl")) {
+        (nextTenant as { receiptLogoUrl?: string }).receiptLogoUrl = updated.receiptLogoUrl ?? undefined;
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "receiptShowLogo")) {
+        (nextTenant as { receiptShowLogo?: boolean }).receiptShowLogo = Boolean(updated.receiptShowLogo);
       }
       setCurrentTenant(nextTenant);
       qc.invalidateQueries({ queryKey: ["tenants"] });
@@ -526,6 +538,33 @@ export default function OrganizationPage() {
                 placeholder={DEFAULT_RECEIPT_FOOTER}
                 disabled={!canEditReceiptDesign}
               />
+              <Input
+                label="Receipt logo URL (optional)"
+                value={receiptLogoUrl}
+                onChange={(e) => setReceiptLogoUrl(e.target.value)}
+                placeholder="https://example.com/receipt-logo.png"
+                disabled={!canEditReceiptDesign}
+              />
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={receiptShowLogo}
+                  onChange={(e) => setReceiptShowLogo(e.target.checked)}
+                  disabled={!canEditReceiptDesign}
+                />
+                Show logo on printed receipts
+              </label>
+              {sanitizeImageUrl(receiptLogoUrl) && (
+                <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
+                  <img
+                    src={sanitizeImageUrl(receiptLogoUrl)}
+                    alt="Receipt logo preview"
+                    className="w-10 h-10 object-contain flex-shrink-0"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <span className="text-xs text-muted">Receipt logo preview</span>
+                </div>
+              )}
               <div className="flex justify-end">
                 <Button onClick={handleSaveOrg} loading={savingOrg}>Save personalization</Button>
               </div>

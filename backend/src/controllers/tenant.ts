@@ -10,19 +10,21 @@ import { hasFeature } from "../lib/planConfig";
 export async function listTenants(req: Request, res: Response): Promise<void> {
   try {
     const userTenants = await db
-      .select({
-        id: tenants.id,
-        name: tenants.name,
-        slug: tenants.slug,
-        description: tenants.description,
-        logoUrl: tenants.logoUrl,
-        receiptTemplate: tenants.receiptTemplate,
-        receiptFooterMessage: tenants.receiptFooterMessage,
-        isActive: tenants.isActive,
-        createdAt: tenants.createdAt,
-        role: tenantUsers.role,
-        allowedPages: tenantUsers.allowedPages,
-      })
+        .select({
+          id: tenants.id,
+          name: tenants.name,
+          slug: tenants.slug,
+          description: tenants.description,
+          logoUrl: tenants.logoUrl,
+          receiptTemplate: tenants.receiptTemplate,
+          receiptFooterMessage: tenants.receiptFooterMessage,
+          receiptLogoUrl: tenants.receiptLogoUrl,
+          receiptShowLogo: tenants.receiptShowLogo,
+          isActive: tenants.isActive,
+          createdAt: tenants.createdAt,
+          role: tenantUsers.role,
+          allowedPages: tenantUsers.allowedPages,
+        })
       .from(tenantUsers)
       .innerJoin(tenants, eq(tenantUsers.tenantId, tenants.id))
       .where(and(eq(tenantUsers.userId, req.user!.id), eq(tenantUsers.isActive, true)));
@@ -141,7 +143,11 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
     }
 
     const wantsBrandingChange = body.name !== undefined || body.logoUrl !== undefined;
-    const wantsReceiptChange = body.receiptTemplate !== undefined || body.receiptFooterMessage !== undefined;
+    const wantsReceiptChange =
+      body.receiptTemplate !== undefined ||
+      body.receiptFooterMessage !== undefined ||
+      body.receiptLogoUrl !== undefined ||
+      body.receiptShowLogo !== undefined;
     if (wantsBrandingChange || wantsReceiptChange) {
       const [sub] = await db
         .select({ planKey: tenantSubscriptions.planKey })

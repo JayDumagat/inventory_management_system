@@ -2,15 +2,28 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import {
   salesOrders, salesOrderItems, inventory, stockMovements, refunds, transactions,
-  promotions, promotionUsage, loyaltyConfig, loyaltyLedger, customers,
+  promotions, promotionUsage, loyaltyConfig, loyaltyLedger, customers, productVariants, products,
 } from "../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { createOrderSchema, updateOrderSchema, refundSchema } from "../validators/salesOrder";
 import { generateSalesOrderNumber } from "../utils/helpers";
 import { appEvents } from "../lib/events";
 import { hasFeature } from "../lib/planConfig";
+
+async function getTrackStockByVariantIds(variantIds: string[]): Promise<Map<string, boolean>> {
+  if (variantIds.length === 0) return new Map<string, boolean>();
+  const rows = await db
+    .select({
+      variantId: productVariants.id,
+      trackStock: products.trackStock,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(inArray(productVariants.id, variantIds));
+  return new Map(rows.map((row) => [row.variantId, row.trackStock]));
+}
 
 export async function listOrders(req: Request, res: Response): Promise<void> {
   try {
@@ -59,10 +72,13 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     }
 
     const requestedStatus = body.status || "draft";
+    const variantTrackStockMap = await getTrackStockByVariantIds(body.items.map((item) => item.variantId));
 
     // If the order is being immediately completed (POS sale), verify and deduct stock
     if (requestedStatus === "delivered" || requestedStatus === "confirmed") {
       for (const item of body.items) {
+        const trackStock = variantTrackStockMap.get(item.variantId) ?? true;
+        if (!trackStock) continue;
         const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, body.branchId)));
         if (!inv || inv.quantity < item.quantity) {
           res.status(400).json({ error: `Insufficient stock for ${item.productName} - ${item.variantName}` });
@@ -111,6 +127,8 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     // If order is immediately delivered/confirmed, deduct stock
     if (requestedStatus === "delivered" || requestedStatus === "confirmed") {
       for (const item of body.items) {
+        const trackStock = variantTrackStockMap.get(item.variantId) ?? true;
+        if (!trackStock) continue;
         const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, body.branchId)));
         if (inv) {
           await db.update(inventory).set({ quantity: inv.quantity - item.quantity, updatedAt: new Date() }).where(eq(inventory.id, inv.id));
@@ -275,7 +293,10 @@ export async function updateOrder(req: Request, res: Response): Promise<void> {
 
     // When confirming from draft, deduct stock
     if (body.status === "confirmed" && existing.status === "draft") {
+      const variantTrackStockMap = await getTrackStockByVariantIds(existing.items.map((item) => item.variantId));
       for (const item of existing.items) {
+        const trackStock = variantTrackStockMap.get(item.variantId) ?? true;
+        if (!trackStock) continue;
         const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, existing.branchId)));
         if (!inv || inv.quantity < item.quantity) {
           res.status(400).json({ error: `Insufficient stock for ${item.productName} - ${item.variantName}` });
@@ -382,7 +403,10 @@ export async function refundOrder(req: Request, res: Response): Promise<void> {
     await db.update(salesOrders).set({ status: "refunded", updatedAt: new Date() }).where(eq(salesOrders.id, order.id));
 
     // Return stock for each item
+    const variantTrackStockMap = await getTrackStockByVariantIds(order.items.map((item) => item.variantId));
     for (const item of order.items) {
+      const trackStock = variantTrackStockMap.get(item.variantId) ?? true;
+      if (!trackStock) continue;
       const [inv] = await db.select().from(inventory).where(and(eq(inventory.variantId, item.variantId), eq(inventory.branchId, order.branchId)));
       if (inv) {
         await db.update(inventory).set({ quantity: inv.quantity + item.quantity, updatedAt: new Date() }).where(eq(inventory.id, inv.id));

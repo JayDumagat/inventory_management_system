@@ -26,6 +26,7 @@ interface Attribute { id: string; name: string; sortOrder: number; options: Attr
 interface ProductImage { id: string; objectName: string; url: string; altText?: string; sortOrder: number; }
 interface Product {
   id: string; name: string; description?: string; isActive: boolean; type?: string;
+  trackStock?: boolean;
   category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
 
@@ -50,6 +51,7 @@ const productSchema = z.object({
   categoryId: z.string().optional(),
   unitId: z.string().optional(),
   type: z.enum(["physical", "digital", "service", "bundle"]).optional(),
+  trackStock: z.boolean().optional(),
 });
 const variantSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -94,8 +96,10 @@ export default function ProductsPage() {
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState<Product | null>(null);
   const [pendingDeleteVariant, setPendingDeleteVariant] = useState<{ product: Product; variant: Variant } | null>(null);
   const [search, setSearch] = useState("");
-  const [productStep, setProductStep] = useState<1 | 2>(1);
-  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [productStep, setProductStep] = useState<1 | 2 | 3>(1);
+  const [draftProductId, setDraftProductId] = useState<string | null>(null);
+  const [isSavingGeneralInfo, setIsSavingGeneralInfo] = useState(false);
+  const [isFinalizingProduct, setIsFinalizingProduct] = useState(false);
   const [page, setPage] = useState(1);
 
   // Attribute management state
@@ -132,7 +136,7 @@ export default function ProductsPage() {
     enabled: !!tid,
   });
 
-  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema), defaultValues: { type: "physical" } });
+  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema), defaultValues: { type: "physical", trackStock: true } });
   const vForm = useForm<VariantForm>({ resolver: zodResolver(variantSchema) });
 
   const saveProduct = useMutation({
@@ -190,6 +194,11 @@ export default function ProductsPage() {
     pForm.reset();
     vForm.reset();
     setProductStep(1);
+    setDraftProductId(null);
+    setAttrProductId(null);
+    setAttrList([]);
+    setNewAttrName("");
+    setNewOptionValues({});
     setFormImages([]);
     formImagePreviews.forEach((u) => URL.revokeObjectURL(u));
     setFormImagePreviews([]);
@@ -200,10 +209,21 @@ export default function ProductsPage() {
   };
 
   const openProductModal = (product?: Product) => {
-    pForm.reset(product ? { name: product.name, description: product.description, categoryId: product.category?.id, unitId: product.unit?.id, type: (product.type as "physical" | "digital" | "service" | "bundle") ?? "physical" } : { type: "physical" });
+    pForm.reset(product
+      ? {
+          name: product.name,
+          description: product.description,
+          categoryId: product.category?.id,
+          unitId: product.unit?.id,
+          type: (product.type as "physical" | "digital" | "service" | "bundle") ?? "physical",
+          trackStock: product.trackStock ?? true,
+        }
+      : { type: "physical", trackStock: true }
+    );
     vForm.reset();
     setProductModal({ open: true, product });
     setProductStep(1);
+    setDraftProductId(null);
     setFormImages([]);
     setFormImagePreviews([]);
     if (product) {
@@ -298,7 +318,26 @@ export default function ProductsPage() {
     }
   };
 
-  const goToProductStep2 = pForm.handleSubmit(() => setProductStep(2));
+  const goToProductStep2 = pForm.handleSubmit(async (pData) => {
+    setIsSavingGeneralInfo(true);
+    try {
+      if (draftProductId) {
+        await api.patch(`/api/tenants/${tid}/products/${draftProductId}`, pData);
+      } else {
+        const productRes = await api.post(`/api/tenants/${tid}/products`, pData);
+        const productId = productRes.data.id as string;
+        setDraftProductId(productId);
+        setAttrProductId(productId);
+        const attrsRes = await api.get(`/api/tenants/${tid}/products/${productId}/attributes`);
+        setAttrList(attrsRes.data);
+      }
+      setProductStep(2);
+    } catch {
+      toast.error("Failed to save general product information");
+    } finally {
+      setIsSavingGeneralInfo(false);
+    }
+  });
 
   const handleFormImageSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: "add" | "edit") => {
     const files = e.target.files;
@@ -372,7 +411,10 @@ export default function ProductsPage() {
   };
 
   const handleAddProductSubmit = async () => {
-    const pData = pForm.getValues();
+    if (!draftProductId) {
+      toast.error("Save general product information first");
+      return;
+    }
     const vData = vForm.getValues();
     const hasVariant = !!(vData.name || vData.sku || vData.price);
 
@@ -381,17 +423,14 @@ export default function ProductsPage() {
       if (!vValid) return;
     }
 
-    setIsAddingProduct(true);
+    setIsFinalizingProduct(true);
     try {
-      const productRes = await api.post(`/api/tenants/${tid}/products`, pData);
-      const productId = productRes.data.id;
-
-      if (formImages.length > 0) {
-        await uploadFilesToProduct(productId, formImages, 0);
+      if (hasVariant) {
+        await api.post(`/api/tenants/${tid}/products/${draftProductId}/variants`, vData);
       }
 
-      if (hasVariant) {
-        await api.post(`/api/tenants/${tid}/products/${productId}/variants`, vData);
+      if (formImages.length > 0) {
+        await uploadFilesToProduct(draftProductId, formImages, 0);
       }
 
       qc.invalidateQueries({ queryKey: ["products", tid] });
@@ -400,7 +439,7 @@ export default function ProductsPage() {
     } catch {
       toast.error("Failed to create product");
     } finally {
-      setIsAddingProduct(false);
+      setIsFinalizingProduct(false);
     }
   };
 
@@ -658,7 +697,7 @@ export default function ProductsPage() {
       <Modal
         open={productModal.open}
         onClose={closeProductModal}
-        title={productModal.product ? "Edit product" : (productStep === 1 ? "Add product — Details" : "Add product — First variant")}
+        title={productModal.product ? "Edit product" : (productStep === 1 ? "Add product — General information" : productStep === 2 ? "Add product — Options and attributes" : "Add product — Variants")}
       >
         {productModal.product ? (
           /* Edit mode: single-step */
@@ -688,6 +727,10 @@ export default function ProductsPage() {
               <option value="service">Service</option>
               <option value="bundle">Bundle</option>
             </Select>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" {...pForm.register("trackStock")} />
+              Track stock for this product
+            </label>
 
             {/* Images section */}
             <div>
@@ -750,6 +793,8 @@ export default function ProductsPage() {
               <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${productStep >= 1 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>1</div>
               <div className="flex-1 h-px bg-stroke" />
               <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${productStep >= 2 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>2</div>
+              <div className="flex-1 h-px bg-stroke" />
+              <div className={`w-6 h-6 flex items-center justify-center text-xs font-semibold ${productStep >= 3 ? "bg-primary-600 text-white" : "bg-stroke text-muted"}`}>3</div>
             </div>
 
             {productStep === 1 && (
@@ -779,6 +824,10 @@ export default function ProductsPage() {
                   <option value="service">Service</option>
                   <option value="bundle">Bundle</option>
                 </Select>
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" {...pForm.register("trackStock")} />
+                  Track stock for this product
+                </label>
 
                 {/* Images section */}
                 <div>
@@ -816,7 +865,7 @@ export default function ProductsPage() {
 
                 <div className="flex gap-3 justify-end pt-1">
                   <Button type="button" variant="outline" onClick={closeProductModal}>Cancel</Button>
-                  <Button type="submit">Next →</Button>
+                  <Button type="submit" loading={isSavingGeneralInfo}>Next →</Button>
                 </div>
               </form>
             )}
@@ -824,8 +873,124 @@ export default function ProductsPage() {
             {productStep === 2 && (
               <div className="flex flex-col gap-4">
                 <p className="text-xs text-muted bg-primary-50 border border-primary-200 px-3 py-2">
-                  Optionally add your first variant below. You can skip and add variants later.
+                  Define options and attributes (e.g. Color, Size) before creating variants.
                 </p>
+                {!draftProductId ? (
+                  <p className="text-sm text-red-600">Save general information first.</p>
+                ) : (
+                  <>
+                    {attrList.map((attr) => (
+                      <div key={attr.id} className="border border-stroke p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm text-ink">{attr.name}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              await api.delete(`/api/tenants/${tid}/products/${draftProductId}/attributes/${attr.id}`);
+                              setAttrList((prev) => prev.filter((a) => a.id !== attr.id));
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {attr.options.map((opt) => (
+                            <span key={opt.id} className="inline-flex items-center gap-1 text-xs bg-stroke px-2 py-0.5 text-ink">
+                              {opt.value}
+                              <button
+                                type="button"
+                                className="text-muted hover:text-red-500"
+                                onClick={async () => {
+                                  await api.delete(`/api/tenants/${tid}/products/${draftProductId}/attributes/${attr.id}/options/${opt.id}`);
+                                  setAttrList((prev) => prev.map((a) => a.id === attr.id ? { ...a, options: a.options.filter((o) => o.id !== opt.id) } : a));
+                                }}
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                          <form
+                            className="inline-flex items-center gap-1"
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const val = (newOptionValues[attr.id] ?? "").trim();
+                              if (!val) return;
+                              const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/attributes/${attr.id}/options`, { value: val });
+                              setAttrList((prev) => prev.map((a) => a.id === attr.id ? { ...a, options: [...a.options, res.data] } : a));
+                              setNewOptionValues((prev) => ({ ...prev, [attr.id]: "" }));
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={newOptionValues[attr.id] ?? ""}
+                              onChange={(e) => setNewOptionValues((prev) => ({ ...prev, [attr.id]: e.target.value }))}
+                              placeholder="Add option…"
+                              className="text-xs border border-stroke px-2 py-0.5 bg-panel text-ink outline-none focus:border-primary-500 w-24"
+                            />
+                            <Button size="sm" variant="outline" type="submit"><Plus className="w-3 h-3" /></Button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                    <form
+                      className="flex items-center gap-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const name = newAttrName.trim();
+                        if (!name) return;
+                        const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/attributes`, { name });
+                        setAttrList((prev) => [...prev, { ...res.data, options: res.data.options ?? [] }]);
+                        setNewAttrName("");
+                      }}
+                    >
+                      <input
+                        type="text"
+                        value={newAttrName}
+                        onChange={(e) => setNewAttrName(e.target.value)}
+                        placeholder="New attribute name (e.g. Color)"
+                        className="flex-1 text-sm border border-stroke px-3 py-1.5 bg-panel text-ink outline-none focus:border-primary-500"
+                      />
+                      <Button type="submit" size="sm"><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
+                    </form>
+                  </>
+                )}
+                <div className="flex gap-3 justify-end pt-1">
+                  <Button type="button" variant="outline" onClick={() => setProductStep(1)}>← Back</Button>
+                  <Button type="button" onClick={() => setProductStep(3)} disabled={!draftProductId}>Next →</Button>
+                </div>
+              </div>
+            )}
+
+            {productStep === 3 && (
+              <div className="flex flex-col gap-4">
+                <p className="text-xs text-muted bg-primary-50 border border-primary-200 px-3 py-2">
+                  Add variants manually or generate them from attribute options, then finish product creation.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={async () => {
+                      if (!draftProductId) return;
+                      setIsGeneratingVariants(true);
+                      try {
+                        const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/variants/generate`);
+                        qc.invalidateQueries({ queryKey: ["products", tid] });
+                        toast.success(`${res.data.created ?? 0} variant(s) generated`);
+                      } catch (err: unknown) {
+                        const e = err as { response?: { data?: { error?: string } } };
+                        toast.error(e.response?.data?.error ?? "Failed to generate variants");
+                      } finally {
+                        setIsGeneratingVariants(false);
+                      }
+                    }}
+                    loading={isGeneratingVariants}
+                    disabled={!draftProductId}
+                  >
+                    Generate variants from options
+                  </Button>
+                </div>
                 <Input
                   label="Variant name"
                   placeholder="e.g. Default / Red / Large"
@@ -869,9 +1034,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="flex gap-3 justify-end pt-1">
-                  <Button type="button" variant="outline" onClick={() => setProductStep(1)}>← Back</Button>
-                  <Button type="button" onClick={handleAddProductSubmit} loading={isAddingProduct}>
-                    Save product
+                  <Button type="button" variant="outline" onClick={() => setProductStep(2)}>← Back</Button>
+                  <Button type="button" onClick={handleAddProductSubmit} loading={isFinalizingProduct}>
+                    Finish
                   </Button>
                 </div>
               </div>

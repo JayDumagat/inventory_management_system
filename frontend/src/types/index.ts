@@ -6,8 +6,11 @@ export interface Tenant {
   slug: string;
   description?: string;
   role: string;
+  logoUrl?: string;
   receiptTemplate?: "compact" | "detailed";
   receiptFooterMessage?: string;
+  receiptLogoUrl?: string;
+  receiptShowLogo?: boolean;
 }
 
 export interface Branch {
@@ -72,6 +75,7 @@ export interface Product {
   description?: string;
   isActive: boolean;
   type?: string;
+  trackStock?: boolean;
   category?: Category;
   unit?: Unit;
   variants: Variant[];
