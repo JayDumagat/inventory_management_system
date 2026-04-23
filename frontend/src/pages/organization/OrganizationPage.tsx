@@ -212,7 +212,7 @@ export default function OrganizationPage() {
   });
 
   const canEditSidebarBranding = subscriptionData?.subscription.planKey === "enterprise";
-  const canEditReceiptDesign = !subscriptionData || ["pro", "enterprise"].includes(subscriptionData.subscription.planKey);
+  const canEditReceiptDesign = !!subscriptionData && ["pro", "enterprise"].includes(subscriptionData.subscription.planKey);
 
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
@@ -497,7 +497,7 @@ export default function OrganizationPage() {
                 <button
                   type="button"
                   disabled={!canEditReceiptDesign}
-                  onClick={() => canEditReceiptDesign && setReceiptTemplate("compact")}
+                  onClick={() => setReceiptTemplate("compact")}
                   className={cn(
                     "px-2 py-1.5 text-xs border",
                     !canEditReceiptDesign ? "opacity-50 cursor-not-allowed border-stroke text-muted" :
@@ -509,7 +509,7 @@ export default function OrganizationPage() {
                 <button
                   type="button"
                   disabled={!canEditReceiptDesign}
-                  onClick={() => canEditReceiptDesign && setReceiptTemplate("detailed")}
+                  onClick={() => setReceiptTemplate("detailed")}
                   className={cn(
                     "px-2 py-1.5 text-xs border",
                     !canEditReceiptDesign ? "opacity-50 cursor-not-allowed border-stroke text-muted" :
