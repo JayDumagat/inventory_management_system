@@ -212,6 +212,7 @@ export default function OrganizationPage() {
   });
 
   const canEditSidebarBranding = subscriptionData?.subscription.planKey === "enterprise";
+  const canEditReceiptDesign = !!subscriptionData && ["pro", "enterprise"].includes(subscriptionData.subscription.planKey);
 
   const openEdit = (member: StaffMember) => {
     setEditMember(member);
@@ -256,10 +257,12 @@ export default function OrganizationPage() {
         const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
         if (orgLogo !== currentLogo) payload.logoUrl = orgLogo || undefined;
       }
-      const currentReceiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
-      const currentReceiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER);
-      if (receiptTemplate !== currentReceiptTemplate) payload.receiptTemplate = receiptTemplate;
-      if (receiptFooterMessage !== currentReceiptFooter) payload.receiptFooterMessage = receiptFooterMessage;
+      if (canEditReceiptDesign) {
+        const currentReceiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
+        const currentReceiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER);
+        if (receiptTemplate !== currentReceiptTemplate) payload.receiptTemplate = receiptTemplate;
+        if (receiptFooterMessage !== currentReceiptFooter) payload.receiptFooterMessage = receiptFooterMessage;
+      }
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
         setTimeout(() => setOrgSuccess(false), 3000);
@@ -485,12 +488,19 @@ export default function OrganizationPage() {
 
             <div className="border-t border-stroke pt-5 space-y-3">
               <p className="text-sm font-medium text-ink">Receipt preferences</p>
+              {!canEditReceiptDesign && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2">
+                  Receipt design customization requires the Pro or Enterprise plan.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
+                  disabled={!canEditReceiptDesign}
                   onClick={() => setReceiptTemplate("compact")}
                   className={cn(
                     "px-2 py-1.5 text-xs border",
+                    !canEditReceiptDesign ? "opacity-50 cursor-not-allowed border-stroke text-muted" :
                     receiptTemplate === "compact" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
                   )}
                 >
@@ -498,9 +508,11 @@ export default function OrganizationPage() {
                 </button>
                 <button
                   type="button"
+                  disabled={!canEditReceiptDesign}
                   onClick={() => setReceiptTemplate("detailed")}
                   className={cn(
                     "px-2 py-1.5 text-xs border",
+                    !canEditReceiptDesign ? "opacity-50 cursor-not-allowed border-stroke text-muted" :
                     receiptTemplate === "detailed" ? "border-primary-600 bg-primary-50 text-primary-700" : "border-stroke text-muted"
                   )}
                 >
@@ -512,6 +524,7 @@ export default function OrganizationPage() {
                 value={receiptFooterMessage}
                 onChange={(e) => setReceiptFooterMessage(e.target.value)}
                 placeholder={DEFAULT_RECEIPT_FOOTER}
+                disabled={!canEditReceiptDesign}
               />
               <div className="flex justify-end">
                 <Button onClick={handleSaveOrg} loading={savingOrg}>Save personalization</Button>
