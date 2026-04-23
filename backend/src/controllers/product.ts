@@ -86,7 +86,7 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
 export async function createProduct(req: Request, res: Response): Promise<void> {
   try {
     const body = productSchema.parse(req.body);
-    const trackStock = body.trackStock ?? body.type === "physical";
+    const trackStock = body.trackStock ?? true;
     const [product] = await db.insert(products).values({ ...body, trackStock, tenantId: req.tenantContext!.tenantId }).returning();
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "create", resourceType: "product", resourceId: product.id });
     res.status(201).json(product);

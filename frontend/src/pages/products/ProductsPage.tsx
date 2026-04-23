@@ -694,11 +694,19 @@ export default function ProductsPage() {
       )}
 
       {/* Product modal */}
-      <Modal
-        open={productModal.open}
-        onClose={closeProductModal}
-        title={productModal.product ? "Edit product" : (productStep === 1 ? "Add product — General information" : productStep === 2 ? "Add product — Options and attributes" : "Add product — Variants")}
-      >
+      {(() => {
+        let modalTitle = "Edit product";
+        if (!productModal.product) {
+          if (productStep === 1) modalTitle = "Add product — General information";
+          else if (productStep === 2) modalTitle = "Add product — Options and attributes";
+          else modalTitle = "Add product — Variants";
+        }
+        return (
+        <Modal
+          open={productModal.open}
+          onClose={closeProductModal}
+          title={modalTitle}
+        >
         {productModal.product ? (
           /* Edit mode: single-step */
           <form onSubmit={pForm.handleSubmit((d) => saveProduct.mutate(d))} className="flex flex-col gap-4">
@@ -1044,6 +1052,8 @@ export default function ProductsPage() {
           </div>
         )}
       </Modal>
+        );
+      })()}
 
       <Modal open={variantModal.open} onClose={() => setVariantModal({ open: false })} title={variantModal.variant ? "Edit variant" : "Add variant"}>
         <form onSubmit={vForm.handleSubmit((d) => saveVariant.mutate(d))} className="flex flex-col gap-4">
