@@ -158,11 +158,12 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
         .from(tenants)
         .where(eq(tenants.id, tenantId));
       const planKey = sub?.planKey ?? tenantPlan?.plan;
-      if (wantsBrandingChange && planKey !== "enterprise") {
+      if (wantsBrandingChange && !hasFeature(planKey ?? "free", "custom_branding")) {
         res.status(402).json({
-          error: "Updating organization name and logo requires the Enterprise plan",
-          requiredPlan: "enterprise",
+          error: "Updating organization name and logo requires the Pro or Enterprise plan",
+          feature: "custom_branding",
           currentPlan: planKey ?? "free",
+          upgradeRequired: true,
         });
         return;
       }

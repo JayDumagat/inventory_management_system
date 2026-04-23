@@ -213,7 +213,7 @@ export default function OrganizationPage() {
     },
   });
 
-  const canEditSidebarBranding = subscriptionData?.subscription.planKey === "enterprise";
+  const canEditSidebarBranding = !!subscriptionData && ["pro", "enterprise"].includes(subscriptionData.subscription.planKey);
   const canEditReceiptDesign = !!subscriptionData && ["pro", "enterprise"].includes(subscriptionData.subscription.planKey);
 
   const openEdit = (member: StaffMember) => {
@@ -369,7 +369,7 @@ export default function OrganizationPage() {
             <Input label="Organization name" value={orgName} onChange={(e) => setOrgName(e.target.value)} disabled={!canEditSidebarBranding} />
             {!canEditSidebarBranding && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2">
-                Name and logo shown in the sidebar can only be changed on the Enterprise tier.
+                Name and logo shown in the sidebar can only be changed on the Pro or Enterprise plan.
               </p>
             )}
             <div className="flex flex-col gap-1">
@@ -432,7 +432,7 @@ export default function OrganizationPage() {
                 disabled={!canEditSidebarBranding}
               />
               {!canEditSidebarBranding && (
-                <p className="text-xs text-amber-700">Logo customization requires the Enterprise plan.</p>
+                <p className="text-xs text-amber-700">Logo customization requires the Pro or Enterprise plan.</p>
               )}
               {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">

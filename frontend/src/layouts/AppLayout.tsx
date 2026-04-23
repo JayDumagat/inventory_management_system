@@ -15,7 +15,7 @@ import { PreferencesModal } from "../components/ui/PreferencesModal";
 import { navItems } from "../constants/navigation";
 import type { Branch, Notification } from "../types";
 import { SubmitTicketModal } from "../components/SubmitTicketModal";
-import { useSubscription } from "../hooks/useEntitlements";
+import { useSubscription, useHasFeature } from "../hooks/useEntitlements";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -35,6 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const notifRef = useRef<HTMLDivElement>(null);
   const tid = currentTenant?.id;
   const { data: subscriptionData } = useSubscription();
+  const hasCustomBranding = useHasFeature("custom_branding");
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["branches", tid],
@@ -114,7 +115,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="px-4 py-4 border-b border-stroke">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {tenantLogoUrl && /^https?:\/\//i.test(tenantLogoUrl) ? (
+              {hasCustomBranding && tenantLogoUrl && /^https?:\/\//i.test(tenantLogoUrl) ? (
                 <img src={tenantLogoUrl} alt={currentTenant?.name} className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
                 <div className="w-7 h-7 bg-primary-600 flex items-center justify-center">
@@ -124,7 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-ink truncate">
-                {currentTenant?.name || "Inventory"}
+                {hasCustomBranding ? (currentTenant?.name || "Inventory") : "Inventory"}
               </p>
               <p className="text-xs text-muted truncate capitalize">{currentTenant?.role}</p>
             </div>
