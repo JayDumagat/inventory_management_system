@@ -23,6 +23,8 @@ export const tenants = pgTable("tenants", {
   logoUrl: text("logo_url"),
   receiptTemplate: text("receipt_template").notNull().default("compact"),
   receiptFooterMessage: text("receipt_footer_message").notNull().default("Thank you for your purchase!"),
+  receiptLogoUrl: text("receipt_logo_url"),
+  receiptShowLogo: boolean("receipt_show_logo").notNull().default(false),
   plan: text("plan").notNull().default("free"),
   planExpiresAt: timestamp("plan_expires_at"),
   isActive: boolean("is_active").notNull().default(true),

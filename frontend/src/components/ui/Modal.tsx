@@ -8,7 +8,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
@@ -20,14 +20,14 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
 
   if (!open) return null;
 
-  const sizes = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl" };
+  const sizes = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className={cn("relative bg-panel border border-stroke w-full", sizes[size])}>
+      <div className={cn("relative bg-panel border border-stroke w-full max-h-[90vh] flex flex-col", sizes[size])}>
         {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-stroke">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-stroke flex-shrink-0">
             <h2 className="text-sm font-semibold text-ink">{title}</h2>
             <button
               onClick={onClose}
@@ -37,7 +37,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
             </button>
           </div>
         )}
-        <div className="px-5 py-4">{children}</div>
+        <div className="px-5 py-4 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
