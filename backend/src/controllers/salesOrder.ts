@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import {
   salesOrders, salesOrderItems, inventory, stockMovements, refunds, transactions,
-  promotions, promotionUsage, loyaltyConfig, loyaltyLedger, customers, productVariants, products,
+  promotions, promotionUsage, loyaltyConfig, loyaltyLedger, customers, productVariants, products, tenants,
 } from "../db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
@@ -47,11 +47,17 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     const body = createOrderSchema.parse(req.body);
     const tenantId = req.tenantContext!.tenantId;
     const loyaltyFeatureEnabled = hasFeature(req.tenantContext!.planKey ?? "free", "loyalty");
+    const [tenant] = await db
+      .select({ taxRate: tenants.taxRate })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId));
 
     const subtotal = body.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    const orgTaxRate = Number(tenant?.taxRate ?? 0);
+    const taxAmount = Math.round(subtotal * orgTaxRate) / 100;
     const promoDiscount = body.discountAmount ?? 0;
     const loyaltyDiscount = loyaltyFeatureEnabled ? (body.loyaltyDiscountAmount ?? 0) : 0;
-    const totalAmount = subtotal + (body.taxAmount ?? 0) - promoDiscount - loyaltyDiscount;
+    const totalAmount = subtotal + taxAmount - promoDiscount - loyaltyDiscount;
 
     // Validate total is positive
     if (totalAmount < 0) {
@@ -100,7 +106,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       customerEmail: body.customerEmail || undefined,
       customerPhone: body.customerPhone,
       subtotal: String(subtotal),
-      taxAmount: String(body.taxAmount ?? 0),
+      taxAmount: String(taxAmount),
       discountAmount: String(promoDiscount),
       totalAmount: String(totalAmount),
       notes,

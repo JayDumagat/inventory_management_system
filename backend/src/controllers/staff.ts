@@ -65,8 +65,9 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
     let [user] = await db.select().from(users).where(eq(users.email, body.email));
     let inviteToken: string | undefined;
     const isNewUser = !user;
+    const explicitPasswordProvided = Boolean(body.password && body.password.trim().length > 0);
     if (!user) {
-      const tempHash = await argon2.hash(crypto.randomBytes(32).toString("hex"));
+      const tempHash = await argon2.hash(explicitPasswordProvided ? body.password! : crypto.randomBytes(32).toString("hex"));
       [user] = await db.insert(users).values({
         email: body.email,
         passwordHash: tempHash,
@@ -85,9 +86,19 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
         res.status(409).json({ error: "User is already a member of this organization" });
         return;
       }
+      const updateValues: { role: "staff" | "manager" | "admin"; isActive: true; updatedAt: Date } = {
+        role: body.role,
+        isActive: true,
+        updatedAt: new Date(),
+      };
+      if (explicitPasswordProvided) {
+        await db.update(users)
+          .set({ passwordHash: await argon2.hash(body.password!), updatedAt: new Date() })
+          .where(eq(users.id, user.id));
+      }
       const [updated] = await db
         .update(tenantUsers)
-        .set({ role: body.role, isActive: true, updatedAt: new Date() })
+        .set(updateValues)
         .where(eq(tenantUsers.id, existing.id))
         .returning();
       res.status(201).json({ ...updated, email: user.email, firstName: user.firstName, lastName: user.lastName });
@@ -101,7 +112,7 @@ export const inviteStaff = async (req: Request, res: Response): Promise<void> =>
     }).returning();
 
     // Generate an invite token for newly-created users so they can complete registration
-    if (isNewUser) {
+    if (isNewUser && !explicitPasswordProvided) {
       inviteToken = jwt.sign(
         { userId: user.id, tenantId, type: "staff-invite" },
         process.env.JWT_SECRET!,

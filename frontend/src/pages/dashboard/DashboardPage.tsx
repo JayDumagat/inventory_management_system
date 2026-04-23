@@ -60,6 +60,7 @@ const sponsoredContents = [
     href: "/analytics",
   },
 ];
+const SHOW_SPONSORED_CONTENT = false;
 
 export default function DashboardPage() {
   const { currentTenant } = useTenantStore();
@@ -147,7 +148,7 @@ export default function DashboardPage() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-clr)" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} stroke="var(--border-clr)" />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} stroke="var(--border-clr)" />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} stroke="var(--border-clr)" />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                   <Area type="monotone" dataKey="total" stroke="var(--accent-500)" strokeWidth={2} fill="url(#colorTotal)" />
                 </AreaChart>
@@ -189,7 +190,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className={SHOW_SPONSORED_CONTENT ? "" : "hidden"}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-primary-500" />

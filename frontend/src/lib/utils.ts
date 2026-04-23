@@ -6,9 +6,68 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const BASE_CURRENCY = "USD";
+const SYMBOL_TO_CURRENCY: Record<string, string> = {
+  "$": "USD",
+  "€": "EUR",
+  "£": "GBP",
+  "¥": "JPY",
+  "₹": "INR",
+  "₱": "PHP",
+  "C$": "CAD",
+  "A$": "AUD",
+  "S$": "SGD",
+  "CN¥": "CNY",
+};
+// 1 USD = rate amount of target currency
+const FX_RATES_FROM_USD: Record<string, number> = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 156.2,
+  CAD: 1.37,
+  AUD: 1.52,
+  CNY: 7.24,
+  INR: 83.4,
+  PHP: 57.2,
+  SGD: 1.35,
+};
+
+function parseAmountWithCurrency(value: number | string): { amount: number; currency: string } {
+  if (typeof value === "number") {
+    return { amount: value, currency: BASE_CURRENCY };
+  }
+
+  const raw = value.trim();
+  if (!raw) return { amount: 0, currency: BASE_CURRENCY };
+
+  const codeMatch = raw.match(/\b([A-Z]{3})\b/);
+  const code = codeMatch?.[1];
+  if (code && FX_RATES_FROM_USD[code]) {
+    const numeric = Number(raw.replace(/[^0-9.-]/g, ""));
+    return { amount: Number.isFinite(numeric) ? numeric : 0, currency: code };
+  }
+
+  const symbol = Object.keys(SYMBOL_TO_CURRENCY)
+    .sort((a, b) => b.length - a.length)
+    .find((s) => raw.includes(s));
+  const detected = symbol ? SYMBOL_TO_CURRENCY[symbol] : BASE_CURRENCY;
+  const numeric = Number(raw.replace(/[^0-9.-]/g, ""));
+  return { amount: Number.isFinite(numeric) ? numeric : 0, currency: detected };
+}
+
+function convertAmount(amount: number, fromCurrency: string, toCurrency: string): number {
+  const fromRate = FX_RATES_FROM_USD[fromCurrency] ?? FX_RATES_FROM_USD[BASE_CURRENCY];
+  const toRate = FX_RATES_FROM_USD[toCurrency] ?? FX_RATES_FROM_USD[BASE_CURRENCY];
+  const inUsd = amount / fromRate;
+  return inUsd * toRate;
+}
+
 export function formatCurrency(amount: number | string, currencyOverride?: string) {
   const { currency: userCurrency, language } = useThemeStore.getState();
   const currency = currencyOverride ?? userCurrency;
+  const parsed = parseAmountWithCurrency(amount);
+  const converted = convertAmount(parsed.amount, parsed.currency, currency);
   const localeMap: Record<string, string> = {
     en: "en-US",
     es: "es-ES",
@@ -23,7 +82,7 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-  }).format(Number(amount));
+  }).format(converted);
 }
 
 export function formatDate(date: string | Date, timezoneOverride?: string) {

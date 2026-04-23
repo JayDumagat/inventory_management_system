@@ -5,6 +5,7 @@ export const inviteStaffSchema = z.object({
   role: z.enum(["staff", "manager", "admin"]).default("staff"),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  password: z.string().min(8).max(128).optional(),
 });
 
 export const updateStaffSchema = z.object({

@@ -6,6 +6,7 @@ interface Tenant {
   name: string;
   slug: string;
   description?: string;
+  taxRate?: string;
   role: string;
   allowedPages?: string[] | null;
   plan?: string;

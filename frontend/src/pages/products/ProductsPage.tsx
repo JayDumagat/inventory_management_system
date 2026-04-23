@@ -16,6 +16,7 @@ import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { formatCurrency, cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 import { usePresignedUrl } from "../../hooks/usePresignedUrl";
+import { useSubscription } from "../../hooks/useEntitlements";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Package, Search, AlertCircle, SlidersHorizontal, X, ImagePlus, Image } from "lucide-react";
 
 interface Variant { id: string; name: string; sku: string; barcode?: string | null; price: string; costPrice: string; isActive: boolean; }
@@ -88,6 +89,10 @@ export default function ProductsPage() {
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const toast = useToast();
+  const { data: subscriptionData } = useSubscription();
+  const planKey = subscriptionData?.subscription.planKey ?? currentTenant?.plan ?? "free";
+  const attributeLimit = planKey === "free" ? 3 : -1;
+  const optionLimit = planKey === "free" ? 3 : -1;
 
   const [productModal, setProductModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [variantModal, setVariantModal] = useState<{ open: boolean; productId?: string; variant?: Variant }>({ open: false });
@@ -447,7 +452,11 @@ export default function ProductsPage() {
     () => products.filter((p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (p.category?.name ?? "").toLowerCase().includes(search.toLowerCase())
+      (p.category?.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      p.variants.some((v) =>
+        v.sku.toLowerCase().includes(search.toLowerCase()) ||
+        (v.barcode ?? "").toLowerCase().includes(search.toLowerCase())
+      )
     ),
     [products, search]
   );
@@ -511,7 +520,7 @@ export default function ProductsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by name, description or category…"
+            placeholder="Search by name, description, category, SKU, or barcode…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
@@ -922,6 +931,10 @@ export default function ProductsPage() {
                             className="inline-flex items-center gap-1"
                             onSubmit={async (e) => {
                               e.preventDefault();
+                              if (optionLimit !== -1 && attr.options.length >= optionLimit) {
+                                toast.error(`Free plan supports up to ${optionLimit} options per attribute`);
+                                return;
+                              }
                               const val = (newOptionValues[attr.id] ?? "").trim();
                               if (!val) return;
                               const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/attributes/${attr.id}/options`, { value: val });
@@ -934,9 +947,10 @@ export default function ProductsPage() {
                               value={newOptionValues[attr.id] ?? ""}
                               onChange={(e) => setNewOptionValues((prev) => ({ ...prev, [attr.id]: e.target.value }))}
                               placeholder="Add option…"
+                              disabled={optionLimit !== -1 && attr.options.length >= optionLimit}
                               className="text-xs border border-stroke px-2 py-0.5 bg-panel text-ink outline-none focus:border-primary-500 w-24"
                             />
-                            <Button size="sm" variant="outline" type="submit"><Plus className="w-3 h-3" /></Button>
+                            <Button size="sm" variant="outline" type="submit" disabled={optionLimit !== -1 && attr.options.length >= optionLimit}><Plus className="w-3 h-3" /></Button>
                           </form>
                         </div>
                       </div>
@@ -945,6 +959,10 @@ export default function ProductsPage() {
                       className="flex items-center gap-2"
                       onSubmit={async (e) => {
                         e.preventDefault();
+                        if (attributeLimit !== -1 && attrList.length >= attributeLimit) {
+                          toast.error(`Free plan supports up to ${attributeLimit} attributes per product`);
+                          return;
+                        }
                         const name = newAttrName.trim();
                         if (!name) return;
                         const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/attributes`, { name });
@@ -957,10 +975,16 @@ export default function ProductsPage() {
                         value={newAttrName}
                         onChange={(e) => setNewAttrName(e.target.value)}
                         placeholder="New attribute name (e.g. Color)"
+                        disabled={attributeLimit !== -1 && attrList.length >= attributeLimit}
                         className="flex-1 text-sm border border-stroke px-3 py-1.5 bg-panel text-ink outline-none focus:border-primary-500"
                       />
-                      <Button type="submit" size="sm"><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
+                      <Button type="submit" size="sm" disabled={attributeLimit !== -1 && attrList.length >= attributeLimit}><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
                     </form>
+                    {attributeLimit !== -1 && (
+                      <p className="text-xs text-muted">
+                        Plan limit: {attributeLimit} attributes per product, {optionLimit} options per attribute.
+                      </p>
+                    )}
                   </>
                 )}
                 <div className="flex gap-3 justify-end pt-1">
@@ -1149,6 +1173,10 @@ export default function ProductsPage() {
                       className="inline-flex items-center gap-1"
                       onSubmit={async (e) => {
                         e.preventDefault();
+                        if (optionLimit !== -1 && attr.options.length >= optionLimit) {
+                          toast.error(`Free plan supports up to ${optionLimit} options per attribute`);
+                          return;
+                        }
                         const val = (newOptionValues[attr.id] ?? "").trim();
                         if (!val) return;
                         const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/attributes/${attr.id}/options`, { value: val });
@@ -1161,9 +1189,10 @@ export default function ProductsPage() {
                         value={newOptionValues[attr.id] ?? ""}
                         onChange={(e) => setNewOptionValues((prev) => ({ ...prev, [attr.id]: e.target.value }))}
                         placeholder="Add option…"
+                        disabled={optionLimit !== -1 && attr.options.length >= optionLimit}
                         className="text-xs border border-stroke px-2 py-0.5 bg-panel text-ink outline-none focus:border-primary-500 w-24"
                       />
-                      <Button size="sm" variant="outline" type="submit"><Plus className="w-3 h-3" /></Button>
+                      <Button size="sm" variant="outline" type="submit" disabled={optionLimit !== -1 && attr.options.length >= optionLimit}><Plus className="w-3 h-3" /></Button>
                     </form>
                   </div>
                 </div>
@@ -1173,6 +1202,10 @@ export default function ProductsPage() {
                 className="flex items-center gap-2"
                 onSubmit={async (e) => {
                   e.preventDefault();
+                  if (attributeLimit !== -1 && attrList.length >= attributeLimit) {
+                    toast.error(`Free plan supports up to ${attributeLimit} attributes per product`);
+                    return;
+                  }
                   const name = newAttrName.trim();
                   if (!name) return;
                   const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/attributes`, { name });
@@ -1185,10 +1218,16 @@ export default function ProductsPage() {
                   value={newAttrName}
                   onChange={(e) => setNewAttrName(e.target.value)}
                   placeholder="New attribute name (e.g. Color)"
+                  disabled={attributeLimit !== -1 && attrList.length >= attributeLimit}
                   className="flex-1 text-sm border border-stroke px-3 py-1.5 bg-panel text-ink outline-none focus:border-primary-500"
                 />
-                <Button type="submit" size="sm"><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
+                <Button type="submit" size="sm" disabled={attributeLimit !== -1 && attrList.length >= attributeLimit}><Plus className="w-3.5 h-3.5" /> Add attribute</Button>
               </form>
+              {attributeLimit !== -1 && (
+                <p className="text-xs text-muted">
+                  Plan limit: {attributeLimit} attributes per product, {optionLimit} options per attribute.
+                </p>
+              )}
               <div className="flex justify-end">
                 <Button
                   type="button"

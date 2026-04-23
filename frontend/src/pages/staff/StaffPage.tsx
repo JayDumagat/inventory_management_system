@@ -61,6 +61,7 @@ const inviteSchema = z.object({
   role: z.enum(["staff", "manager", "admin"]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
 });
 
 type InviteForm = z.infer<typeof inviteSchema>;
@@ -114,7 +115,7 @@ export default function StaffPage() {
     onSuccess: (data: { inviteToken?: string }) => {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setInviteOpen(false);
-      inviteForm.reset({ role: "staff" });
+      inviteForm.reset({ role: "staff", password: "" });
       if (data.inviteToken) {
         setInviteLink(`${window.location.origin}/accept-invite?token=${data.inviteToken}`);
         setInviteLinkOpen(true);
@@ -340,7 +341,7 @@ export default function StaffPage() {
       )}
 
       {/* Invite modal */}
-      <Modal open={inviteOpen} onClose={() => { setInviteOpen(false); inviteForm.reset({ role: "staff" }); }} title="Invite staff member">
+      <Modal open={inviteOpen} onClose={() => { setInviteOpen(false); inviteForm.reset({ role: "staff", password: "" }); }} title="Invite staff member">
         <form onSubmit={inviteForm.handleSubmit((d) => invite.mutate(d))} className="flex flex-col gap-4">
           {invite.isError && (
             <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">
@@ -362,8 +363,15 @@ export default function StaffPage() {
             <option value="manager">Manager</option>
             {myRole === "owner" && <option value="admin">Admin</option>}
           </Select>
+          <Input
+            label="Initial password (optional)"
+            type="password"
+            placeholder="Leave blank to send invite link"
+            {...inviteForm.register("password")}
+            error={inviteForm.formState.errors.password?.message}
+          />
           <div className="flex gap-3 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => { setInviteOpen(false); inviteForm.reset({ role: "staff" }); }}>
+            <Button type="button" variant="outline" onClick={() => { setInviteOpen(false); inviteForm.reset({ role: "staff", password: "" }); }}>
               Cancel
             </Button>
             <Button type="submit" loading={invite.isPending}>
