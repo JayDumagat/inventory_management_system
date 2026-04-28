@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
@@ -29,6 +30,8 @@ function actorName(log: AuditLog): string {
 export default function AuditPage() {
   const { currentTenant } = useTenantStore();
   const tid = currentTenant?.id;
+  const [search, setSearch] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
 
   const { data, isLoading } = useQuery<{ data: AuditLog[]; page: number }>({
     queryKey: ["audit", tid],
@@ -49,6 +52,28 @@ export default function AuditPage() {
 );
 
   const logs = data?.data ?? [];
+  const actionOptions = useMemo(
+    () => Array.from(new Set(logs.map((log) => log.action).filter(Boolean))).sort(),
+    [logs]
+  );
+  const filteredLogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return logs.filter((log) => {
+      const actionMatch = actionFilter === "all" || log.action === actionFilter;
+      if (!actionMatch) return false;
+      if (!q) return true;
+      const haystack = [
+        log.action,
+        log.resourceType,
+        log.resourceId,
+        log.actorEmail,
+        log.actorFirstName,
+        log.actorLastName,
+        log.ipAddress,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [logs, search, actionFilter]);
 
   return (
     <div className="space-y-5">
@@ -57,15 +82,35 @@ export default function AuditPage() {
         <p className="text-muted text-sm mt-1">Track all activity in your organization</p>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search actor, action, resource, IP…"
+          className="flex-1 border border-stroke bg-panel text-ink px-3 py-2 text-sm outline-none focus:border-primary-500"
+        />
+        <select
+          value={actionFilter}
+          onChange={(e) => setActionFilter(e.target.value)}
+          className="sm:w-48 border border-stroke bg-panel text-ink px-3 py-2 text-sm outline-none focus:border-primary-500"
+        >
+          <option value="all">All actions</option>
+          {actionOptions.map((action) => (
+            <option key={action} value={action}>{action}</option>
+          ))}
+        </select>
+      </div>
+
       <Card>
-        {logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <CardContent className="p-0">
             <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
               <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
                 <ClipboardList className="w-7 h-7 text-primary-500" />
               </div>
-              <h3 className="text-base font-semibold text-ink mb-1">No audit logs yet</h3>
-              <p className="text-sm text-muted max-w-xs">All system activity will be recorded and shown here</p>
+              <h3 className="text-base font-semibold text-ink mb-1">No matching audit logs</h3>
+              <p className="text-sm text-muted max-w-xs">Try a different search query or filter</p>
             </div>
           </CardContent>
         ) : (
@@ -83,7 +128,7 @@ export default function AuditPage() {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
+                {filteredLogs.map((log) => (
                   <tr key={log.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-6 py-3">
                       <Badge variant={actionColor[log.action] || "default"}>{log.action}</Badge>

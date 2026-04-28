@@ -5,6 +5,7 @@ export interface Tenant {
   name: string;
   slug: string;
   description?: string;
+  taxRate?: string;
   role: string;
   logoUrl?: string;
   receiptTemplate?: "compact" | "detailed";

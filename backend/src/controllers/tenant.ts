@@ -15,6 +15,7 @@ export async function listTenants(req: Request, res: Response): Promise<void> {
           name: tenants.name,
           slug: tenants.slug,
           description: tenants.description,
+          taxRate: tenants.taxRate,
           logoUrl: tenants.logoUrl,
           receiptTemplate: tenants.receiptTemplate,
           receiptFooterMessage: tenants.receiptFooterMessage,
@@ -45,7 +46,10 @@ export async function createTenant(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const [tenant] = await db.insert(tenants).values(body).returning();
+    const [tenant] = await db.insert(tenants).values({
+      ...body,
+      taxRate: body.taxRate !== undefined ? String(body.taxRate) : undefined,
+    }).returning();
 
     // Make creator the owner
     await db.insert(tenantUsers).values({
@@ -178,7 +182,11 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const [updated] = await db.update(tenants).set({ ...body, updatedAt: new Date() }).where(eq(tenants.id, tenantId)).returning();
+    const [updated] = await db.update(tenants).set({
+      ...body,
+      taxRate: body.taxRate !== undefined ? String(body.taxRate) : undefined,
+      updatedAt: new Date(),
+    }).where(eq(tenants.id, tenantId)).returning();
 
     res.json(updated);
   } catch (error) {

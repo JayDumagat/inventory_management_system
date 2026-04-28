@@ -8,6 +8,8 @@ export interface PlanLimits {
   products: number;
   api_keys: number;
   invoices_per_month: number;
+  attributes_per_product: number;
+  options_per_attribute: number;
 }
 
 export interface PlanDefinition {
@@ -29,7 +31,7 @@ export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
       "pos", "products", "inventory", "sales_orders", "categories",
       "units", "customers", "audit_log", "reports_basic", "dashboard",
     ],
-    limits: { branches: 1, products: 100, api_keys: 0, invoices_per_month: 0 },
+    limits: { branches: 1, products: 100, api_keys: 0, invoices_per_month: 0, attributes_per_product: 3, options_per_attribute: 3 },
   },
   pro: {
     key: "pro",
@@ -42,7 +44,7 @@ export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
       "invoices", "api_keys", "integrations", "purchase_orders", "suppliers",
       "batches", "dashboard", "promotions", "loyalty", "receipt_design", "custom_branding",
     ],
-    limits: { branches: 5, products: -1, api_keys: 10, invoices_per_month: 100 },
+    limits: { branches: 5, products: -1, api_keys: 10, invoices_per_month: 100, attributes_per_product: -1, options_per_attribute: -1 },
   },
   enterprise: {
     key: "enterprise",
@@ -56,7 +58,7 @@ export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
       "batches", "dashboard", "white_label", "custom_integrations", "sla",
       "promotions", "loyalty", "receipt_design", "custom_branding",
     ],
-    limits: { branches: -1, products: -1, api_keys: -1, invoices_per_month: -1 },
+    limits: { branches: -1, products: -1, api_keys: -1, invoices_per_month: -1, attributes_per_product: -1, options_per_attribute: -1 },
   },
 };
 

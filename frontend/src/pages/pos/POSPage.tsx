@@ -19,7 +19,7 @@ interface Product {
   id: string;
   name: string;
   images?: ProductImage[];
-  variants: { id: string; name: string; sku: string; price: string }[];
+  variants: { id: string; name: string; sku: string; barcode?: string | null; price: string }[];
 }
 
 interface CartItem {
@@ -161,7 +161,6 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [discountInput, setDiscountInput] = useState("0");
-  const [taxRateInput, setTaxRateInput] = useState("0");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [cashInput, setCashInput] = useState("");
   const [checkoutModal, setCheckoutModal] = useState(false);
@@ -190,6 +189,7 @@ export default function POSPage() {
   const receiptFooter = ((currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || "").trim() || "Thank you for your purchase!";
   const receiptLogoUrl = sanitizeImageUrl(((currentTenant as { receiptLogoUrl?: string } | null)?.receiptLogoUrl || "").trim());
   const receiptShowLogo = Boolean((currentTenant as { receiptShowLogo?: boolean } | null)?.receiptShowLogo);
+  const taxRate = Number((currentTenant as { taxRate?: string } | null)?.taxRate ?? "0");
 
   // Products query
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -287,7 +287,6 @@ export default function POSPage() {
 
       setCart([]);
       setDiscountInput("0");
-      setTaxRateInput("0");
       setCashInput("");
       setCustomerName("");
       setSelectedCustomerId(null);
@@ -323,7 +322,8 @@ export default function POSPage() {
       (v) =>
         v.productName.toLowerCase().includes(q) ||
         v.name.toLowerCase().includes(q) ||
-        v.sku.toLowerCase().includes(q)
+        v.sku.toLowerCase().includes(q) ||
+        (v.barcode ?? "").toLowerCase().includes(q)
     );
   }, [allVariants, search]);
 
@@ -349,7 +349,6 @@ export default function POSPage() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = parseFloat(discountInput) || 0;
-  const taxRate = parseFloat(taxRateInput) || 0;
   const taxAmount = Math.round(subtotal * taxRate) / 100;
   const promoDiscount = hasPromotionFeature ? (appliedPromo?.discountAmount ?? 0) : 0;
   const loyaltyRedemptionEnabled = !!loyaltyConfig?.isEnabled && !!selectedCustomerId && !!customerLoyalty;
@@ -434,7 +433,6 @@ export default function POSPage() {
       customerName: customerName || undefined,
       customerId: selectedCustomerId || undefined,
       discountAmount: discount + promoDiscount,
-      taxAmount: taxAmount > 0 ? taxAmount : undefined,
       loyaltyDiscountAmount: appliedLoyaltyDiscount,
       loyaltyPointsRedeemed: appliedLoyaltyPoints || undefined,
       promotionId: hasPromotionFeature ? (appliedPromo?.promotionId ?? undefined) : undefined,
@@ -521,9 +519,21 @@ export default function POSPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search products, variants, SKU…"
+            placeholder="Search products, variants, SKU, barcode…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              const code = search.trim().toLowerCase();
+              if (!code) return;
+              const exact = allVariants.find((v) =>
+                (v.barcode ?? "").toLowerCase() === code || v.sku.toLowerCase() === code
+              );
+              if (exact) {
+                addToCart(exact.id);
+                setSearch("");
+              }
+            }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500"
           />
         </div>
@@ -540,7 +550,7 @@ export default function POSPage() {
                 disabled={!currentBranch}
                 className="flex flex-col bg-panel border border-stroke p-3 text-left hover:bg-hover hover:border-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-primary-500"
               >
-                <div className="w-full aspect-square bg-primary-50 border border-primary-100 flex items-center justify-center mb-2">
+                <div className="w-full h-28 sm:h-32 bg-primary-50 border border-primary-100 flex items-center justify-center mb-2 overflow-hidden">
                   <ProductImageThumbnail objectName={v.imageObjectName} alt={v.productName} />
                 </div>
                 <p className="text-xs font-semibold text-ink truncate">{v.productName}</p>
@@ -628,19 +638,6 @@ export default function POSPage() {
                   className="flex-1 border border-stroke bg-panel text-ink px-2 py-1 text-xs text-right outline-none focus:border-primary-500"
                 />
               </div>
-              {/* Inline tax rate input */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted flex-shrink-0 w-20">Tax %</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={taxRateInput}
-                  onChange={(e) => setTaxRateInput(e.target.value)}
-                  className="flex-1 border border-stroke bg-panel text-ink px-2 py-1 text-xs text-right outline-none focus:border-primary-500"
-                />
-              </div>
               {/* Breakdown rows */}
               {discount > 0 && (
                 <div className="flex justify-between text-xs text-muted">
@@ -685,7 +682,7 @@ export default function POSPage() {
 
       {/* Checkout modal */}
       <Modal open={checkoutModal} onClose={() => setCheckoutModal(false)} title="Checkout" size="xl">
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           {/* Left: form fields */}
           <div className="flex-1 min-w-0 flex flex-col gap-4">
             {/* Customer name with search/autocomplete */}
@@ -738,8 +735,8 @@ export default function POSPage() {
               )}
             </div>
 
-            {/* Discount & Tax */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Discount */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Discount</label>
                 <input
@@ -753,18 +750,6 @@ export default function POSPage() {
                 {discount > subtotal && (
                   <p className="text-xs text-red-500">Discount cannot exceed subtotal</p>
                 )}
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted">Tax %</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={taxRateInput}
-                  onChange={(e) => setTaxRateInput(e.target.value)}
-                  className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm text-right outline-none focus:border-primary-500"
-                />
               </div>
             </div>
 
@@ -912,7 +897,7 @@ export default function POSPage() {
           </div>
 
           {/* Right: cart items + order summary */}
-          <div className="w-64 flex-shrink-0 flex flex-col gap-3 border-l border-stroke pl-6">
+          <div className="w-full lg:w-64 flex-shrink-0 flex flex-col gap-3 border-t lg:border-t-0 lg:border-l border-stroke pt-4 lg:pt-0 lg:pl-6">
             <p className="text-xs font-semibold text-muted uppercase tracking-wider">Items</p>
             <div className="flex-1 overflow-y-auto max-h-64 space-y-2 pr-1">
               {cart.map((item) => (

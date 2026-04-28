@@ -44,7 +44,6 @@ const createOrderSchema = z.object({
   customerName: z.string().optional(),
   customerEmail: z.string().email().optional().or(z.literal("")),
   customerPhone: z.string().optional(),
-  taxAmount: z.number().min(0).optional(),
   discountAmount: z.number().min(0).optional(),
   notes: z.string().optional(),
   items: z.array(orderItemSchema).min(1, "At least one item required"),
@@ -58,6 +57,7 @@ export default function OrdersPage() {
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const taxRate = Number((currentTenant as { taxRate?: string } | null)?.taxRate ?? "0");
   const toast = useToast();
   const [createModal, setCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
@@ -401,16 +401,15 @@ export default function OrdersPage() {
             onSubmit={form.handleSubmit((d) => createOrder.mutate({
               ...d,
               branchId: currentBranch!.id,
-              taxAmount: d.taxAmount !== undefined ? Number(d.taxAmount) : undefined,
               discountAmount: d.discountAmount !== undefined ? Number(d.discountAmount) : undefined,
               items: d.items.map((i) => ({ ...i, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) })),
             }))}
             className="flex flex-col gap-4"
           >
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Tax amount" type="number" step="0.01" min="0" {...form.register("taxAmount", { valueAsNumber: true })} />
+            <div className="grid grid-cols-1 gap-3">
               <Input label="Discount amount" type="number" step="0.01" min="0" {...form.register("discountAmount", { valueAsNumber: true })} />
             </div>
+            <p className="text-xs text-muted">Tax is auto-applied from Organization Settings ({taxRate.toFixed(2)}%).</p>
             <Input label="Notes" {...form.register("notes")} />
             <div className="flex gap-3 justify-end pt-2">
               <Button type="button" variant="outline" onClick={() => setCreateStep(2)}>← Back</Button>

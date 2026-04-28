@@ -30,6 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const branchRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -49,6 +50,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!tid,
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    if (!tid) {
+      setReadNotificationIds([]);
+      return;
+    }
+    const raw = localStorage.getItem(`notif-read:${tid}`);
+    if (!raw) {
+      setReadNotificationIds([]);
+      return;
+    }
+    try {
+      const ids = JSON.parse(raw);
+      setReadNotificationIds(Array.isArray(ids) ? ids.filter((v): v is string => typeof v === "string") : []);
+    } catch {
+      setReadNotificationIds([]);
+    }
+  }, [tid]);
 
   useEffect(() => {
     if (branches.length === 0) return;
@@ -79,6 +98,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     () => branches.filter((b) => b.name.toLowerCase().includes(branchSearch.toLowerCase())),
     [branches, branchSearch]
   );
+  const unreadNotifications = useMemo(
+    () => notifications.filter((n) => !readNotificationIds.includes(n.id)),
+    [notifications, readNotificationIds]
+  );
+
+  const persistReadNotifications = (ids: string[]) => {
+    setReadNotificationIds(ids);
+    if (!tid) return;
+    localStorage.setItem(`notif-read:${tid}`, JSON.stringify(ids));
+  };
+
+  const markNotificationRead = (id: string) => {
+    if (readNotificationIds.includes(id)) return;
+    persistReadNotifications([...readNotificationIds, id]);
+  };
+
+  const markAllNotificationsRead = () => {
+    if (notifications.length === 0) return;
+    persistReadNotifications([...new Set([...readNotificationIds, ...notifications.map((n) => n.id)])]);
+  };
 
   const handleLogout = () => {
     logout();
@@ -131,78 +170,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Branch switcher */}
-          {branches.length > 0 && (
-            <div className="relative mt-3" ref={branchRef}>
-              <button
-                onClick={() => { setBranchDropdownOpen((o) => !o); setBranchSearch(""); }}
-                className="flex items-center gap-2 w-full px-2.5 py-1.5 border border-stroke bg-page hover:bg-hover transition-colors text-left"
-              >
-                <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-                <span className="flex-1 text-xs font-medium text-ink truncate">
-                  {currentBranch?.name ?? "Select branch"}
-                </span>
-                <ChevronDown className={cn("w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform", branchDropdownOpen && "rotate-180")} />
-              </button>
-
-              {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-0 z-50 bg-panel border border-stroke overflow-hidden">
-                  <div className="p-2 border-b border-stroke">
-                    <div className="flex items-center gap-1.5 px-2 py-1.5 border border-stroke bg-page">
-                      <Search className="w-3 h-3 text-muted flex-shrink-0" />
-                      <input
-                        autoFocus
-                        type="text"
-                        placeholder="Search branches…"
-                        value={branchSearch}
-                        onChange={(e) => setBranchSearch(e.target.value)}
-                        className="flex-1 text-xs bg-transparent outline-none text-ink placeholder:text-muted"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="max-h-40 overflow-y-auto">
-                    {filteredBranches.length === 0 ? (
-                      <p className="px-3 py-3 text-xs text-muted text-center">No branches found</p>
-                    ) : (
-                      filteredBranches.map((branch) => (
-                        <button
-                          key={branch.id}
-                          onClick={() => { setCurrentBranch(branch); setBranchDropdownOpen(false); setBranchSearch(""); }}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors"
-                        >
-                          <Check className={cn("w-3.5 h-3.5 flex-shrink-0", currentBranch?.id === branch.id ? "text-primary-600" : "text-transparent")} />
-                          <span className={cn("flex-1 truncate", currentBranch?.id === branch.id ? "font-semibold text-primary-700" : "text-ink")}>
-                            {branch.name}
-                          </span>
-                          {branch.isDefault && (
-                            <span className="text-[10px] text-muted flex-shrink-0">default</span>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="border-t border-stroke">
-                    <button
-                      onClick={() => { navigate("/branches?create=true"); setBranchDropdownOpen(false); setBranchSearch(""); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors text-primary-600 font-medium"
-                    >
-                      <Plus className="w-3.5 h-3.5 flex-shrink-0" />
-                      Create branch
-                    </button>
-                    <button
-                      onClick={() => { navigate("/branches"); setBranchDropdownOpen(false); setBranchSearch(""); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors text-muted"
-                    >
-                      <Settings className="w-3.5 h-3.5 flex-shrink-0" />
-                      Manage branches
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Nav */}
@@ -230,13 +197,74 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Bottom user section */}
         <div className="border-t border-stroke px-2 py-3">
-          <Link
-            to="/settings"
-            className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-muted hover:bg-hover hover:text-ink transition-colors mb-0.5"
-          >
-            <Settings className="w-4 h-4 flex-shrink-0" />
-            Settings
-          </Link>
+          {branches.length > 0 && (
+            <div className="relative" ref={branchRef}>
+              <button
+                onClick={() => { setBranchDropdownOpen((o) => !o); setBranchSearch(""); }}
+                className="flex items-center gap-2 w-full px-2.5 py-2 border border-stroke bg-page hover:bg-hover transition-colors text-left"
+              >
+                <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                <span className="flex-1 text-xs font-medium text-ink truncate">
+                  {currentBranch?.name ?? "Select branch"}
+                </span>
+                <ChevronDown className={cn("w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform", branchDropdownOpen && "rotate-180")} />
+              </button>
+              {branchDropdownOpen && (
+                <div className="absolute left-0 right-0 bottom-full mb-1 z-50 bg-panel border border-stroke overflow-hidden">
+                  <div className="p-2 border-b border-stroke">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 border border-stroke bg-page">
+                      <Search className="w-3 h-3 text-muted flex-shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Search branches…"
+                        value={branchSearch}
+                        onChange={(e) => setBranchSearch(e.target.value)}
+                        className="flex-1 text-xs bg-transparent outline-none text-ink placeholder:text-muted"
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredBranches.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-muted text-center">No branches found</p>
+                    ) : (
+                      filteredBranches.map((branch) => (
+                        <button
+                          key={branch.id}
+                          onClick={() => { setCurrentBranch(branch); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors"
+                        >
+                          <Check className={cn("w-3.5 h-3.5 flex-shrink-0", currentBranch?.id === branch.id ? "text-primary-600" : "text-transparent")} />
+                          <span className={cn("flex-1 truncate", currentBranch?.id === branch.id ? "font-semibold text-primary-700" : "text-ink")}>
+                            {branch.name}
+                          </span>
+                          {branch.isDefault && (
+                            <span className="text-[10px] text-muted flex-shrink-0">default</span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <div className="border-t border-stroke">
+                    <button
+                      onClick={() => { navigate("/branches?create=true"); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors text-primary-600 font-medium"
+                    >
+                      <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                      Create branch
+                    </button>
+                    <button
+                      onClick={() => { navigate("/branches"); setBranchDropdownOpen(false); setBranchSearch(""); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-xs text-left hover:bg-hover transition-colors text-muted"
+                    >
+                      <Settings className="w-3.5 h-3.5 flex-shrink-0" />
+                      Manage branches
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -279,20 +307,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="relative p-1.5 text-muted hover:bg-hover transition-colors"
               >
                 <Bell className="w-4 h-4" />
-                {notifications.length > 0 && (
+                {unreadNotifications.length > 0 && (
                   <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                 )}
               </button>
               {notifOpen && (
                 <div className="absolute right-0 top-full mt-0 w-80 bg-panel border border-stroke overflow-hidden z-50">
-                  <div className="px-4 py-3 border-b border-stroke">
+                  <div className="px-4 py-3 border-b border-stroke flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-ink">Notifications</p>
+                    {unreadNotifications.length > 0 && (
+                      <button
+                        onClick={markAllNotificationsRead}
+                        className="text-[11px] text-primary-600 hover:underline"
+                      >
+                        Mark all read
+                      </button>
+                    )}
                   </div>
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-sm text-muted">No notifications</div>
+                  {unreadNotifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-muted">No unread notifications</div>
                   ) : (
                     <div className="max-h-80 overflow-y-auto">
-                      {notifications.map((n) => {
+                      {unreadNotifications.map((n) => {
                         const Icon = n.type === "low_stock" ? AlertTriangle : n.type === "transfer" ? ArrowRightLeft : Bell;
                         const iconColor = n.type === "low_stock" ? "text-yellow-500" : n.type === "transfer" ? "text-blue-500" : "text-muted";
                         return (
@@ -302,6 +338,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                               <p className="text-xs text-ink leading-snug">{n.message}</p>
                               <p className="text-[10px] text-muted mt-0.5">{relativeTime(n.createdAt)}</p>
                             </div>
+                            <button
+                              onClick={() => markNotificationRead(n.id)}
+                              className="text-[10px] text-primary-600 hover:underline"
+                            >
+                              Read
+                            </button>
                           </div>
                         );
                       })}

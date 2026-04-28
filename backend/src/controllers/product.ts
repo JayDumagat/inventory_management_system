@@ -9,6 +9,7 @@ import { getPublicUrl, getPresignedUrl } from "../lib/storage";
 import { isTenantOwnedObjectName } from "../lib/storageObjectName";
 import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
 import { presignCacheKey } from "./upload";
+import { getLimit } from "../lib/planConfig";
 
 function normalizeSkuPart(value: string, max = 8): string {
   return value
@@ -277,10 +278,34 @@ export async function listAttributes(req: Request, res: Response): Promise<void>
 
 export async function createAttribute(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = req.tenantContext!.tenantId;
     const [product] = await db.select().from(products).where(and(eq(products.id, req.params.productId as string), eq(products.tenantId, req.tenantContext!.tenantId)));
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
+    }
+    const attrLimit = getLimit(
+      req.tenantContext?.planKey ?? "free",
+      "attributes_per_product",
+      req.tenantContext?.addonLimits ?? {}
+    );
+    if (attrLimit !== -1) {
+      const existingAttrs = await db
+        .select({ id: productAttributes.id })
+        .from(productAttributes)
+        .where(eq(productAttributes.productId, req.params.productId as string));
+      if (existingAttrs.length >= attrLimit) {
+        res.status(402).json({
+          error: `Plan limit reached: maximum ${attrLimit} attributes per product`,
+          resource: "attributes_per_product",
+          limit: attrLimit,
+          currentCount: existingAttrs.length,
+          currentPlan: req.tenantContext?.planKey ?? "free",
+          tenantId,
+          upgradeRequired: true,
+        });
+        return;
+      }
     }
     const body = attributeSchema.parse(req.body);
     const [attr] = await db.insert(productAttributes).values({
@@ -341,6 +366,28 @@ export async function createAttributeOption(req: Request, res: Response): Promis
     if (!attr) {
       res.status(404).json({ error: "Attribute not found" });
       return;
+    }
+    const optionLimit = getLimit(
+      req.tenantContext?.planKey ?? "free",
+      "options_per_attribute",
+      req.tenantContext?.addonLimits ?? {}
+    );
+    if (optionLimit !== -1) {
+      const existingOptions = await db
+        .select({ id: productAttributeOptions.id })
+        .from(productAttributeOptions)
+        .where(eq(productAttributeOptions.attributeId, req.params.attributeId as string));
+      if (existingOptions.length >= optionLimit) {
+        res.status(402).json({
+          error: `Plan limit reached: maximum ${optionLimit} options per attribute`,
+          resource: "options_per_attribute",
+          limit: optionLimit,
+          currentCount: existingOptions.length,
+          currentPlan: req.tenantContext?.planKey ?? "free",
+          upgradeRequired: true,
+        });
+        return;
+      }
     }
     const [option] = await db.insert(productAttributeOptions).values({
       attributeId: req.params.attributeId as string,

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, jsonb, decimal } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import { tenantUserRoleEnum } from "./enums";
 import { users } from "./users";
@@ -25,6 +25,7 @@ export const tenants = pgTable("tenants", {
   receiptFooterMessage: text("receipt_footer_message").notNull().default("Thank you for your purchase!"),
   receiptLogoUrl: text("receipt_logo_url"),
   receiptShowLogo: boolean("receipt_show_logo").notNull().default(false),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull().default("0"),
   plan: text("plan").notNull().default("free"),
   planExpiresAt: timestamp("plan_expires_at"),
   isActive: boolean("is_active").notNull().default(true),

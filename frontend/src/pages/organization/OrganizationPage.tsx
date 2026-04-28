@@ -68,6 +68,7 @@ const inviteSchema = z.object({
   role: z.enum(["staff", "manager", "admin"]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").optional().or(z.literal("")),
 });
 type InviteForm = z.infer<typeof inviteSchema>;
 
@@ -125,6 +126,7 @@ export default function OrganizationPage() {
   // General tab state
   const [orgName, setOrgName] = useState(currentTenant?.name || "");
   const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
+  const [orgTaxRate, setOrgTaxRate] = useState((currentTenant as { taxRate?: string } | null)?.taxRate || "0");
   const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
   const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">(sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate));
   const [receiptFooterMessage, setReceiptFooterMessage] = useState(
@@ -152,7 +154,7 @@ export default function OrganizationPage() {
 
   const inviteForm = useForm<InviteForm>({
     resolver: zodResolver(inviteSchema),
-    defaultValues: { role: "staff" },
+    defaultValues: { role: "staff", password: "" },
   });
 
   const invite = useMutation({
@@ -161,7 +163,7 @@ export default function OrganizationPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setInviteOpen(false);
-      inviteForm.reset({ role: "staff" });
+      inviteForm.reset({ role: "staff", password: "" });
       toast.success("Staff member invited");
     },
     onError: () => toast.error("Failed to invite staff member"),
@@ -254,6 +256,8 @@ export default function OrganizationPage() {
     try {
       const payload: Record<string, unknown> = {};
       if (orgDesc !== (currentTenant.description || "")) payload.description = orgDesc;
+      const currentTaxRate = (currentTenant as { taxRate?: string } | null)?.taxRate || "0";
+      if (orgTaxRate !== currentTaxRate) payload.taxRate = Number(orgTaxRate || 0);
       if (canEditSidebarBranding) {
         if (orgName !== currentTenant.name) payload.name = orgName;
         const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
@@ -281,6 +285,7 @@ export default function OrganizationPage() {
         ...currentTenant,
         name: updated.name ?? currentTenant.name,
         description: updated.description ?? currentTenant.description,
+        taxRate: updated.taxRate ?? (currentTenant as { taxRate?: string }).taxRate,
       } as typeof currentTenant & { logoUrl?: string };
       if (Object.prototype.hasOwnProperty.call(updated, "logoUrl")) {
         nextTenant.logoUrl = updated.logoUrl ?? undefined;
@@ -383,6 +388,15 @@ export default function OrganizationPage() {
               label="Description (optional)"
               value={orgDesc}
               onChange={(e) => setOrgDesc(e.target.value)}
+            />
+            <Input
+              label="Default tax percentage"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={orgTaxRate}
+              onChange={(e) => setOrgTaxRate(e.target.value)}
             />
             <div className="flex flex-col gap-2">
               <Input
