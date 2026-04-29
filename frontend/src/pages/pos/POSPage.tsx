@@ -15,11 +15,19 @@ import { usePresignedUrl } from "../../hooks/usePresignedUrl";
 import type { ProductImage, ApplyPromotionResult, LoyaltyConfig, CustomerLoyalty } from "../../types";
 import { useSubscription } from "../../hooks/useEntitlements";
 
+interface ProductVariant {
+  id: string;
+  name: string;
+  sku: string;
+  barcode?: string | null;
+  price: string;
+}
+
 interface Product {
   id: string;
   name: string;
   images?: ProductImage[];
-  variants: { id: string; name: string; sku: string; barcode?: string | null; price: string }[];
+  variants: ProductVariant[];
 }
 
 interface CartItem {
@@ -165,6 +173,7 @@ export default function POSPage() {
   const [cashInput, setCashInput] = useState("");
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [receiptModal, setReceiptModal] = useState(false);
+  const [variantPickerProduct, setVariantPickerProduct] = useState<Product | null>(null);
   const [lastReceipt, setLastReceipt] = useState<ReceiptData | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -315,17 +324,20 @@ export default function POSPage() {
     [products]
   );
 
-  const filtered = useMemo(() => {
-    if (!search) return allVariants;
+  const filteredProducts = useMemo(() => {
+    if (!search) return products;
     const q = search.toLowerCase();
-    return allVariants.filter(
-      (v) =>
-        v.productName.toLowerCase().includes(q) ||
-        v.name.toLowerCase().includes(q) ||
-        v.sku.toLowerCase().includes(q) ||
-        (v.barcode ?? "").toLowerCase().includes(q)
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.variants.some(
+          (v) =>
+            v.name.toLowerCase().includes(q) ||
+            v.sku.toLowerCase().includes(q) ||
+            (v.barcode ?? "").toLowerCase().includes(q)
+        )
     );
-  }, [allVariants, search]);
+  }, [products, search]);
 
   const addToCart = (variantId: string) => {
     const v = allVariants.find((x) => x.id === variantId);
@@ -335,6 +347,15 @@ export default function POSPage() {
       if (existing) return prev.map((i) => i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { variantId: v.id, productName: v.productName, variantName: v.name, sku: v.sku, price: parseFloat(v.price), quantity: 1 }];
     });
+  };
+
+  const handleProductClick = (product: Product) => {
+    if (!currentBranch) return;
+    if (product.variants.length === 1) {
+      addToCart(product.variants[0].id);
+    } else if (product.variants.length > 1) {
+      setVariantPickerProduct(product);
+    }
   };
 
   const updateQty = (variantId: string, delta: number) => {
@@ -540,25 +561,32 @@ export default function POSPage() {
 
         {/* Product grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {filteredProducts.length === 0 ? (
             <div className="col-span-full py-16 text-center text-muted text-sm">No products found</div>
           ) : (
-            filtered.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => addToCart(v.id)}
-                disabled={!currentBranch}
-                className="flex flex-col bg-panel border border-stroke p-3 text-left hover:bg-hover hover:border-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-primary-500"
-              >
-                <div className="w-full h-28 sm:h-32 bg-primary-50 border border-primary-100 flex items-center justify-center mb-2 overflow-hidden">
-                  <ProductImageThumbnail objectName={v.imageObjectName} alt={v.productName} />
-                </div>
-                <p className="text-xs font-semibold text-ink truncate">{v.productName}</p>
-                <p className="text-xs text-muted truncate">{v.name}</p>
-                <p className="text-xs text-muted font-mono mt-0.5">{v.sku}</p>
-                <p className="text-sm font-bold text-primary-600 mt-1">{formatCurrency(v.price)}</p>
-              </button>
-            ))
+            filteredProducts.map((product) => {
+              const productPrice = product.variants[0]?.price ?? "0";
+              const hasMultipleVariants = product.variants.length > 1;
+              return (
+                <button
+                  key={product.id}
+                  onClick={() => handleProductClick(product)}
+                  disabled={!currentBranch}
+                  className="flex flex-col bg-panel border border-stroke p-3 text-left hover:bg-hover hover:border-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-primary-500"
+                >
+                  <div className="w-full h-28 sm:h-32 bg-primary-50 border border-primary-100 flex items-center justify-center mb-2 overflow-hidden">
+                    <ProductImageThumbnail objectName={getPrimaryProductImageObjectName(product)} alt={product.name} />
+                  </div>
+                  <p className="text-xs font-semibold text-ink truncate">{product.name}</p>
+                  {hasMultipleVariants ? (
+                    <p className="text-xs text-muted mt-0.5">{product.variants.length} variants</p>
+                  ) : (
+                    <p className="text-xs text-muted font-mono mt-0.5">{product.variants[0]?.sku ?? ""}</p>
+                  )}
+                  <p className="text-sm font-bold text-primary-600 mt-1">{formatCurrency(productPrice)}</p>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -1017,6 +1045,38 @@ export default function POSPage() {
                 <Receipt className="w-4 h-4" />
                 New sale
               </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Variant picker modal */}
+      {variantPickerProduct && (
+        <Modal
+          open={!!variantPickerProduct}
+          onClose={() => setVariantPickerProduct(null)}
+          title={variantPickerProduct.name}
+          size="sm"
+        >
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted">Select a variant to add to cart:</p>
+            <div className="grid grid-cols-1 gap-2">
+              {variantPickerProduct.variants.map((variant) => (
+                <button
+                  key={variant.id}
+                  onClick={() => {
+                    addToCart(variant.id);
+                    setVariantPickerProduct(null);
+                  }}
+                  className="flex items-center justify-between px-4 py-3 border border-stroke bg-panel hover:bg-hover hover:border-primary-400 transition-colors text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{variant.name}</p>
+                    <p className="text-xs text-muted font-mono">{variant.sku}</p>
+                  </div>
+                  <p className="text-sm font-bold text-primary-600 flex-shrink-0 ml-3">{formatCurrency(variant.price)}</p>
+                </button>
+              ))}
             </div>
           </div>
         </Modal>
