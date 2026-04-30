@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import currency from "currency.js";
 import { useThemeStore } from "../stores/themeStore";
+import { useCurrencyRatesStore } from "../stores/currencyRatesStore";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -19,19 +21,6 @@ const SYMBOL_TO_CURRENCY: Record<string, string> = {
   "S$": "SGD",
   "CN¥": "CNY",
 };
-// 1 USD = rate amount of target currency
-const FX_RATES_FROM_USD: Record<string, number> = {
-  USD: 1,
-  EUR: 0.92,
-  GBP: 0.79,
-  JPY: 156.2,
-  CAD: 1.37,
-  AUD: 1.52,
-  CNY: 7.24,
-  INR: 83.4,
-  PHP: 57.2,
-  SGD: 1.35,
-};
 
 function parseAmountWithCurrency(value: number | string): { amount: number; currency: string } {
   if (typeof value === "number") {
@@ -43,7 +32,8 @@ function parseAmountWithCurrency(value: number | string): { amount: number; curr
 
   const codeMatch = raw.match(/\b([A-Z]{3})\b/);
   const code = codeMatch?.[1];
-  if (code && FX_RATES_FROM_USD[code]) {
+  const { rates } = useCurrencyRatesStore.getState();
+  if (code && rates[code]) {
     const numeric = Number(raw.replace(/[^0-9.-]/g, ""));
     return { amount: Number.isFinite(numeric) ? numeric : 0, currency: code };
   }
@@ -57,23 +47,23 @@ function parseAmountWithCurrency(value: number | string): { amount: number; curr
 }
 
 function convertAmount(amount: number, fromCurrency: string, toCurrency: string): number {
-  const fromRate = FX_RATES_FROM_USD[fromCurrency] ?? FX_RATES_FROM_USD[BASE_CURRENCY];
-  const toRate = FX_RATES_FROM_USD[toCurrency] ?? FX_RATES_FROM_USD[BASE_CURRENCY];
-  const inUsd = amount / fromRate;
-  return inUsd * toRate;
+  const { getRate } = useCurrencyRatesStore.getState();
+  const rate = getRate(fromCurrency, toCurrency);
+  // Use currency.js for precise decimal arithmetic during conversion
+  return currency(amount).multiply(rate).value;
 }
 
 export function formatCurrency(amount: number | string, currencyOverride?: string) {
   const { currency: userCurrency, language } = useThemeStore.getState();
-  const currency = currencyOverride ?? userCurrency;
+  const targetCurrency = currencyOverride ?? userCurrency;
   const parsed = parseAmountWithCurrency(amount);
   // Only convert when the amount carries an explicit currency that differs from
   // the display currency (e.g. a string like "USD 100" shown to a PHP user).
   // Plain numbers have no embedded currency information, so they are treated as
   // already being in the display currency and must not be converted.
   const converted =
-    typeof amount === "string" && parsed.currency !== currency
-      ? convertAmount(parsed.amount, parsed.currency, currency)
+    typeof amount === "string" && parsed.currency !== targetCurrency
+      ? convertAmount(parsed.amount, parsed.currency, targetCurrency)
       : parsed.amount;
   const localeMap: Record<string, string> = {
     en: "en-US",
@@ -88,17 +78,19 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
   const locale = localeMap[language] ?? "en-US";
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency,
+    currency: targetCurrency,
   }).format(converted);
 }
 
 /**
  * React hook version of formatCurrency that subscribes to currency/language
- * changes so the component re-renders whenever the user updates preferences.
+ * changes so the component re-renders whenever the user updates preferences,
+ * and also re-renders when live exchange rates are refreshed.
  */
 export function useFormatCurrency() {
   useThemeStore((s) => s.currency);
   useThemeStore((s) => s.language);
+  useCurrencyRatesStore((s) => s.fetchedAt);
   return formatCurrency;
 }
 

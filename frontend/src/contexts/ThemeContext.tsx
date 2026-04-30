@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useThemeStore, type ThemeMode, type AccentColor } from "../stores/themeStore";
+import { useCurrencyRatesStore } from "../stores/currencyRatesStore";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -28,6 +29,12 @@ const ALL_THEMES: AccentColor[] = [
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const store = useThemeStore();
   const { mode, accent } = store;
+  const fetchRates = useCurrencyRatesStore((s) => s.fetchRates);
+
+  // Fetch live exchange rates on mount (and whenever the currency changes)
+  useEffect(() => {
+    fetchRates();
+  }, [fetchRates]);
 
   useEffect(() => {
     const root = document.documentElement;
