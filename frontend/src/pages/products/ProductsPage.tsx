@@ -28,12 +28,21 @@ interface ProductImage { id: string; objectName: string; url: string; altText?: 
 interface Product {
   id: string; name: string; description?: string; isActive: boolean; type?: string;
   trackStock?: boolean;
+  currency?: string;
   category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
 
 const DEFAULT_SKU_BASE = "PRD";
 const SKU_PRODUCT_SEGMENT_LENGTH = 12;
 const SKU_VARIANT_SEGMENT_LENGTH = 12;
+
+const CURRENCIES = [
+  { code: "USD", label: "US Dollar (USD)" }, { code: "EUR", label: "Euro (EUR)" },
+  { code: "GBP", label: "British Pound (GBP)" }, { code: "JPY", label: "Japanese Yen (JPY)" },
+  { code: "CAD", label: "Canadian Dollar (CAD)" }, { code: "AUD", label: "Australian Dollar (AUD)" },
+  { code: "CNY", label: "Chinese Yuan (CNY)" }, { code: "INR", label: "Indian Rupee (INR)" },
+  { code: "PHP", label: "Philippine Peso (PHP)" }, { code: "SGD", label: "Singapore Dollar (SGD)" },
+];
 
 function skuSegment(value: string, max = 8): string {
   return value.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, max);
@@ -53,6 +62,7 @@ const productSchema = z.object({
   unitId: z.string().optional(),
   type: z.enum(["physical", "digital", "service", "bundle"]).optional(),
   trackStock: z.boolean().optional(),
+  currency: z.string().length(3).optional(),
 });
 const variantSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -142,7 +152,7 @@ export default function ProductsPage() {
     enabled: !!tid,
   });
 
-  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema), defaultValues: { type: "physical", trackStock: true } });
+  const pForm = useForm<ProductForm>({ resolver: zodResolver(productSchema), defaultValues: { type: "physical", trackStock: true, currency: "USD" } });
   const vForm = useForm<VariantForm>({ resolver: zodResolver(variantSchema) });
 
   const saveProduct = useMutation({
@@ -223,8 +233,9 @@ export default function ProductsPage() {
           unitId: product.unit?.id,
           type: (product.type as "physical" | "digital" | "service" | "bundle") ?? "physical",
           trackStock: product.trackStock ?? true,
+          currency: product.currency ?? "USD",
         }
-      : { type: "physical", trackStock: true }
+      : { type: "physical", trackStock: true, currency: "USD" }
     );
     vForm.reset();
     setProductModal({ open: true, product });
@@ -642,8 +653,8 @@ export default function ProductsPage() {
                                     {v.sku}
                                   </span>
                                 </td>
-                                <td className="py-2.5 font-medium text-ink">{formatCurrency(v.price)}</td>
-                                <td className="py-2.5 text-muted">{formatCurrency(v.costPrice)}</td>
+                                <td className="py-2.5 font-medium text-ink">{formatCurrency(v.price, p.currency)}</td>
+                                <td className="py-2.5 text-muted">{formatCurrency(v.costPrice, p.currency)}</td>
                                 <td className="py-2.5">
                                   <div className="flex items-center gap-1 justify-end">
                                     <Button variant="ghost" size="sm" onClick={() => openVariantModal(p.id, v)}>
@@ -668,9 +679,9 @@ export default function ProductsPage() {
                               <p className="font-medium text-ink text-sm">{v.name}</p>
                               <p className="font-mono text-xs text-muted mt-0.5">{v.sku}</p>
                               <div className="flex items-center gap-3 mt-1">
-                                <span className="text-sm font-medium text-ink">{formatCurrency(v.price)}</span>
+                                <span className="text-sm font-medium text-ink">{formatCurrency(v.price, p.currency)}</span>
                                 {v.costPrice && (
-                                  <span className="text-xs text-muted">Cost: {formatCurrency(v.costPrice)}</span>
+                                  <span className="text-xs text-muted">Cost: {formatCurrency(v.costPrice, p.currency)}</span>
                                 )}
                               </div>
                             </div>
@@ -749,6 +760,9 @@ export default function ProductsPage() {
               <input type="checkbox" {...pForm.register("trackStock")} />
               Track stock for this product
             </label>
+            <Select label="Currency" {...pForm.register("currency")}>
+              {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            </Select>
 
             {/* Images section */}
             <div>
@@ -846,6 +860,9 @@ export default function ProductsPage() {
                   <input type="checkbox" {...pForm.register("trackStock")} />
                   Track stock for this product
                 </label>
+                <Select label="Currency" {...pForm.register("currency")}>
+                  {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </Select>
 
                 {/* Images section */}
                 <div>
