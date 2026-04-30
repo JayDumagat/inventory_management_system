@@ -67,7 +67,14 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
   const { currency: userCurrency, language } = useThemeStore.getState();
   const currency = currencyOverride ?? userCurrency;
   const parsed = parseAmountWithCurrency(amount);
-  const converted = convertAmount(parsed.amount, parsed.currency, currency);
+  // Only convert when the amount carries an explicit currency that differs from
+  // the display currency (e.g. a string like "USD 100" shown to a PHP user).
+  // Plain numbers have no embedded currency information, so they are treated as
+  // already being in the display currency and must not be converted.
+  const converted =
+    typeof amount === "string" && parsed.currency !== currency
+      ? convertAmount(parsed.amount, parsed.currency, currency)
+      : parsed.amount;
   const localeMap: Record<string, string> = {
     en: "en-US",
     es: "es-ES",
