@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useThemeStore } from "../stores/themeStore";
@@ -90,6 +91,20 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
     style: "currency",
     currency,
   }).format(converted);
+}
+
+/**
+ * React hook version of formatCurrency that subscribes to currency/language
+ * changes so the component re-renders whenever the user updates preferences.
+ */
+export function useFormatCurrency() {
+  const currency = useThemeStore((s) => s.currency);
+  const language = useThemeStore((s) => s.language);
+  return useCallback(
+    (amount: number | string, currencyOverride?: string) =>
+      formatCurrency(amount, currencyOverride),
+    [currency, language],
+  );
 }
 
 export function formatDate(date: string | Date, timezoneOverride?: string) {

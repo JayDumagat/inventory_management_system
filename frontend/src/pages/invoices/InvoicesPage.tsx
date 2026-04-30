@@ -9,7 +9,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate } from "../../lib/utils";
 import { Plus, Trash2, Eye, FileText, X, Search, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
@@ -65,6 +65,7 @@ export default function InvoicesPage() {
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const formatCurrency = useFormatCurrency();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);

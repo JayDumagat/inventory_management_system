@@ -19,7 +19,7 @@ import {
   Building2, Palette, CreditCard, Users, Bell, Shield, Zap, TrendingUp, Clock, FileText,
   CheckCircle, Sun, Moon, Monitor, Plus, Pencil, Trash2,
 } from "lucide-react";
-import { cn, formatCurrency } from "../../lib/utils";
+import { cn, useFormatCurrency } from "../../lib/utils";
 import type { AccentColor, ThemeMode } from "../../stores/themeStore";
 import { useToast } from "../../hooks/useToast";
 import type {
@@ -116,6 +116,7 @@ export default function OrganizationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const theme = useTheme();
+  const formatCurrency = useFormatCurrency();
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
 

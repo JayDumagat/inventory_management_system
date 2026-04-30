@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
-import { formatCurrency } from "../../lib/utils";
+import { useFormatCurrency } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users, Tag, Star, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -165,6 +165,7 @@ export default function POSPage() {
   const { currentBranch } = useBranchStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const formatCurrency = useFormatCurrency();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");

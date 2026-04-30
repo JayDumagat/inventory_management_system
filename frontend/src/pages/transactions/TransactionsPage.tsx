@@ -12,7 +12,7 @@ import { Select } from "../../components/ui/Select";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate } from "../../lib/utils";
 import { ArrowLeftRight, Plus, Trash2, TrendingUp, TrendingDown, AlertCircle, Search, Download } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -71,6 +71,7 @@ export default function TransactionsPage() {
   const canManage = ["owner", "admin", "manager"].includes(myRole);
   const canDelete = ["owner", "admin"].includes(myRole);
   const toast = useToast();
+  const formatCurrency = useFormatCurrency();
 
   const [modal, setModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Transaction | null>(null);
