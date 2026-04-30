@@ -5,7 +5,7 @@ import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { SkeletonStatCard, SkeletonCard, Skeleton } from "../../components/ui/Skeleton";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -64,6 +64,7 @@ const SHOW_SPONSORED_CONTENT = false;
 
 export default function DashboardPage() {
   const { currentTenant } = useTenantStore();
+  const formatCurrency = useFormatCurrency();
 
   const { data, isLoading } = useQuery<DashboardStats>({
     queryKey: ["dashboard", currentTenant?.id],

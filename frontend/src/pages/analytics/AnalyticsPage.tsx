@@ -3,7 +3,7 @@ import { api } from "../../api/client";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
-import { formatCurrency } from "../../lib/utils";
+import { useFormatCurrency } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend,
@@ -44,6 +44,7 @@ function toTooltipNumber(value: unknown) {
 
 export default function AnalyticsPage() {
   const { currentTenant } = useTenantStore();
+  const formatCurrency = useFormatCurrency();
   const tid = currentTenant?.id;
 
   const today = new Date();

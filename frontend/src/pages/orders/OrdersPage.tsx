@@ -15,7 +15,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate } from "../../lib/utils";
 import { Plus, Trash2, Eye, RefreshCw, ShoppingCart, GitBranch, AlertTriangle } from "lucide-react";
 
 interface Product { id: string; name: string; variants: { id: string; name: string; sku: string; price: string }[]; }
@@ -59,6 +59,7 @@ export default function OrdersPage() {
   const tid = currentTenant?.id;
   const taxRate = Number((currentTenant as { taxRate?: string } | null)?.taxRate ?? "0");
   const toast = useToast();
+  const formatCurrency = useFormatCurrency();
   const [createModal, setCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
   const [viewOrder, setViewOrder] = useState<Order | null>(null);

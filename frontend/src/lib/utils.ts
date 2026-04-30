@@ -92,6 +92,16 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
   }).format(converted);
 }
 
+/**
+ * React hook version of formatCurrency that subscribes to currency/language
+ * changes so the component re-renders whenever the user updates preferences.
+ */
+export function useFormatCurrency() {
+  useThemeStore((s) => s.currency);
+  useThemeStore((s) => s.language);
+  return formatCurrency;
+}
+
 export function formatDate(date: string | Date, timezoneOverride?: string) {
   const { timezone, dateFormat } = useThemeStore.getState();
   const tz = timezoneOverride ?? timezone;

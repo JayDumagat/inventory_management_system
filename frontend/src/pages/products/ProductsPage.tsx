@@ -13,7 +13,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
-import { formatCurrency, cn } from "../../lib/utils";
+import { useFormatCurrency, cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 import { usePresignedUrl } from "../../hooks/usePresignedUrl";
 import { useSubscription } from "../../hooks/useEntitlements";
@@ -89,6 +89,7 @@ export default function ProductsPage() {
   const qc = useQueryClient();
   const tid = currentTenant?.id;
   const toast = useToast();
+  const formatCurrency = useFormatCurrency();
   const { data: subscriptionData } = useSubscription();
   const planKey = subscriptionData?.subscription.planKey ?? currentTenant?.plan ?? "free";
   const attributeLimit = planKey === "free" ? 3 : -1;

@@ -13,7 +13,7 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { formatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate } from "../../lib/utils";
 import { ShoppingBag, Plus, Eye, Trash2 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
@@ -89,6 +89,7 @@ export default function PurchaseOrdersPage() {
   const tid = currentTenant?.id;
   const myRole = currentTenant?.role || "staff";
   const canManage = ["owner", "admin", "manager"].includes(myRole);
+  const formatCurrency = useFormatCurrency();
 
   const [createModal, setCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
