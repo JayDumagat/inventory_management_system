@@ -1,5 +1,5 @@
 {
-  "id": "cb392769-2327-4664-93a0-34d823df3a49",
+  "id": "d6b4f61a-b978-4396-ab8c-c9f1310438cd",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -298,6 +298,40 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "receipt_template": {
+          "name": "receipt_template",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'compact'"
+        },
+        "receipt_footer_message": {
+          "name": "receipt_footer_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Thank you for your purchase!'"
+        },
+        "receipt_logo_url": {
+          "name": "receipt_logo_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receipt_show_logo": {
+          "name": "receipt_show_logo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tax_rate": {
+          "name": "tax_rate",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
         },
         "plan": {
           "name": "plan",
@@ -761,6 +795,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'physical'"
+        },
+        "track_stock": {
+          "name": "track_stock",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "image_url": {
           "name": "image_url",

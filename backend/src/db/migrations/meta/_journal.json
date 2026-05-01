@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1776608461146,
-      "tag": "0000_peaceful_wolfsbane",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1776764000000,
-      "tag": "0003_receipt_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1776929700000,
-      "tag": "0004_receipt_logo_and_track_stock",
+      "when": 1777434804085,
+      "tag": "0000_fixed_captain_britain",
       "breakpoints": true
     }
   ]
