@@ -77,6 +77,7 @@ export interface Product {
   isActive: boolean;
   type?: string;
   trackStock?: boolean;
+  currency?: string;
   category?: Category;
   unit?: Unit;
   variants: Variant[];

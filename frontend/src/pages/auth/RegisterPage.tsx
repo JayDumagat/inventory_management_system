@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { AuthLayout } from "../../components/ui/AuthLayout";
 import { useState, useEffect, useRef } from "react";
 import { Package } from "lucide-react";
 import { api } from "../../api/client";
@@ -99,57 +100,55 @@ export default function RegisterPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-page flex items-center justify-center p-4">
-      <div className="bg-panel border border-stroke p-8 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-7">
-          <div className="w-10 h-10 bg-primary-600 flex items-center justify-center mb-3">
-            <Package className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-ink">Create account</h1>
-          <p className="text-muted text-sm mt-1">Start managing your inventory today</p>
+    <AuthLayout>
+      <div className="flex flex-col items-center mb-7">
+        <div className="w-10 h-10 bg-primary-600 flex items-center justify-center mb-3">
+          <Package className="w-5 h-5 text-white" />
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {GOOGLE_CLIENT_ID && (
-          <>
-            {oauthLoading ? (
-              <div className="flex items-center justify-center h-10 text-xs text-muted mb-4">Signing up…</div>
-            ) : (
-              <div ref={googleBtnRef} className="w-full mb-4" />
-            )}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-stroke" />
-              <span className="text-xs text-muted">or sign up with email</span>
-              <div className="flex-1 h-px bg-stroke" />
-            </div>
-          </>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="First name" {...rf("firstName")} error={errors.firstName?.message} />
-            <Input label="Last name" {...rf("lastName")} error={errors.lastName?.message} />
-          </div>
-          <Input label="Email" type="email" {...rf("email")} error={errors.email?.message} />
-          <Input label="Password" type="password" {...rf("password")} error={errors.password?.message} />
-          <Input label="Confirm password" type="password" {...rf("confirmPassword")} error={errors.confirmPassword?.message} />
-          <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
-            Create account
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-muted mt-6">
-          Already have an account?{" "}
-          <Link to="/login" className="text-primary-600 font-medium hover:underline">
-            Sign in
-          </Link>
-        </p>
+        <h1 className="text-xl font-bold text-ink">Create account</h1>
+        <p className="text-muted text-sm mt-1">Start managing your inventory today</p>
       </div>
-    </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {GOOGLE_CLIENT_ID && (
+        <>
+          {oauthLoading ? (
+            <div className="flex items-center justify-center h-10 text-xs text-muted mb-4">Signing up…</div>
+          ) : (
+            <div ref={googleBtnRef} className="w-full mb-4" />
+          )}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-stroke" />
+            <span className="text-xs text-muted">or sign up with email</span>
+            <div className="flex-1 h-px bg-stroke" />
+          </div>
+        </>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="First name" {...rf("firstName")} error={errors.firstName?.message} />
+          <Input label="Last name" {...rf("lastName")} error={errors.lastName?.message} />
+        </div>
+        <Input label="Email" type="email" {...rf("email")} error={errors.email?.message} />
+        <Input label="Password" type="password" {...rf("password")} error={errors.password?.message} />
+        <Input label="Confirm password" type="password" {...rf("confirmPassword")} error={errors.confirmPassword?.message} />
+        <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
+          Create account
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted mt-6">
+        Already have an account?{" "}
+        <Link to="/login" className="text-primary-600 font-medium hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

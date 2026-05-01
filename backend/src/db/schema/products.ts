@@ -17,6 +17,7 @@ export const products = pgTable("products", {
   type: productTypeEnum("type").notNull().default("physical"),
   trackStock: boolean("track_stock").notNull().default(true),
   imageUrl: text("image_url"),
+  currency: text("currency").notNull().default("USD"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
