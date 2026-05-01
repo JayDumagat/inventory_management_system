@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useTenantStore } from "../../stores/tenantStore";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
+import { AuthLayout } from "../../components/ui/AuthLayout";
 import { useState, useEffect, useRef } from "react";
 import { Package } from "lucide-react";
 import { api } from "../../api/client";
@@ -92,60 +93,58 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-page flex items-center justify-center p-4">
-      <div className="bg-panel border border-stroke p-8 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-7">
-          <div className="w-10 h-10 bg-primary-600 flex items-center justify-center mb-3">
-            <Package className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-ink">Welcome back</h1>
-          <p className="text-muted text-sm mt-1">Sign in to your account</p>
+    <AuthLayout>
+      <div className="flex flex-col items-center mb-7">
+        <div className="w-10 h-10 bg-primary-600 flex items-center justify-center mb-3">
+          <Package className="w-5 h-5 text-white" />
         </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input label="Email" type="email" {...register("email")} error={errors.email?.message} />
-          <div className="flex flex-col gap-1">
-            <Input label="Password" type="password" {...register("password")} error={errors.password?.message} />
-            <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-xs text-primary-600 hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-          </div>
-          <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
-            Sign in
-          </Button>
-        </form>
-
-        {GOOGLE_CLIENT_ID && (
-          <>
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px bg-stroke" />
-              <span className="text-xs text-muted">or</span>
-              <div className="flex-1 h-px bg-stroke" />
-            </div>
-            {oauthLoading ? (
-              <div className="flex items-center justify-center h-10 text-xs text-muted">Signing in…</div>
-            ) : (
-              <div ref={googleBtnRef} className="w-full" />
-            )}
-          </>
-        )}
-
-        <p className="text-center text-sm text-muted mt-6">
-          Don&apos;t have an account?{" "}
-          <Link to="/register" className="text-primary-600 font-medium hover:underline">
-            Create one
-          </Link>
-        </p>
+        <h1 className="text-xl font-bold text-ink">Welcome back</h1>
+        <p className="text-muted text-sm mt-1">Sign in to your account</p>
       </div>
-    </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <Input label="Email" type="email" {...register("email")} error={errors.email?.message} />
+        <div className="flex flex-col gap-1">
+          <Input label="Password" type="password" {...register("password")} error={errors.password?.message} />
+          <div className="flex justify-end">
+            <Link to="/forgot-password" className="text-xs text-primary-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+        </div>
+        <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
+          Sign in
+        </Button>
+      </form>
+
+      {GOOGLE_CLIENT_ID && (
+        <>
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-stroke" />
+            <span className="text-xs text-muted">or</span>
+            <div className="flex-1 h-px bg-stroke" />
+          </div>
+          {oauthLoading ? (
+            <div className="flex items-center justify-center h-10 text-xs text-muted">Signing in…</div>
+          ) : (
+            <div ref={googleBtnRef} className="w-full" />
+          )}
+        </>
+      )}
+
+      <p className="text-center text-sm text-muted mt-6">
+        Don&apos;t have an account?{" "}
+        <Link to="/register" className="text-primary-600 font-medium hover:underline">
+          Create one
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }
 

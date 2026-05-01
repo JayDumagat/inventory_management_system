@@ -76,10 +76,15 @@ export function formatCurrency(amount: number | string, currencyOverride?: strin
     ar: "ar-SA",
   };
   const locale = localeMap[language] ?? "en-US";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: targetCurrency,
-  }).format(converted);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: targetCurrency,
+    }).format(converted);
+  } catch {
+    // Fallback: format as plain number with the currency code appended
+    return `${converted.toFixed(2)} ${targetCurrency}`;
+  }
 }
 
 /**
