@@ -179,7 +179,7 @@ function PhoneInput({ dialCode, onDialCodeChange, phone, onPhoneChange, error }:
           className="bg-panel text-ink text-sm px-2 py-2 border-r border-stroke outline-none shrink-0 w-28"
         >
           {PHONE_COUNTRIES.map((c) => (
-            <option key={`${c.code}-${c.dialCode}`} value={c.dialCode}>
+            <option key={c.code} value={c.dialCode}>
               {c.dialCode} {c.code}
             </option>
           ))}
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
 
   // ── Step 2: Contact ──
   const [repName, setRepName] = useState(
-    user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() : ""
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ")
   );
   const [repEmail, setRepEmail] = useState(user?.email ?? "");
   const [repPhone, setRepPhone] = useState("");

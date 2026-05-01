@@ -8,7 +8,7 @@ export const productSchema = z.object({
   imageUrl: z.string().url("Invalid image URL").optional().nullable(),
   type: z.enum(["physical", "digital", "service", "bundle"], { message: "Invalid product type" }).optional().default("physical"),
   trackStock: z.boolean().optional(),
-  currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").toUpperCase().optional().default("USD"),
+  currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").transform((v) => v.toUpperCase()).optional().default("USD"),
 });
 
 export const variantSchema = z.object({
