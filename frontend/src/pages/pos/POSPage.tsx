@@ -1073,7 +1073,7 @@ export default function POSPage() {
                       addToCart(variant.id);
                       setVariantPickerProduct(null);
                     }}
-                    className={`flex items-center justify-between px-4 py-3 border transition-colors text-left ${isOutOfStock ? "border-stroke bg-panel opacity-50 cursor-not-allowed" : "border-stroke bg-panel hover:bg-hover hover:border-primary-400"}`}
+                    className={`flex items-center justify-between px-4 py-3 border border-stroke bg-panel transition-colors text-left ${isOutOfStock ? "opacity-50 cursor-not-allowed" : "hover:bg-hover hover:border-primary-400"}`}
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink">{variant.name}</p>

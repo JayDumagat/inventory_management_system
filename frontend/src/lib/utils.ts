@@ -53,8 +53,9 @@ function convertAmount(amount: number, fromCurrency: string, toCurrency: string)
   return currency(amount).multiply(rate).value;
 }
 
-export function formatCurrency(amount: number | string, _currencyOverride?: string) {
-  // Currency formatting via Intl.NumberFormat is temporarily disabled.
+export function formatCurrency(amount: number | string, currencyOverride?: string) {
+  // TODO: Re-enable multi-currency formatting once currency conversion is working as intended.
+  // The per-product currency override and live exchange rate conversion is disabled for now.
   // Amounts are displayed in PHP (Philippine Peso) by default.
   // const { currency: userCurrency, language } = useThemeStore.getState();
   // const targetCurrency = currencyOverride ?? userCurrency;
@@ -82,6 +83,7 @@ export function formatCurrency(amount: number | string, _currencyOverride?: stri
   // } catch {
   //   return `${converted.toFixed(2)} ${targetCurrency}`;
   // }
+  void currencyOverride;
   const parsed = parseAmountWithCurrency(amount);
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(parsed.amount);
 }
