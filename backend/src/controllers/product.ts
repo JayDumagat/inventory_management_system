@@ -72,7 +72,7 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
   try {
     const list = await db.query.products.findMany({
       where: eq(products.tenantId, req.tenantContext!.tenantId),
-      with: { variants: true, category: true, images: true },
+      with: { variants: { with: { inventory: true } }, category: true, images: true },
     });
     const result = await Promise.all(list.map(async (product) => ({
       ...product,

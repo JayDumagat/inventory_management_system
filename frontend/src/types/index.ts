@@ -41,6 +41,7 @@ export interface Variant {
   price: string;
   costPrice: string;
   isActive: boolean;
+  inventory?: { branchId: string; quantity: number; reservedQuantity: number }[];
 }
 
 export interface Category {
