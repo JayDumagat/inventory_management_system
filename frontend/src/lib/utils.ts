@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import currency from "currency.js";
 import { useThemeStore } from "../stores/themeStore";
 import { useCurrencyRatesStore } from "../stores/currencyRatesStore";
 
