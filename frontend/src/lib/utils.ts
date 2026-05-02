@@ -46,12 +46,6 @@ function parseAmountWithCurrency(value: number | string): { amount: number; curr
   return { amount: Number.isFinite(numeric) ? numeric : 0, currency: detected };
 }
 
-function convertAmount(amount: number, fromCurrency: string, toCurrency: string): number {
-  const { getRate } = useCurrencyRatesStore.getState();
-  const rate = getRate(fromCurrency, toCurrency);
-  // Use currency.js for precise decimal arithmetic during conversion
-  return currency(amount).multiply(rate).value;
-}
 
 export function formatCurrency(amount: number | string, currencyOverride?: string) {
   // TODO: Re-enable multi-currency formatting once currency conversion is working as intended.
