@@ -760,9 +760,6 @@ export default function ProductsPage() {
               <input type="checkbox" {...pForm.register("trackStock")} />
               Track stock for this product
             </label>
-            <Select label="Currency" {...pForm.register("currency")}>
-              {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-            </Select>
 
             {/* Images section */}
             <div>
@@ -860,9 +857,6 @@ export default function ProductsPage() {
                   <input type="checkbox" {...pForm.register("trackStock")} />
                   Track stock for this product
                 </label>
-                <Select label="Currency" {...pForm.register("currency")}>
-                  {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                </Select>
 
                 {/* Images section */}
                 <div>
