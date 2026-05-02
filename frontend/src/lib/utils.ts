@@ -53,38 +53,37 @@ function convertAmount(amount: number, fromCurrency: string, toCurrency: string)
   return currency(amount).multiply(rate).value;
 }
 
-export function formatCurrency(amount: number | string, currencyOverride?: string) {
-  const { currency: userCurrency, language } = useThemeStore.getState();
-  const targetCurrency = currencyOverride ?? userCurrency;
+export function formatCurrency(amount: number | string, _currencyOverride?: string) {
+  // Currency formatting via Intl.NumberFormat is temporarily disabled.
+  // Amounts are displayed in PHP (Philippine Peso) by default.
+  // const { currency: userCurrency, language } = useThemeStore.getState();
+  // const targetCurrency = currencyOverride ?? userCurrency;
+  // const parsed = parseAmountWithCurrency(amount);
+  // const converted =
+  //   typeof amount === "string" && parsed.currency !== targetCurrency
+  //     ? convertAmount(parsed.amount, parsed.currency, targetCurrency)
+  //     : parsed.amount;
+  // const localeMap: Record<string, string> = {
+  //   en: "en-US",
+  //   es: "es-ES",
+  //   fr: "fr-FR",
+  //   de: "de-DE",
+  //   ja: "ja-JP",
+  //   zh: "zh-CN",
+  //   pt: "pt-BR",
+  //   ar: "ar-SA",
+  // };
+  // const locale = localeMap[language] ?? "en-US";
+  // try {
+  //   return new Intl.NumberFormat(locale, {
+  //     style: "currency",
+  //     currency: targetCurrency,
+  //   }).format(converted);
+  // } catch {
+  //   return `${converted.toFixed(2)} ${targetCurrency}`;
+  // }
   const parsed = parseAmountWithCurrency(amount);
-  // Only convert when the amount carries an explicit currency that differs from
-  // the display currency (e.g. a string like "USD 100" shown to a PHP user).
-  // Plain numbers have no embedded currency information, so they are treated as
-  // already being in the display currency and must not be converted.
-  const converted =
-    typeof amount === "string" && parsed.currency !== targetCurrency
-      ? convertAmount(parsed.amount, parsed.currency, targetCurrency)
-      : parsed.amount;
-  const localeMap: Record<string, string> = {
-    en: "en-US",
-    es: "es-ES",
-    fr: "fr-FR",
-    de: "de-DE",
-    ja: "ja-JP",
-    zh: "zh-CN",
-    pt: "pt-BR",
-    ar: "ar-SA",
-  };
-  const locale = localeMap[language] ?? "en-US";
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: targetCurrency,
-    }).format(converted);
-  } catch {
-    // Fallback: format as plain number with the currency code appended
-    return `${converted.toFixed(2)} ${targetCurrency}`;
-  }
+  return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(parsed.amount);
 }
 
 /**

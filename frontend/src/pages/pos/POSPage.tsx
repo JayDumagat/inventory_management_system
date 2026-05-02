@@ -1062,22 +1062,28 @@ export default function POSPage() {
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted">Select a variant to add to cart:</p>
             <div className="grid grid-cols-1 gap-2">
-              {variantPickerProduct.variants.map((variant) => (
-                <button
-                  key={variant.id}
-                  onClick={() => {
-                    addToCart(variant.id);
-                    setVariantPickerProduct(null);
-                  }}
-                  className="flex items-center justify-between px-4 py-3 border border-stroke bg-panel hover:bg-hover hover:border-primary-400 transition-colors text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink">{variant.name}</p>
-                    <p className="text-xs text-muted font-mono">{variant.sku}</p>
-                  </div>
-                  <p className="text-sm font-bold text-primary-600 flex-shrink-0 ml-3">{formatCurrency(variant.price)}</p>
-                </button>
-              ))}
+              {variantPickerProduct.variants.map((variant) => {
+                const stockForBranch = variant.inventory?.find((inv) => inv.branchId === currentBranch?.id)?.quantity ?? 0;
+                const isOutOfStock = variantPickerProduct.trackStock && stockForBranch <= 0;
+                return (
+                  <button
+                    key={variant.id}
+                    disabled={isOutOfStock}
+                    onClick={() => {
+                      addToCart(variant.id);
+                      setVariantPickerProduct(null);
+                    }}
+                    className={`flex items-center justify-between px-4 py-3 border transition-colors text-left ${isOutOfStock ? "border-stroke bg-panel opacity-50 cursor-not-allowed" : "border-stroke bg-panel hover:bg-hover hover:border-primary-400"}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink">{variant.name}</p>
+                      <p className="text-xs text-muted font-mono">{variant.sku}</p>
+                      {isOutOfStock && <p className="text-xs text-red-500 mt-0.5">Out of stock</p>}
+                    </div>
+                    <p className="text-sm font-bold text-primary-600 flex-shrink-0 ml-3">{formatCurrency(variant.price)}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </Modal>
