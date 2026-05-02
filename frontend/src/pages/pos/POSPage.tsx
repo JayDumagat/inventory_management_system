@@ -21,6 +21,7 @@ interface ProductVariant {
   sku: string;
   barcode?: string | null;
   price: string;
+  inventory?: { branchId: string; quantity: number; reservedQuantity: number }[];
 }
 
 interface Product {
@@ -28,6 +29,7 @@ interface Product {
   name: string;
   images?: ProductImage[];
   variants: ProductVariant[];
+  trackStock?: boolean;
 }
 
 interface CartItem {

@@ -36,13 +36,6 @@ const DEFAULT_SKU_BASE = "PRD";
 const SKU_PRODUCT_SEGMENT_LENGTH = 12;
 const SKU_VARIANT_SEGMENT_LENGTH = 12;
 
-const CURRENCIES = [
-  { code: "USD", label: "US Dollar (USD)" }, { code: "EUR", label: "Euro (EUR)" },
-  { code: "GBP", label: "British Pound (GBP)" }, { code: "JPY", label: "Japanese Yen (JPY)" },
-  { code: "CAD", label: "Canadian Dollar (CAD)" }, { code: "AUD", label: "Australian Dollar (AUD)" },
-  { code: "CNY", label: "Chinese Yuan (CNY)" }, { code: "INR", label: "Indian Rupee (INR)" },
-  { code: "PHP", label: "Philippine Peso (PHP)" }, { code: "SGD", label: "Singapore Dollar (SGD)" },
-];
 
 function skuSegment(value: string, max = 8): string {
   return value.toUpperCase().replace(/[^A-Z0-9]+/g, "").slice(0, max);
