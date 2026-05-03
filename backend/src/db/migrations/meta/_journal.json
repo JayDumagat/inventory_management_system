@@ -29,6 +29,13 @@
       "when": 1746000000000,
       "tag": "0005_product_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746500000000,
+      "tag": "0006_ph_compliance",
+      "breakpoints": true
     }
   ]
 }

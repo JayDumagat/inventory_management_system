@@ -61,6 +61,10 @@ interface ReceiptData {
   footerMessage?: string;
   logoUrl?: string;
   showLogo?: boolean;
+  // BIR compliance fields
+  tinNumber?: string;
+  isVatRegistered?: boolean;
+  businessAddress?: string;
 }
 
 interface CustomerResult {
@@ -109,7 +113,34 @@ function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
     </tr>`
   ).join("");
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt ${receipt.orderNumber}</title>
+  // BIR-compliant VAT breakdown when business is VAT-registered
+  const vatableAmount = receipt.isVatRegistered && receipt.taxAmount > 0
+    ? Number(receipt.subtotal).toFixed(2)
+    : null;
+  const vatAmount = receipt.isVatRegistered && receipt.taxAmount > 0
+    ? Number(receipt.taxAmount).toFixed(2)
+    : null;
+
+  const summaryRows = `
+    <tr><td>Subtotal</td><td style="text-align:right">${Number(receipt.subtotal).toFixed(2)}</td></tr>
+    ${receipt.isVatRegistered && vatableAmount !== null
+      ? `<tr><td>VATable Sales</td><td style="text-align:right">${vatableAmount}</td></tr>
+         <tr><td>VAT (12%)</td><td style="text-align:right">+${vatAmount}</td></tr>`
+      : receipt.taxAmount > 0
+        ? `<tr><td>Tax</td><td style="text-align:right">+${Number(receipt.taxAmount).toFixed(2)}</td></tr>`
+        : ""}
+    ${receipt.discount > 0 ? `<tr><td>Discount</td><td style="text-align:right">-${Number(receipt.discount).toFixed(2)}</td></tr>` : ""}
+    ${receipt.loyaltyDiscount > 0 ? `<tr><td>Loyalty Discount</td><td style="text-align:right">-${Number(receipt.loyaltyDiscount).toFixed(2)}</td></tr>` : ""}
+    <tr class="total-row"><td>TOTAL AMOUNT DUE</td><td style="text-align:right">${Number(receipt.total).toFixed(2)}</td></tr>
+    ${receipt.paymentMethod === "Cash" ? `
+      <tr><td>Cash Tendered</td><td style="text-align:right">${Number(receipt.paid).toFixed(2)}</td></tr>
+      <tr><td>Change</td><td style="text-align:right">${Number(receipt.change).toFixed(2)}</td></tr>
+    ` : ""}
+  `;
+
+  const receiptTypeHeading = receipt.isVatRegistered ? "OFFICIAL RECEIPT" : "SALES RECEIPT";
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt ${escapeHtml(receipt.orderNumber)}</title>
 <style>
   @media print { @page { margin: 0; size: 80mm auto; } body { margin: 4mm; } }
   body { font-family: 'Courier New', monospace; font-size: 12px; max-width: 300px; margin: 0 auto; color: #000; }
@@ -118,32 +149,31 @@ function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   .divider { border-top: 1px dashed #000; margin: 6px 0; }
   table { width: 100%; border-collapse: collapse; }
   .total-row { font-weight: bold; font-size: 14px; }
+  .vat-note { font-size: 9px; color: #555; }
 </style></head><body>
 ${logo ? `<div class="center" style="margin-bottom:6px"><img src="${logo}" alt="Receipt logo" style="max-height:52px;max-width:220px;object-fit:contain;" /></div>` : ""}
-<div class="center bold" style="font-size:16px;margin-bottom:4px">${escapeHtml(tenantName)}</div>
+<div class="center bold" style="font-size:16px;margin-bottom:2px">${escapeHtml(tenantName)}</div>
+${receipt.businessAddress ? `<div class="center" style="font-size:10px">${escapeHtml(receipt.businessAddress)}</div>` : ""}
+${receipt.tinNumber ? `<div class="center" style="font-size:10px">TIN: ${escapeHtml(receipt.tinNumber)}</div>` : ""}
+<div class="center bold" style="font-size:11px;margin-top:4px;letter-spacing:1px">${escapeHtml(receiptTypeHeading)}</div>
+${!receipt.isVatRegistered ? `<div class="center vat-note">Non-VAT Registered</div>` : ""}
 <div class="divider"></div>
-<div><strong>Order:</strong> ${escapeHtml(receipt.orderNumber)}</div>
+<div><strong>OR #:</strong> ${escapeHtml(receipt.orderNumber)}</div>
 <div><strong>Date:</strong> ${escapeHtml(receipt.date)}</div>
 ${receipt.customerName ? `<div><strong>Customer:</strong> ${escapeHtml(receipt.customerName)}</div>` : ""}
 <div><strong>Payment:</strong> ${escapeHtml(receipt.paymentMethod)}</div>
+${receipt.promotionCode ? `<div><strong>Promo:</strong> ${escapeHtml(receipt.promotionCode)}</div>` : ""}
 <div class="divider"></div>
 <table>
   <tr><th style="text-align:left">Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Total</th></tr>
   ${itemsHTML}
 </table>
 <div class="divider"></div>
-<table>
-  <tr><td>Subtotal</td><td style="text-align:right">${Number(receipt.subtotal).toFixed(2)}</td></tr>
-  ${receipt.taxAmount > 0 ? `<tr><td>Tax</td><td style="text-align:right">+${Number(receipt.taxAmount).toFixed(2)}</td></tr>` : ""}
-  ${receipt.discount > 0 ? `<tr><td>Discount</td><td style="text-align:right">-${Number(receipt.discount).toFixed(2)}</td></tr>` : ""}
-  <tr class="total-row"><td>TOTAL</td><td style="text-align:right">${Number(receipt.total).toFixed(2)}</td></tr>
-  ${receipt.paymentMethod === "Cash" ? `
-    <tr><td>Paid</td><td style="text-align:right">${Number(receipt.paid).toFixed(2)}</td></tr>
-    <tr><td>Change</td><td style="text-align:right">${Number(receipt.change).toFixed(2)}</td></tr>
-  ` : ""}
-</table>
+<table>${summaryRows}</table>
+${receipt.loyaltyPointsEarned ? `<div class="divider"></div><div style="font-size:11px">⭐ +${receipt.loyaltyPointsEarned} loyalty pts earned${receipt.loyaltyPointsRedeemed ? ` · ${receipt.loyaltyPointsRedeemed} redeemed` : ""}</div>` : ""}
 <div class="divider"></div>
 <div class="center" style="margin-top:8px">${escapeHtml(receipt.footerMessage || "Thank you for your purchase!")}</div>
+${receipt.isVatRegistered ? `<div class="center vat-note" style="margin-top:6px">This receipt is valid as an Official Receipt for VAT purposes.</div>` : ""}
 </body></html>`;
 }
 
@@ -288,6 +318,9 @@ export default function POSPage() {
         footerMessage: receiptFooter.trim() || "Thank you for your purchase!",
         logoUrl: receiptLogoUrl || undefined,
         showLogo: receiptShowLogo,
+        tinNumber: (currentTenant as { tinNumber?: string } | null)?.tinNumber || undefined,
+        isVatRegistered: Boolean((currentTenant as { isVatRegistered?: boolean } | null)?.isVatRegistered),
+        businessAddress: (currentTenant as { businessAddress?: string } | null)?.businessAddress || undefined,
       });
 
       // If there's a customer name but no selected customer, auto-create the customer

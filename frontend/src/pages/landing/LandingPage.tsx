@@ -228,6 +228,8 @@ export default function LandingPage() {
             <Link to="/pricing" className="hover:text-gray-600">Pricing</Link>
             <Link to="/login" className="hover:text-gray-600">Sign in</Link>
             <Link to="/register" className="hover:text-gray-600">Register</Link>
+            <Link to="/privacy-policy" className="hover:text-gray-600">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-gray-600">Terms</Link>
           </div>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} Inventra. All rights reserved.</p>
         </div>
