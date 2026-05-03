@@ -96,6 +96,8 @@ export async function updateCustomer(req: Request, res: Response): Promise<void>
     const updateData: Record<string, unknown> = { ...body, updatedAt: new Date() };
     if (body.dataConsentGiven === true) {
       updateData.dataConsentDate = new Date();
+    } else if (body.dataConsentGiven === false) {
+      updateData.dataConsentDate = null;
     }
     const [customer] = await db.update(customers)
       .set(updateData)

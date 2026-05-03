@@ -113,7 +113,10 @@ function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
     </tr>`
   ).join("");
 
-  // BIR-compliant VAT breakdown when business is VAT-registered
+  // BIR-compliant VAT breakdown when business is VAT-registered.
+  // taxAmount is assumed to equal the tenant's configured tax rate applied to subtotal
+  // (computed as: subtotal * taxRate / 100). For 12% VAT (Philippine standard rate),
+  // VATable Sales = subtotal and VAT = taxAmount.
   const vatableAmount = receipt.isVatRegistered && receipt.taxAmount > 0
     ? Number(receipt.subtotal).toFixed(2)
     : null;
