@@ -338,7 +338,7 @@ export default function OrganizationPage() {
       const complianceKeys = ["tinNumber","secRegNumber","dtiRegNumber","businessPermitNumber","isVatRegistered","businessType","businessAddress","businessCity","businessCountry"] as const;
       for (const key of complianceKeys) {
         if (Object.prototype.hasOwnProperty.call(updated, key)) {
-          (nextTenant as Record<string, unknown>)[key] = updated[key];
+          (nextTenant as unknown as Record<string, unknown>)[key] = updated[key];
         }
       }
       setCurrentTenant(nextTenant);
