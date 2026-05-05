@@ -7,7 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
-import { useFormatCurrency } from "../../lib/utils";
+import { useFormatCurrency, escapeHtml } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users, Tag, Star, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -92,15 +92,6 @@ function getPrimaryProductImageObjectName(product: Product): string | undefined 
 }
 
 const PAYMENT_METHODS = ["Cash", "Card", "Mobile Pay", "Other"];
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 function generateReceiptHTML(receipt: ReceiptData, tenantName: string): string {
   const isDetailed = receipt.template === "detailed";
@@ -321,9 +312,9 @@ export default function POSPage() {
         footerMessage: receiptFooter.trim() || "Thank you for your purchase!",
         logoUrl: receiptLogoUrl || undefined,
         showLogo: receiptShowLogo,
-        tinNumber: (currentTenant as { tinNumber?: string } | null)?.tinNumber || undefined,
-        isVatRegistered: Boolean((currentTenant as { isVatRegistered?: boolean } | null)?.isVatRegistered),
-        businessAddress: (currentTenant as { businessAddress?: string } | null)?.businessAddress || undefined,
+        tinNumber: currentTenant?.tinNumber || undefined,
+        isVatRegistered: Boolean(currentTenant?.isVatRegistered),
+        businessAddress: currentTenant?.businessAddress || undefined,
       });
 
       // If there's a customer name but no selected customer, auto-create the customer

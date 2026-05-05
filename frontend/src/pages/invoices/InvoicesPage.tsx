@@ -9,7 +9,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { useFormatCurrency, formatDate } from "../../lib/utils";
+import { useFormatCurrency, formatDate, escapeHtml } from "../../lib/utils";
 import { Plus, Trash2, Eye, FileText, X, Search, AlertCircle, Printer } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
@@ -163,19 +163,17 @@ export default function InvoicesPage() {
   }
 
   function printInvoice(inv: Invoice) {
-    const escHtml = (s: string | null | undefined) =>
-      (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const heading = isVatRegistered ? "OFFICIAL RECEIPT / INVOICE" : "SALES INVOICE";
     const tenantTin = currentTenant?.tinNumber ? `TIN: ${currentTenant.tinNumber}` : "";
     const tenantAddr = [currentTenant?.businessAddress, currentTenant?.businessCity, currentTenant?.businessCountry].filter(Boolean).join(", ");
     const itemRows = inv.items.map((item) => `
       <tr>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee">${escHtml(item.description)}</td>
+        <td style="padding:4px 6px;border-bottom:1px solid #eee">${escapeHtml(item.description)}</td>
         <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${item.quantity}</td>
         <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${Number(item.unitPrice).toFixed(2)}</td>
         <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${Number(item.totalPrice).toFixed(2)}</td>
       </tr>`).join("");
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(inv.invoiceNumber)}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(inv.invoiceNumber)}</title>
 <style>
   @media print { @page { margin: 15mm; } }
   body { font-family: Arial, sans-serif; font-size: 12px; color: #000; max-width: 700px; margin: 0 auto; padding: 20px; }
@@ -187,18 +185,18 @@ export default function InvoicesPage() {
   .total-row { font-weight: bold; font-size: 14px; }
   .footer { margin-top: 20px; font-size: 10px; color: #777; text-align: center; }
 </style></head><body>
-<h1>${escHtml(currentTenant?.name ?? "")}</h1>
-<div class="subtitle">${escHtml(tenantAddr)}${tenantTin ? ` | ${tenantTin}` : ""}</div>
+<h1>${escapeHtml(currentTenant?.name ?? "")}</h1>
+<div class="subtitle">${escapeHtml(tenantAddr)}${tenantTin ? ` | ${tenantTin}` : ""}</div>
 <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:12px;text-transform:uppercase">${heading}</div>
 <div class="meta">
-  <div><strong>Invoice #:</strong> ${escHtml(inv.invoiceNumber)}<br>
+  <div><strong>Invoice #:</strong> ${escapeHtml(inv.invoiceNumber)}<br>
     <strong>Date:</strong> ${formatDate(inv.createdAt)}<br>
     ${inv.dueDate ? `<strong>Due:</strong> ${formatDate(inv.dueDate)}` : ""}
   </div>
   <div style="text-align:right">
-    ${escHtml(inv.customerName ?? "")}<br>
-    ${escHtml(inv.customerEmail ?? "")}<br>
-    ${escHtml(inv.customerAddress ?? "")}
+    ${escapeHtml(inv.customerName ?? "")}<br>
+    ${escapeHtml(inv.customerEmail ?? "")}<br>
+    ${escapeHtml(inv.customerAddress ?? "")}
   </div>
 </div>
 <table>
