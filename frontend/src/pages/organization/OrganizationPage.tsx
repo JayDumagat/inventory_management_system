@@ -135,6 +135,21 @@ export default function OrganizationPage() {
   );
   const [receiptLogoUrl, setReceiptLogoUrl] = useState((currentTenant as { receiptLogoUrl?: string } | null)?.receiptLogoUrl || "");
   const [receiptShowLogo, setReceiptShowLogo] = useState(Boolean((currentTenant as { receiptShowLogo?: boolean } | null)?.receiptShowLogo));
+  // Philippine regulatory / compliance fields
+  const ct = currentTenant as {
+    tinNumber?: string; secRegNumber?: string; dtiRegNumber?: string;
+    businessPermitNumber?: string; isVatRegistered?: boolean;
+    businessType?: string; businessAddress?: string; businessCity?: string; businessCountry?: string;
+  } | null;
+  const [tinNumber, setTinNumber] = useState(ct?.tinNumber || "");
+  const [secRegNumber, setSecRegNumber] = useState(ct?.secRegNumber || "");
+  const [dtiRegNumber, setDtiRegNumber] = useState(ct?.dtiRegNumber || "");
+  const [businessPermitNumber, setBusinessPermitNumber] = useState(ct?.businessPermitNumber || "");
+  const [isVatRegistered, setIsVatRegistered] = useState(Boolean(ct?.isVatRegistered));
+  const [businessType, setBusinessType] = useState(ct?.businessType || "sole_proprietorship");
+  const [businessAddress, setBusinessAddress] = useState(ct?.businessAddress || "");
+  const [businessCity, setBusinessCity] = useState(ct?.businessCity || "");
+  const [businessCountry, setBusinessCountry] = useState(ct?.businessCountry || "PH");
   const [savingOrg, setSavingOrg] = useState(false);
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
@@ -274,6 +289,22 @@ export default function OrganizationPage() {
         if (receiptLogoUrl !== currentReceiptLogoUrl) payload.receiptLogoUrl = receiptLogoUrl || undefined;
         if (receiptShowLogo !== currentReceiptShowLogo) payload.receiptShowLogo = receiptShowLogo;
       }
+      // Philippine regulatory compliance fields (available to all plans)
+      const prevCt = currentTenant as {
+        tinNumber?: string; secRegNumber?: string; dtiRegNumber?: string;
+        businessPermitNumber?: string; isVatRegistered?: boolean;
+        businessType?: string; businessAddress?: string; businessCity?: string; businessCountry?: string;
+      };
+      if (tinNumber !== (prevCt.tinNumber || "")) payload.tinNumber = tinNumber || null;
+      if (secRegNumber !== (prevCt.secRegNumber || "")) payload.secRegNumber = secRegNumber || null;
+      if (dtiRegNumber !== (prevCt.dtiRegNumber || "")) payload.dtiRegNumber = dtiRegNumber || null;
+      if (businessPermitNumber !== (prevCt.businessPermitNumber || "")) payload.businessPermitNumber = businessPermitNumber || null;
+      if (isVatRegistered !== Boolean(prevCt.isVatRegistered)) payload.isVatRegistered = isVatRegistered;
+      if (businessType !== (prevCt.businessType || "sole_proprietorship")) payload.businessType = businessType;
+      if (businessAddress !== (prevCt.businessAddress || "")) payload.businessAddress = businessAddress || null;
+      if (businessCity !== (prevCt.businessCity || "")) payload.businessCity = businessCity || null;
+      if (businessCountry !== (prevCt.businessCountry || "PH")) payload.businessCountry = businessCountry || "PH";
+
       if (Object.keys(payload).length === 0) {
         setOrgSuccess(true);
         setTimeout(() => setOrgSuccess(false), 3000);
@@ -302,6 +333,13 @@ export default function OrganizationPage() {
       }
       if (Object.prototype.hasOwnProperty.call(updated, "receiptShowLogo")) {
         (nextTenant as { receiptShowLogo?: boolean }).receiptShowLogo = Boolean(updated.receiptShowLogo);
+      }
+      // Sync compliance fields to store
+      const complianceKeys = ["tinNumber","secRegNumber","dtiRegNumber","businessPermitNumber","isVatRegistered","businessType","businessAddress","businessCity","businessCountry"] as const;
+      for (const key of complianceKeys) {
+        if (Object.prototype.hasOwnProperty.call(updated, key)) {
+          (nextTenant as unknown as Record<string, unknown>)[key] = updated[key];
+        }
       }
       setCurrentTenant(nextTenant);
       qc.invalidateQueries({ queryKey: ["tenants"] });
@@ -419,6 +457,140 @@ export default function OrganizationPage() {
                 </div>
               )}
             </div>
+
+            {/* Philippine Regulatory Compliance */}
+            <div className="border-t border-stroke pt-4 mt-2">
+              <p className="text-xs font-semibold text-ink mb-3 uppercase tracking-wide flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-muted" />
+                Business &amp; Regulatory Information
+              </p>
+              <p className="text-xs text-muted mb-3">
+                Required for BIR, SEC/DTI, and NPC compliance. These details appear on Official Receipts.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">Business Type</label>
+                  <select
+                    value={businessType}
+                    onChange={(e) => setBusinessType(e.target.value)}
+                    className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                  >
+                    <option value="sole_proprietorship">Sole Proprietorship (DTI)</option>
+                    <option value="partnership">Partnership (SEC)</option>
+                    <option value="corporation">Corporation (SEC)</option>
+                    <option value="opc">One Person Corporation (SEC)</option>
+                    <option value="cooperative">Cooperative (CDA)</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">TIN Number (BIR)</label>
+                  <input
+                    type="text"
+                    placeholder="000-000-000-000"
+                    value={tinNumber}
+                    onChange={(e) => setTinNumber(e.target.value)}
+                    maxLength={20}
+                    className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                {(businessType === "corporation" || businessType === "partnership" || businessType === "opc") && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-muted">SEC Registration No.</label>
+                    <input
+                      type="text"
+                      placeholder="CS2024-000000"
+                      value={secRegNumber}
+                      onChange={(e) => setSecRegNumber(e.target.value)}
+                      maxLength={50}
+                      className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                    />
+                  </div>
+                )}
+                {businessType === "sole_proprietorship" && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-muted">DTI Registration No.</label>
+                    <input
+                      type="text"
+                      placeholder="000000"
+                      value={dtiRegNumber}
+                      onChange={(e) => setDtiRegNumber(e.target.value)}
+                      maxLength={50}
+                      className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">Business Permit / Mayor's Permit No.</label>
+                  <input
+                    type="text"
+                    placeholder="BP-2024-00000"
+                    value={businessPermitNumber}
+                    onChange={(e) => setBusinessPermitNumber(e.target.value)}
+                    maxLength={50}
+                    className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <input
+                  id="vat-registered"
+                  type="checkbox"
+                  checked={isVatRegistered}
+                  onChange={(e) => setIsVatRegistered(e.target.checked)}
+                  className="w-4 h-4 accent-primary-600"
+                />
+                <label htmlFor="vat-registered" className="text-sm text-ink cursor-pointer">
+                  VAT Registered (12% VAT — for BIR VAT-registered taxpayers)
+                </label>
+              </div>
+              {isVatRegistered && (
+                <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 mt-2">
+                  Receipts will show "OFFICIAL RECEIPT" with a VAT breakdown (VATable Sales + 12% VAT).
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                <div className="flex flex-col gap-1 sm:col-span-2">
+                  <label className="text-xs font-medium text-muted">Registered Business Address</label>
+                  <input
+                    type="text"
+                    placeholder="123 Main Street, Barangay..."
+                    value={businessAddress}
+                    onChange={(e) => setBusinessAddress(e.target.value)}
+                    maxLength={500}
+                    className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted">City / Municipality</label>
+                  <input
+                    type="text"
+                    placeholder="Manila"
+                    value={businessCity}
+                    onChange={(e) => setBusinessCity(e.target.value)}
+                    maxLength={100}
+                    className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-1 max-w-xs">
+                <label className="text-xs font-medium text-muted">Country</label>
+                <select
+                  value={businessCountry}
+                  onChange={(e) => setBusinessCountry(e.target.value)}
+                  className="px-3 py-2 border border-stroke bg-panel text-ink text-sm focus:outline-none focus:border-primary-500"
+                >
+                  <option value="PH">Philippines</option>
+                  <option value="US">United States</option>
+                  <option value="SG">Singapore</option>
+                  <option value="MY">Malaysia</option>
+                  <option value="AU">Australia</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="CA">Canada</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+            </div>
+
             <div className="flex justify-end">
               <Button onClick={handleSaveOrg} loading={savingOrg}>Save organization</Button>
             </div>

@@ -27,6 +27,7 @@ interface Customer {
   createdAt: string;
   ordersCount?: number;
   totalSpent?: string;
+  dataConsentGiven?: boolean;
 }
 
 const schema = z.object({
@@ -37,6 +38,8 @@ const schema = z.object({
   city: z.string().optional(),
   country: z.string().optional(),
   notes: z.string().optional(),
+  // NPC / Data Privacy Act of 2012 (RA 10173)
+  dataConsentGiven: z.boolean().optional(),
 });
 
 type CustomerForm = z.infer<typeof schema>;
@@ -100,7 +103,8 @@ export default function CustomersPage() {
       city: customer.city || "",
       country: customer.country || "",
       notes: customer.notes || "",
-    } : {});
+      dataConsentGiven: customer.dataConsentGiven ?? false,
+    } : { dataConsentGiven: false });
     setModal({ open: true, customer });
     setStep(1);
   };
@@ -379,6 +383,18 @@ export default function CustomersPage() {
                 className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 resize-none"
               />
             </div>
+            {/* NPC / Data Privacy Act consent */}
+            <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200">
+              <input
+                id="consent-edit"
+                type="checkbox"
+                {...form.register("dataConsentGiven")}
+                className="mt-0.5 w-4 h-4 accent-primary-600 flex-shrink-0"
+              />
+              <label htmlFor="consent-edit" className="text-xs text-blue-800 cursor-pointer leading-relaxed">
+                Customer has given consent for collection and processing of their personal information in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+              </label>
+            </div>
             <div className="flex gap-3 justify-end pt-2">
               <Button type="button" variant="outline" onClick={closeModal}>Cancel</Button>
               <Button type="submit" loading={save.isPending}>Save</Button>
@@ -442,6 +458,18 @@ export default function CustomersPage() {
                     {...form.register("notes")}
                     className="w-full border border-stroke bg-panel text-ink px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 resize-none"
                   />
+                </div>
+                {/* NPC / Data Privacy Act consent */}
+                <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200">
+                  <input
+                    id="consent-add"
+                    type="checkbox"
+                    {...form.register("dataConsentGiven")}
+                    className="mt-0.5 w-4 h-4 accent-primary-600 flex-shrink-0"
+                  />
+                  <label htmlFor="consent-add" className="text-xs text-blue-800 cursor-pointer leading-relaxed">
+                    Customer has given consent for collection and processing of their personal information in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
+                  </label>
                 </div>
                 <div className="flex gap-3 justify-end pt-2">
                   <Button type="button" variant="outline" onClick={() => setStep(1)}>← Back</Button>

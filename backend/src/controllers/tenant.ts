@@ -25,6 +25,16 @@ export async function listTenants(req: Request, res: Response): Promise<void> {
           createdAt: tenants.createdAt,
           role: tenantUsers.role,
           allowedPages: tenantUsers.allowedPages,
+          // Philippine regulatory compliance fields
+          tinNumber: tenants.tinNumber,
+          secRegNumber: tenants.secRegNumber,
+          dtiRegNumber: tenants.dtiRegNumber,
+          businessPermitNumber: tenants.businessPermitNumber,
+          isVatRegistered: tenants.isVatRegistered,
+          businessType: tenants.businessType,
+          businessAddress: tenants.businessAddress,
+          businessCity: tenants.businessCity,
+          businessCountry: tenants.businessCountry,
         })
       .from(tenantUsers)
       .innerJoin(tenants, eq(tenantUsers.tenantId, tenants.id))

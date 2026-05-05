@@ -39,6 +39,8 @@ import AnalyticsPage from "./pages/analytics/AnalyticsPage";
 import InvoicesPage from "./pages/invoices/InvoicesPage";
 import PromotionsPage from "./pages/promotions/PromotionsPage";
 import LoyaltyPage from "./pages/loyalty/LoyaltyPage";
+import PrivacyPolicyPage from "./pages/legal/PrivacyPolicyPage";
+import TermsPage from "./pages/legal/TermsPage";
 
 // Superadmin pages
 import SuperadminLoginPage from "./pages/superadmin/SuperadminLoginPage";
@@ -87,6 +89,8 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/accept-invite" element={<AcceptInvitePage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
 
             {/* Auth required but no tenant yet */}
             <Route element={<RequireAuth />}>

@@ -5,11 +5,12 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { useState } from "react";
-import { Package, CheckCircle } from "lucide-react";
+import { Package, CheckCircle, XCircle } from "lucide-react";
 import { api } from "../../api/client";
+import { strongPasswordSchema, PASSWORD_RULES, getPasswordStrength } from "../../lib/passwordStrength";
 
 const schema = z.object({
-  password: z.string().min(8, "At least 8 characters"),
+  password: strongPasswordSchema,
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords don't match",
@@ -23,6 +24,7 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
   const token = searchParams.get("token") || "";
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -78,12 +80,43 @@ export default function ResetPasswordPage() {
               </div>
             )}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <Input
-                label="New password"
-                type="password"
-                {...register("password")}
-                error={errors.password?.message}
-              />
+              <div className="flex flex-col gap-1">
+                <Input
+                  label="New password"
+                  type="password"
+                  {...register("password")}
+                  onChange={(e) => { register("password").onChange(e); setPasswordValue(e.target.value); }}
+                  error={errors.password?.message}
+                />
+                {passwordValue && (
+                  <div className="mt-1 space-y-1.5">
+                    <div className="flex gap-1 h-1.5">
+                      {[1,2,3,4,5].map((n) => {
+                        const strength = getPasswordStrength(passwordValue);
+                        return (
+                          <div
+                            key={n}
+                            className={`flex-1 rounded-full transition-all ${n <= strength.score ? strength.color : "bg-stroke"}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted">
+                      Strength: <span className="font-medium text-ink">{getPasswordStrength(passwordValue).label}</span>
+                    </p>
+                    <ul className="space-y-0.5">
+                      {PASSWORD_RULES.map((rule) => (
+                        <li key={rule.label} className="flex items-center gap-1.5 text-xs">
+                          {rule.test(passwordValue)
+                            ? <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                            : <XCircle className="w-3 h-3 text-stroke flex-shrink-0" />}
+                          <span className={rule.test(passwordValue) ? "text-green-700" : "text-muted"}>{rule.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
               <Input
                 label="Confirm new password"
                 type="password"
