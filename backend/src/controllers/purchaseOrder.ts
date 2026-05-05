@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { purchaseOrders, purchaseOrderItems, suppliers, branches, transactions } from "../db/schema";
+import { purchaseOrders, purchaseOrderItems, suppliers, branches, transactions, productVariants, products, productBatches } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -85,6 +85,7 @@ export const getPurchaseOrder = async (req: Request, res: Response): Promise<voi
 export const createPurchaseOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = createPurchaseOrderSchema.parse(req.body);
+    const tenantId = req.tenantContext!.tenantId;
     const subtotal = body.items.reduce((s, i) => s + i.quantity * i.unitCost, 0);
     const taxAmount = body.taxAmount ?? 0;
     const totalAmount = subtotal + taxAmount;
@@ -92,10 +93,10 @@ export const createPurchaseOrder = async (req: Request, res: Response): Promise<
     const [order] = await db
       .insert(purchaseOrders)
       .values({
-        tenantId: req.tenantContext!.tenantId,
+        tenantId,
         supplierId: body.supplierId ?? null,
         branchId: body.branchId ?? null,
-        orderNumber: generatePurchaseOrderNumber(),
+        orderNumber: await generatePurchaseOrderNumber(tenantId),
         notes: body.notes,
         subtotal: subtotal.toFixed(2),
         taxAmount: taxAmount.toFixed(2),
@@ -117,7 +118,7 @@ export const createPurchaseOrder = async (req: Request, res: Response): Promise<
     }));
 
     await db.insert(purchaseOrderItems).values(itemRows);
-    await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "create", resourceType: "purchase_order", resourceId: order.id });
+    await createAuditLog({ tenantId, userId: req.user!.id, action: "create", resourceType: "purchase_order", resourceId: order.id });
     res.status(201).json(order);
   } catch (error) {
     handleControllerError(error, res);
@@ -127,12 +128,13 @@ export const createPurchaseOrder = async (req: Request, res: Response): Promise<
 export const updatePurchaseOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const body = updatePurchaseOrderSchema.parse(req.body);
+    const tenantId = req.tenantContext!.tenantId;
 
     // Fetch existing order before update to know previous status and amount
     const [existing] = await db
       .select()
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, req.params.orderId as string), eq(purchaseOrders.tenantId, req.tenantContext!.tenantId)));
+      .where(and(eq(purchaseOrders.id, req.params.orderId as string), eq(purchaseOrders.tenantId, tenantId)));
 
     if (!existing) {
       res.status(404).json({ error: "Purchase order not found" });
@@ -145,7 +147,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
     const [order] = await db
       .update(purchaseOrders)
       .set(updateData)
-      .where(and(eq(purchaseOrders.id, req.params.orderId as string), eq(purchaseOrders.tenantId, req.tenantContext!.tenantId)))
+      .where(and(eq(purchaseOrders.id, req.params.orderId as string), eq(purchaseOrders.tenantId, tenantId)))
       .returning();
 
     if (!order) {
@@ -153,10 +155,10 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
       return;
     }
 
-    // Auto-record a purchase transaction when the order is first marked as received
+    // Auto-record a purchase transaction + auto-create batches when first marked as received
     if (body.status === "received" && existing.status !== "received") {
       await db.insert(transactions).values({
-        tenantId: req.tenantContext!.tenantId,
+        tenantId,
         branchId: existing.branchId,
         type: "purchase",
         amount: existing.totalAmount,
@@ -165,9 +167,46 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
         referenceId: existing.id,
         createdBy: req.user!.id,
       });
+
+      // Auto batch creation for perishable products
+      if (existing.branchId) {
+        const items = await db
+          .select()
+          .from(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.purchaseOrderId, existing.id));
+
+        for (const item of items) {
+          if (!item.variantId) continue;
+          // Check if the product is perishable
+          const [variant] = await db
+            .select({ productId: productVariants.productId })
+            .from(productVariants)
+            .where(eq(productVariants.id, item.variantId));
+          if (!variant) continue;
+
+          const [product] = await db
+            .select({ isPerishable: products.isPerishable })
+            .from(products)
+            .where(eq(products.id, variant.productId));
+
+          if (product?.isPerishable) {
+            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+            const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const batchNumber = `BATCH-${dateStr}-${rand}`;
+            await db.insert(productBatches).values({
+              tenantId,
+              variantId: item.variantId,
+              branchId: existing.branchId,
+              batchNumber,
+              quantity: item.receivedQuantity > 0 ? item.receivedQuantity : item.quantity,
+              createdBy: req.user!.id,
+            }).catch(() => {}); // non-fatal
+          }
+        }
+      }
     }
 
-    await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "purchase_order", resourceId: order.id });
+    await createAuditLog({ tenantId, userId: req.user!.id, action: "update", resourceType: "purchase_order", resourceId: order.id });
     res.json(order);
   } catch (error) {
     handleControllerError(error, res);

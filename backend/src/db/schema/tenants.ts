@@ -50,6 +50,7 @@ export const tenantUsers = pgTable("tenant_users", {
   role: tenantUserRoleEnum("role").notNull().default("staff"),
   isActive: boolean("is_active").notNull().default(true),
   allowedPages: jsonb("allowed_pages").$type<string[]>().default(sql`'[]'::jsonb`),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

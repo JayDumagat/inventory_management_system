@@ -36,6 +36,13 @@
       "when": 1746500000000,
       "tag": "0006_ph_compliance",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746700000000,
+      "tag": "0007_perishable_expiry",
+      "breakpoints": true
     }
   ]
 }

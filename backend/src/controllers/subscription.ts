@@ -290,3 +290,33 @@ export async function removeAddon(req: Request, res: Response): Promise<void> {
 export async function listPlans(_req: Request, res: Response): Promise<void> {
   res.json(Object.values(PLAN_DEFINITIONS));
 }
+
+// ─── Superadmin: update a plan definition (in-memory override) ───────────────
+export async function updatePlanDefinition(req: Request, res: Response): Promise<void> {
+  try {
+    const planKey = req.params.planKey as string;
+    const { name, monthlyPrice, annualPrice, features, limits } = req.body as {
+      name?: string;
+      monthlyPrice?: number;
+      annualPrice?: number;
+      features?: string[];
+      limits?: Record<string, number>;
+    };
+
+    const existing = PLAN_DEFINITIONS[planKey as keyof typeof PLAN_DEFINITIONS];
+    if (!existing) {
+      res.status(404).json({ error: "Plan not found" });
+      return;
+    }
+
+    if (name !== undefined) existing.name = name;
+    if (monthlyPrice !== undefined) existing.monthlyPrice = monthlyPrice;
+    if (annualPrice !== undefined) existing.annualPrice = annualPrice;
+    if (Array.isArray(features)) existing.features = features;
+    if (limits !== undefined) Object.assign(existing.limits, limits);
+
+    res.json(existing);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+}

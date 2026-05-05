@@ -49,6 +49,12 @@ export const requireTenant = (minRole?: string) => async (req: Request, res: Res
       return;
     }
 
+    // Check staff account expiry
+    if (tenantUser.expiresAt && new Date(tenantUser.expiresAt) < new Date()) {
+      res.status(403).json({ error: "Account access has expired" });
+      return;
+    }
+
     const roleHierarchy = ["staff", "manager", "admin", "owner"];
     if (minRole && roleHierarchy.indexOf(tenantUser.role) < roleHierarchy.indexOf(minRole)) {
       res.status(403).json({ error: "Insufficient permissions" });

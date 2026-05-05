@@ -22,7 +22,7 @@ import {
   superadminReplyToTicket,
 } from "../controllers/tickets";
 import { superadminAuditLogs } from "../controllers/superadminAudit";
-import { listPlans } from "../controllers/subscription";
+import { listPlans, updatePlanDefinition } from "../controllers/subscription";
 
 const router = Router();
 
@@ -50,6 +50,7 @@ router.patch(
 
 // ─── Plans ────────────────────────────────────────────────────────────────────
 router.get("/plans", requireSuperadminPage("plans"), listPlans);
+router.patch("/plans/:planKey", requireSuperadminPage("plans"), updatePlanDefinition);
 
 // ─── Tickets ──────────────────────────────────────────────────────────────────
 router.get("/tickets", requireSuperadminPage("tickets"), superadminListTickets);

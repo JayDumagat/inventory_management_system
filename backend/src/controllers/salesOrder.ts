@@ -100,7 +100,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     const [order] = await db.insert(salesOrders).values({
       tenantId,
       branchId: body.branchId,
-      orderNumber: generateSalesOrderNumber(),
+      orderNumber: await generateSalesOrderNumber(tenantId),
       status: requestedStatus,
       customerName: body.customerName,
       customerEmail: body.customerEmail || undefined,

@@ -8,6 +8,9 @@ export const productSchema = z.object({
   imageUrl: z.string().url("Invalid image URL").optional().nullable(),
   type: z.enum(["physical", "digital", "service", "bundle"], { message: "Invalid product type" }).optional().default("physical"),
   trackStock: z.boolean().optional(),
+  isPerishable: z.boolean().optional(),
+  weight: z.string().or(z.number()).optional().nullable(),
+  dimensions: z.string().max(100, "Dimensions too long").optional().nullable(),
   currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").transform((v) => v.toUpperCase()).optional().default("USD"),
 });
 

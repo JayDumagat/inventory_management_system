@@ -5,8 +5,9 @@ import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
+import { Modal } from "../../components/ui/Modal";
 import { formatDateTime } from "../../lib/utils";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Eye } from "lucide-react";
 
 interface AuditLog {
   id: string; action: string; resourceType: string; resourceId?: string;
@@ -27,11 +28,52 @@ function actorName(log: AuditLog): string {
   return "System";
 }
 
+function DiffView({ oldValues, newValues }: { oldValues?: Record<string, unknown>; newValues?: Record<string, unknown> }) {
+  const allKeys = Array.from(new Set([...Object.keys(oldValues ?? {}), ...Object.keys(newValues ?? {})]));
+  if (allKeys.length === 0) return <p className="text-xs text-muted italic">No field-level changes recorded</p>;
+  return (
+    <div className="space-y-1.5">
+      {allKeys.map((key) => {
+        const prev = oldValues?.[key];
+        const next = newValues?.[key];
+        const changed = JSON.stringify(prev) !== JSON.stringify(next);
+        const isNew = prev === undefined && next !== undefined;
+        const isRemoved = prev !== undefined && next === undefined;
+        return (
+          <div key={key} className={`text-xs px-2 py-1.5 border ${changed ? (isNew ? "border-green-200 bg-green-50" : isRemoved ? "border-red-200 bg-red-50" : "border-yellow-200 bg-yellow-50") : "border-stroke bg-page"}`}>
+            <span className="font-mono font-semibold text-ink">{key}</span>
+            {changed && (
+              <div className="mt-0.5 space-y-0.5">
+                {prev !== undefined && (
+                  <div className="flex gap-1.5 items-start">
+                    <span className="text-red-500 font-bold flex-shrink-0">−</span>
+                    <span className="text-red-700 break-all">{JSON.stringify(prev)}</span>
+                  </div>
+                )}
+                {next !== undefined && (
+                  <div className="flex gap-1.5 items-start">
+                    <span className="text-green-600 font-bold flex-shrink-0">+</span>
+                    <span className="text-green-700 break-all">{JSON.stringify(next)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {!changed && (
+              <span className="ml-2 text-muted">{JSON.stringify(prev)}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AuditPage() {
   const { currentTenant } = useTenantStore();
   const tid = currentTenant?.id;
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const [detailLog, setDetailLog] = useState<AuditLog | null>(null);
 
   const { data, isLoading } = useQuery<{ data: AuditLog[]; page: number }>({
     queryKey: ["audit", tid],
