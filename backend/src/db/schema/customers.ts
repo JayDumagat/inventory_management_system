@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { tenants } from "./tenants";
 
@@ -13,6 +13,9 @@ export const customers = pgTable("customers", {
   country: text("country"),
   notes: text("notes"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
+  // NPC / Data Privacy Act of 2012 (RA 10173) compliance
+  dataConsentGiven: boolean("data_consent_given").notNull().default(false),
+  dataConsentDate: timestamp("data_consent_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

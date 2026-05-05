@@ -25,6 +25,7 @@ const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: str
 ];
 
 const TIMEZONES = [
+  "Asia/Manila",
   "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
   "America/Sao_Paulo", "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Moscow",
   "Asia/Dubai", "Asia/Kolkata", "Asia/Bangkok", "Asia/Singapore", "Asia/Shanghai",
@@ -40,10 +41,15 @@ const CURRENCIES = [
 ];
 
 const LANGUAGES = [
-  { code: "en", label: "English" }, { code: "es", label: "Español" },
-  { code: "fr", label: "Français" }, { code: "de", label: "Deutsch" },
-  { code: "ja", label: "日本語" }, { code: "zh", label: "中文" },
-  { code: "pt", label: "Português" }, { code: "ar", label: "العربية" },
+  { code: "en", label: "English" },
+  { code: "fil", label: "Filipino (Tagalog)" },
+  { code: "es", label: "Español" },
+  { code: "fr", label: "Français" },
+  { code: "de", label: "Deutsch" },
+  { code: "ja", label: "日本語" },
+  { code: "zh", label: "中文" },
+  { code: "pt", label: "Português" },
+  { code: "ar", label: "العربية" },
 ];
 
 export default function SettingsPage() {

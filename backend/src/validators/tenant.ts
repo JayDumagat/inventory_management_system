@@ -15,6 +15,16 @@ export const createTenantSchema = z.object({
   receiptFooterMessage: z.string().max(200).optional(),
   receiptLogoUrl: httpUrlSchema.optional().or(z.literal("")),
   receiptShowLogo: z.boolean().optional(),
+  // Philippine regulatory compliance fields
+  tinNumber: z.string().max(20).optional().nullable(),
+  secRegNumber: z.string().max(50).optional().nullable(),
+  dtiRegNumber: z.string().max(50).optional().nullable(),
+  businessPermitNumber: z.string().max(50).optional().nullable(),
+  isVatRegistered: z.boolean().optional(),
+  businessType: z.enum(["sole_proprietorship", "partnership", "corporation", "opc", "cooperative"]).optional().nullable(),
+  businessAddress: z.string().max(500).optional().nullable(),
+  businessCity: z.string().max(100).optional().nullable(),
+  businessCountry: z.string().max(100).optional().nullable(),
 });
 
 export const updateTenantSchema = createTenantSchema.partial().extend({

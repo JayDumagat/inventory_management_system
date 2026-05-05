@@ -384,8 +384,25 @@ export async function completeInvite(req: Request, res: Response): Promise<void>
       return;
     }
 
+    // Enforce same password rules as registration (DICT cybersecurity)
     if (password.length < 8) {
       res.status(400).json({ error: "Password must be at least 8 characters" });
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      res.status(400).json({ error: "Password must contain at least one uppercase letter" });
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      res.status(400).json({ error: "Password must contain at least one lowercase letter" });
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      res.status(400).json({ error: "Password must contain at least one number" });
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      res.status(400).json({ error: "Password must contain at least one special character" });
       return;
     }
 

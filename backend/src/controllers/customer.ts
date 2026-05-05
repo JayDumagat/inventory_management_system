@@ -73,6 +73,8 @@ export async function createCustomer(req: Request, res: Response): Promise<void>
     const [customer] = await db.insert(customers).values({
       ...body,
       tenantId,
+      dataConsentGiven: body.dataConsentGiven ?? false,
+      dataConsentDate: body.dataConsentGiven ? new Date() : null,
     }).returning();
     await createAuditLog({
       tenantId,
@@ -91,8 +93,14 @@ export async function updateCustomer(req: Request, res: Response): Promise<void>
   try {
     const body = customerSchema.partial().parse(req.body);
     const tenantId = req.tenantContext!.tenantId;
+    const updateData: Record<string, unknown> = { ...body, updatedAt: new Date() };
+    if (body.dataConsentGiven === true) {
+      updateData.dataConsentDate = new Date();
+    } else if (body.dataConsentGiven === false) {
+      updateData.dataConsentDate = null;
+    }
     const [customer] = await db.update(customers)
-      .set({ ...body, updatedAt: new Date() })
+      .set(updateData)
       .where(and(
         eq(customers.id, req.params.customerId as string),
         eq(customers.tenantId, tenantId)

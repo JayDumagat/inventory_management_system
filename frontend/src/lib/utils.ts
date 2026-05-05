@@ -93,6 +93,18 @@ export function useFormatCurrency() {
   return formatCurrency;
 }
 
+/**
+ * HTML-escape a string to prevent XSS when inserting into HTML templates.
+ */
+export function escapeHtml(value: string | null | undefined): string {
+  return (value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function formatDate(date: string | Date, timezoneOverride?: string) {
   const { timezone, dateFormat } = useThemeStore.getState();
   const tz = timezoneOverride ?? timezone;
