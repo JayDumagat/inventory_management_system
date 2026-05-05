@@ -12,6 +12,13 @@ interface Tenant {
   plan?: string;
   receiptTemplate?: "compact" | "detailed";
   receiptFooterMessage?: string;
+  // Philippine regulatory compliance fields
+  tinNumber?: string | null;
+  isVatRegistered?: boolean;
+  businessType?: string | null;
+  businessAddress?: string | null;
+  businessCity?: string | null;
+  businessCountry?: string | null;
 }
 
 interface TenantState {

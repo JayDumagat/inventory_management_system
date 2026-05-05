@@ -8,14 +8,15 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { AuthLayout } from "../../components/ui/AuthLayout";
 import { useState, useEffect, useRef } from "react";
-import { Package } from "lucide-react";
+import { Package, CheckCircle, XCircle } from "lucide-react";
 import { api } from "../../api/client";
+import { strongPasswordSchema, PASSWORD_RULES, getPasswordStrength } from "../../lib/passwordStrength";
 
 const schema = z.object({
   firstName: z.string().min(1, "First name required"),
   lastName: z.string().min(1, "Last name required"),
   email: z.string().email("Invalid email"),
-  password: z.string().min(8, "At least 8 characters"),
+  password: strongPasswordSchema,
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords don't match",
@@ -33,6 +34,7 @@ export default function RegisterPage() {
   const setCurrentTenant = useTenantStore((s) => s.setCurrentTenant);
   const [error, setError] = useState("");
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [passwordValue, setPasswordValue] = useState("");
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
   const { register: rf, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -136,7 +138,43 @@ export default function RegisterPage() {
           <Input label="Last name" {...rf("lastName")} error={errors.lastName?.message} />
         </div>
         <Input label="Email" type="email" {...rf("email")} error={errors.email?.message} />
-        <Input label="Password" type="password" {...rf("password")} error={errors.password?.message} />
+        <div className="flex flex-col gap-1">
+          <Input
+            label="Password"
+            type="password"
+            {...rf("password")}
+            onChange={(e) => { rf("password").onChange(e); setPasswordValue(e.target.value); }}
+            error={errors.password?.message}
+          />
+          {passwordValue && (
+            <div className="mt-1 space-y-1.5">
+              <div className="flex gap-1 h-1.5">
+                {[1,2,3,4,5].map((n) => {
+                  const strength = getPasswordStrength(passwordValue);
+                  return (
+                    <div
+                      key={n}
+                      className={`flex-1 rounded-full transition-all ${n <= strength.score ? strength.color : "bg-stroke"}`}
+                    />
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted">
+                Strength: <span className="font-medium text-ink">{getPasswordStrength(passwordValue).label}</span>
+              </p>
+              <ul className="space-y-0.5">
+                {PASSWORD_RULES.map((rule) => (
+                  <li key={rule.label} className="flex items-center gap-1.5 text-xs">
+                    {rule.test(passwordValue)
+                      ? <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                      : <XCircle className="w-3 h-3 text-stroke flex-shrink-0" />}
+                    <span className={rule.test(passwordValue) ? "text-green-700" : "text-muted"}>{rule.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         <Input label="Confirm password" type="password" {...rf("confirmPassword")} error={errors.confirmPassword?.message} />
         <Button type="submit" loading={isSubmitting} size="lg" className="mt-1 w-full">
           Create account

@@ -10,7 +10,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { useFormatCurrency, formatDate } from "../../lib/utils";
-import { Plus, Trash2, Eye, FileText, X, Search, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Eye, FileText, X, Search, AlertCircle, Printer } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
 interface InvoiceItem {
@@ -65,7 +65,9 @@ export default function InvoicesPage() {
   const { currentTenant } = useTenantStore();
   const qc = useQueryClient();
   const tid = currentTenant?.id;
+  const isVatRegistered = currentTenant?.isVatRegistered ?? false;
   const formatCurrency = useFormatCurrency();
+  const taxLabel = isVatRegistered ? "VAT (12%)" : "Tax";
 
   const [createOpen, setCreateOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
@@ -158,6 +160,70 @@ export default function InvoicesPage() {
       dueDate: form.dueDate || null,
       items: validItems,
     });
+  }
+
+  function printInvoice(inv: Invoice) {
+    const escHtml = (s: string | null | undefined) =>
+      (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const heading = isVatRegistered ? "OFFICIAL RECEIPT / INVOICE" : "SALES INVOICE";
+    const tenantTin = currentTenant?.tinNumber ? `TIN: ${currentTenant.tinNumber}` : "";
+    const tenantAddr = [currentTenant?.businessAddress, currentTenant?.businessCity, currentTenant?.businessCountry].filter(Boolean).join(", ");
+    const itemRows = inv.items.map((item) => `
+      <tr>
+        <td style="padding:4px 6px;border-bottom:1px solid #eee">${escHtml(item.description)}</td>
+        <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${item.quantity}</td>
+        <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${Number(item.unitPrice).toFixed(2)}</td>
+        <td style="padding:4px 6px;border-bottom:1px solid #eee;text-align:right">${Number(item.totalPrice).toFixed(2)}</td>
+      </tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(inv.invoiceNumber)}</title>
+<style>
+  @media print { @page { margin: 15mm; } }
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #000; max-width: 700px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 18px; text-align: center; margin: 0 0 4px; }
+  .subtitle { text-align: center; font-size: 11px; color: #555; margin-bottom: 16px; }
+  .meta { display: flex; justify-content: space-between; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  th { background: #f4f4f4; padding: 6px; text-align: left; font-size: 11px; }
+  .total-row { font-weight: bold; font-size: 14px; }
+  .footer { margin-top: 20px; font-size: 10px; color: #777; text-align: center; }
+</style></head><body>
+<h1>${escHtml(currentTenant?.name ?? "")}</h1>
+<div class="subtitle">${escHtml(tenantAddr)}${tenantTin ? ` | ${tenantTin}` : ""}</div>
+<div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:12px;text-transform:uppercase">${heading}</div>
+<div class="meta">
+  <div><strong>Invoice #:</strong> ${escHtml(inv.invoiceNumber)}<br>
+    <strong>Date:</strong> ${formatDate(inv.createdAt)}<br>
+    ${inv.dueDate ? `<strong>Due:</strong> ${formatDate(inv.dueDate)}` : ""}
+  </div>
+  <div style="text-align:right">
+    ${escHtml(inv.customerName ?? "")}<br>
+    ${escHtml(inv.customerEmail ?? "")}<br>
+    ${escHtml(inv.customerAddress ?? "")}
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th>Description</th><th style="text-align:right">Qty</th>
+    <th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th>
+  </tr></thead>
+  <tbody>${itemRows}</tbody>
+</table>
+<table style="width:40%;margin-left:auto">
+  <tr><td>Subtotal</td><td style="text-align:right">${Number(inv.subtotal).toFixed(2)}</td></tr>
+  ${isVatRegistered && parseFloat(inv.taxAmount) > 0
+    ? `<tr><td>VATable Sales</td><td style="text-align:right">${Number(inv.subtotal).toFixed(2)}</td></tr>
+       <tr><td>VAT (12%)</td><td style="text-align:right">+${Number(inv.taxAmount).toFixed(2)}</td></tr>`
+    : parseFloat(inv.taxAmount) > 0
+      ? `<tr><td>Tax</td><td style="text-align:right">+${Number(inv.taxAmount).toFixed(2)}</td></tr>`
+      : ""}
+  ${parseFloat(inv.discountAmount) > 0 ? `<tr><td>Discount</td><td style="text-align:right">-${Number(inv.discountAmount).toFixed(2)}</td></tr>` : ""}
+  <tr class="total-row" style="border-top:2px solid #000"><td>TOTAL</td><td style="text-align:right">${Number(inv.totalAmount).toFixed(2)}</td></tr>
+</table>
+${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This document is an Official Receipt pursuant to BIR requirements. ${tenantTin}</div>` : ""}
+<div class="footer">Thank you for your business!</div>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
   }
 
   const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
@@ -430,8 +496,8 @@ export default function InvoicesPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input label="Tax Amount ($)" type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
-                <Input label="Discount ($)" type="number" min="0" step="0.01" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
+                <Input label={`${taxLabel} Amount`} type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setForm((f) => ({ ...f, taxAmount: e.target.value }))} />
+                <Input label="Discount" type="number" min="0" step="0.01" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
               </div>
               <Input label="Notes" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
             </>
@@ -451,9 +517,24 @@ export default function InvoicesPage() {
       {viewInvoice && (
         <Modal open={!!viewInvoice} onClose={() => setViewInvoice(null)} title={`Invoice ${viewInvoice.invoiceNumber}`} size="lg">
           <div className="p-5 space-y-4 text-sm">
+            {/* BIR / business header */}
+            {(currentTenant?.tinNumber || currentTenant?.businessAddress) && (
+              <div className="p-3 bg-blue-50 border border-blue-200 text-xs text-blue-800 space-y-0.5">
+                {currentTenant.tinNumber && <p><strong>TIN:</strong> {currentTenant.tinNumber}</p>}
+                {currentTenant.businessAddress && (
+                  <p><strong>Address:</strong> {[currentTenant.businessAddress, currentTenant.businessCity, currentTenant.businessCountry].filter(Boolean).join(", ")}</p>
+                )}
+                {isVatRegistered && <p className="font-semibold">VAT-Registered — Official Receipt</p>}
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <Badge variant={STATUS_VARIANT[viewInvoice.status]}>{viewInvoice.status}</Badge>
-              <p className="text-muted text-xs">Created {formatDate(viewInvoice.createdAt)}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-muted text-xs">Created {formatDate(viewInvoice.createdAt)}</p>
+                <Button size="sm" variant="outline" onClick={() => printInvoice(viewInvoice)}>
+                  <Printer className="w-3.5 h-3.5 mr-1.5" /> Print
+                </Button>
+              </div>
             </div>
             {(viewInvoice.customerName || viewInvoice.customerEmail) && (
               <div className="p-3 border border-stroke">
@@ -489,7 +570,13 @@ export default function InvoicesPage() {
             </table>
             <div className="space-y-1 text-right">
               <p className="text-muted">Subtotal: <span className="text-ink font-medium">{formatCurrency(viewInvoice.subtotal)}</span></p>
-              {parseFloat(viewInvoice.taxAmount) > 0 && <p className="text-muted">Tax: <span className="text-ink">{formatCurrency(viewInvoice.taxAmount)}</span></p>}
+              {parseFloat(viewInvoice.taxAmount) > 0 && isVatRegistered && (
+                <>
+                  <p className="text-muted">VATable Sales: <span className="text-ink">{formatCurrency(viewInvoice.subtotal)}</span></p>
+                  <p className="text-muted">VAT (12%): <span className="text-ink">+{formatCurrency(viewInvoice.taxAmount)}</span></p>
+                </>
+              )}
+              {parseFloat(viewInvoice.taxAmount) > 0 && !isVatRegistered && <p className="text-muted">Tax: <span className="text-ink">{formatCurrency(viewInvoice.taxAmount)}</span></p>}
               {parseFloat(viewInvoice.discountAmount) > 0 && <p className="text-muted">Discount: <span className="text-red-600">−{formatCurrency(viewInvoice.discountAmount)}</span></p>}
               <p className="text-base font-bold text-ink">Total: {formatCurrency(viewInvoice.totalAmount)}</p>
             </div>
@@ -503,13 +590,20 @@ export default function InvoicesPage() {
       {/* Delete Confirm */}
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Invoice" size="sm">
         <div className="p-5">
-          <p className="text-sm text-ink mb-4">
+          <p className="text-sm text-ink mb-3">
             Delete invoice <span className="font-mono font-medium">{deleteTarget?.invoiceNumber}</span>? This cannot be undone.
           </p>
+          {/* BIR data retention warning */}
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700 leading-relaxed">
+              <strong>BIR Notice:</strong> Philippine law (NIRC / Revenue Regulations) requires businesses to keep official receipts and records for at least <strong>10 years</strong>. Only delete records you are certain are not needed for tax compliance.
+            </p>
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>Cancel</Button>
             <Button variant="danger" size="sm" onClick={() => deleteMutation.mutate(deleteTarget!.id)} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+              {deleteMutation.isPending ? "Deleting…" : "Delete anyway"}
             </Button>
           </div>
         </div>
