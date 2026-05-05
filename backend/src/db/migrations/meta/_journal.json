@@ -15,6 +15,13 @@
       "when": 1746000000000,
       "tag": "0005_product_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777617946508,
+      "tag": "0005_productive_silver_fox",
+      "breakpoints": true
     }
   ]
 }
