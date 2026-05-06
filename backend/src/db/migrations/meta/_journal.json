@@ -8,6 +8,13 @@
       "when": 1777986588129,
       "tag": "0000_sweet_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1746700000000,
+      "tag": "0007_perishable_expiry",
+      "breakpoints": true
     }
   ]
 }

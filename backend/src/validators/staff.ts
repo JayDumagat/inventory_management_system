@@ -12,6 +12,7 @@ export const updateStaffSchema = z.object({
   role: z.enum(["staff", "manager", "admin"]).optional(),
   isActive: z.boolean().optional(),
   allowedPages: z.array(z.string()).optional(),
+  expiresAt: z.string().datetime().transform((v) => new Date(v)).nullable().optional(),
 });
 
 export const assignBranchSchema = z.object({

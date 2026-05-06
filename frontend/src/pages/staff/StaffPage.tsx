@@ -26,6 +26,7 @@ interface StaffMember {
   firstName: string;
   lastName: string;
   createdAt: string;
+  expiresAt?: string | null;
   allowedPages: string[];
   branches: { id: string; name: string }[];
 }
@@ -85,6 +86,7 @@ export default function StaffPage() {
   const [branchMember, setBranchMember] = useState<StaffMember | null>(null);
   const [editRole, setEditRole] = useState("staff");
   const [editActive, setEditActive] = useState(true);
+  const [editExpiresAt, setEditExpiresAt] = useState<string>("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
   const [permissionsMember, setPermissionsMember] = useState<StaffMember | null>(null);
@@ -181,6 +183,7 @@ export default function StaffPage() {
     setEditMember(member);
     setEditRole(member.role);
     setEditActive(member.isActive);
+    setEditExpiresAt(member.expiresAt ? member.expiresAt.slice(0, 10) : "");
     setEditError("");
   };
 
@@ -192,6 +195,7 @@ export default function StaffPage() {
       await api.patch(`/api/tenants/${tid}/staff/${editMember.tenantUserId}`, {
         role: editRole,
         isActive: editActive,
+        expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
       });
       qc.invalidateQueries({ queryKey: ["staff", tid] });
       setEditMember(null);
@@ -269,15 +273,22 @@ export default function StaffPage() {
                 {staff.map((m) => {
                   const isMe = m.userId === currentUser?.id;
                   const fullName = [m.firstName, m.lastName].filter(Boolean).join(" ") || "—";
+                  const isExpired = m.expiresAt ? new Date(m.expiresAt) < new Date() : false;
                   return (
-                    <tr key={m.tenantUserId} className={cn("border-b border-stroke hover:bg-hover transition-colors", isMe && "bg-primary-50")}>
+                    <tr key={m.tenantUserId} className={cn("border-b border-stroke hover:bg-hover transition-colors", isMe && "bg-primary-50", isExpired && "opacity-60")}>
                       <td className="px-6 py-3 font-medium text-ink">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="w-7 h-7 bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">
                             {(m.firstName?.[0] || m.email[0]).toUpperCase()}
                           </div>
                           {fullName}
                           {isMe && <span className="text-[10px] bg-primary-100 text-primary-700 px-1.5 py-0.5 font-medium">you</span>}
+                          {isExpired && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 font-medium">expired</span>}
+                          {!isExpired && m.expiresAt && (
+                            <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 font-medium" title={`Expires ${new Date(m.expiresAt).toLocaleDateString()}`}>
+                              expires {new Date(m.expiresAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-3 text-muted">{m.email}</td>
@@ -411,6 +422,25 @@ export default function StaffPage() {
             />
             <span className="text-sm text-ink">Active</span>
           </label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted">Account expiry date (optional)</label>
+            <input
+              type="date"
+              value={editExpiresAt}
+              onChange={(e) => setEditExpiresAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className="w-full border border-stroke px-3 py-2 text-sm bg-panel text-ink outline-none focus:border-primary-500"
+            />
+            {editExpiresAt && (
+              <button
+                type="button"
+                onClick={() => setEditExpiresAt("")}
+                className="text-xs text-muted hover:text-ink self-start underline"
+              >
+                Clear expiry (no expiration)
+              </button>
+            )}
+          </div>
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => setEditMember(null)}>Cancel</Button>
             <Button onClick={handleSaveEdit} loading={savingEdit}>Save</Button>

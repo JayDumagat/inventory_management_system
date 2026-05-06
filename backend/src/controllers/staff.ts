@@ -20,6 +20,7 @@ export const listStaff = async (req: Request, res: Response): Promise<void> => {
         role: tenantUsers.role,
         isActive: tenantUsers.isActive,
         allowedPages: tenantUsers.allowedPages,
+        expiresAt: tenantUsers.expiresAt,
         createdAt: tenantUsers.createdAt,
         email: users.email,
         firstName: users.firstName,

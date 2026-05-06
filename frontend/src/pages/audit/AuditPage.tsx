@@ -5,8 +5,9 @@ import { useTenantStore } from "../../stores/tenantStore";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
+import { Modal } from "../../components/ui/Modal";
 import { formatDateTime } from "../../lib/utils";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Eye } from "lucide-react";
 
 interface AuditLog {
   id: string; action: string; resourceType: string; resourceId?: string;
@@ -27,11 +28,52 @@ function actorName(log: AuditLog): string {
   return "System";
 }
 
+function DiffView({ oldValues, newValues }: { oldValues?: Record<string, unknown>; newValues?: Record<string, unknown> }) {
+  const allKeys = Array.from(new Set([...Object.keys(oldValues ?? {}), ...Object.keys(newValues ?? {})]));
+  if (allKeys.length === 0) return <p className="text-xs text-muted italic">No field-level changes recorded</p>;
+  return (
+    <div className="space-y-1.5">
+      {allKeys.map((key) => {
+        const prev = oldValues?.[key];
+        const next = newValues?.[key];
+        const changed = JSON.stringify(prev) !== JSON.stringify(next);
+        const isNew = prev === undefined && next !== undefined;
+        const isRemoved = prev !== undefined && next === undefined;
+        return (
+          <div key={key} className={`text-xs px-2 py-1.5 border ${changed ? (isNew ? "border-green-200 bg-green-50" : isRemoved ? "border-red-200 bg-red-50" : "border-yellow-200 bg-yellow-50") : "border-stroke bg-page"}`}>
+            <span className="font-mono font-semibold text-ink">{key}</span>
+            {changed && (
+              <div className="mt-0.5 space-y-0.5">
+                {prev !== undefined && (
+                  <div className="flex gap-1.5 items-start">
+                    <span className="text-red-500 font-bold flex-shrink-0">−</span>
+                    <span className="text-red-700 break-all">{JSON.stringify(prev)}</span>
+                  </div>
+                )}
+                {next !== undefined && (
+                  <div className="flex gap-1.5 items-start">
+                    <span className="text-green-600 font-bold flex-shrink-0">+</span>
+                    <span className="text-green-700 break-all">{JSON.stringify(next)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {!changed && (
+              <span className="ml-2 text-muted">{JSON.stringify(prev)}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AuditPage() {
   const { currentTenant } = useTenantStore();
   const tid = currentTenant?.id;
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
+  const [detailLog, setDetailLog] = useState<AuditLog | null>(null);
 
   const { data, isLoading } = useQuery<{ data: AuditLog[]; page: number }>({
     queryKey: ["audit", tid],
@@ -124,7 +166,7 @@ export default function AuditPage() {
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Resource ID</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">IP Address</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Changes</th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -143,8 +185,14 @@ export default function AuditPage() {
                     <td className="px-6 py-3 font-mono text-xs text-muted">{log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}</td>
                     <td className="px-6 py-3 text-muted">{log.ipAddress || "—"}</td>
                     <td className="px-6 py-3 text-muted whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
-                    <td className="px-6 py-3 text-xs text-muted max-w-xs truncate">
-                      {log.newValues ? JSON.stringify(log.newValues).slice(0, 60) + "…" : "—"}
+                    <td className="px-6 py-3">
+                      <button
+                        onClick={() => setDetailLog(log)}
+                        className="p-1.5 text-muted hover:text-ink hover:bg-hover transition-colors"
+                        title="View details"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -153,6 +201,50 @@ export default function AuditPage() {
           </div>
         )}
       </Card>
+
+      {/* Detail modal */}
+      <Modal open={!!detailLog} onClose={() => setDetailLog(null)} title="Audit Log Details" size="lg">
+        {detailLog && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted mb-0.5">Action</p>
+                <Badge variant={actionColor[detailLog.action] || "default"}>{detailLog.action}</Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Resource</p>
+                <p className="font-medium text-ink">{detailLog.resourceType}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Resource ID</p>
+                <p className="font-mono text-xs text-muted break-all">{detailLog.resourceId || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Actor</p>
+                <p className="font-medium text-ink">{actorName(detailLog)}</p>
+                {detailLog.actorEmail && <p className="text-xs text-muted">{detailLog.actorEmail}</p>}
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Timestamp</p>
+                <p className="text-ink">{formatDateTime(detailLog.createdAt)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">IP Address</p>
+                <p className="text-ink">{detailLog.ipAddress || "—"}</p>
+              </div>
+            </div>
+
+            {(detailLog.oldValues || detailLog.newValues) && (
+              <div>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Field Changes</p>
+                <div className="max-h-72 overflow-y-auto pr-1">
+                  <DiffView oldValues={detailLog.oldValues} newValues={detailLog.newValues} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

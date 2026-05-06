@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { invoices, invoiceItems, salesOrders } from "../db/schema";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { invoiceSchema, updateInvoiceSchema } from "../validators/invoice";
+import { generateInvoiceNumber } from "../utils/helpers";
 
 export const listInvoices = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -40,8 +41,7 @@ export const createInvoice = async (req: Request, res: Response): Promise<void> 
     const body = invoiceSchema.parse(req.body);
     const tenantId = req.tenantContext!.tenantId;
 
-    const [{ total }] = await db.select({ total: count() }).from(invoices).where(eq(invoices.tenantId, tenantId));
-    const invoiceNumber = `INV-${String(Number(total) + 1).padStart(5, "0")}`;
+    const invoiceNumber = await generateInvoiceNumber(tenantId);
 
     const subtotal = body.items.reduce((sum, i) => sum + i.totalPrice, 0);
     const totalAmount = subtotal + (body.taxAmount ?? 0) - (body.discountAmount ?? 0);
@@ -95,8 +95,7 @@ export const createInvoiceFromOrder = async (req: Request, res: Response): Promi
     });
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
-    const [{ total }] = await db.select({ total: count() }).from(invoices).where(eq(invoices.tenantId, tenantId));
-    const invoiceNumber = `INV-${String(Number(total) + 1).padStart(5, "0")}`;
+    const invoiceNumber = await generateInvoiceNumber(tenantId);
 
     const [invoice] = await db.insert(invoices).values({
       tenantId,

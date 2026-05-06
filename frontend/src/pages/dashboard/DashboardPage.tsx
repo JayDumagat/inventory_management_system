@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
@@ -9,10 +10,12 @@ import { useFormatCurrency, formatDate } from "../../lib/utils";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { Package, ShoppingCart, DollarSign, AlertTriangle, TrendingUp, Megaphone } from "lucide-react";
+import { Package, ShoppingCart, DollarSign, AlertTriangle, TrendingUp, Megaphone, GitBranch } from "lucide-react";
 import sponsoredInventoryImage from "../../assets/sponsored-inventory.svg";
 import sponsoredPaymentImage from "../../assets/sponsored-payment.svg";
 import sponsoredAnalyticsImage from "../../assets/sponsored-analytics.svg";
+
+interface Branch { id: string; name: string; isDefault: boolean; }
 
 interface DashboardStats {
   stats: {
@@ -65,10 +68,22 @@ const SHOW_SPONSORED_CONTENT = false;
 export default function DashboardPage() {
   const { currentTenant } = useTenantStore();
   const formatCurrency = useFormatCurrency();
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+
+  const { data: branches = [] } = useQuery<Branch[]>({
+    queryKey: ["branches", currentTenant?.id],
+    queryFn: () => api.get(`/api/tenants/${currentTenant!.id}/branches`).then((r) => r.data),
+    enabled: !!currentTenant,
+  });
+
+  const branchIdParam = selectedBranchId === "all" ? undefined : selectedBranchId;
 
   const { data, isLoading } = useQuery<DashboardStats>({
-    queryKey: ["dashboard", currentTenant?.id],
-    queryFn: () => api.get(`/api/tenants/${currentTenant!.id}/dashboard/stats`).then((r) => r.data),
+    queryKey: ["dashboard", currentTenant?.id, branchIdParam],
+    queryFn: () =>
+      api.get(`/api/tenants/${currentTenant!.id}/dashboard/stats`, {
+        params: branchIdParam ? { branchId: branchIdParam } : {},
+      }).then((r) => r.data),
     enabled: !!currentTenant,
   });
 
@@ -98,14 +113,31 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
           <p className="text-muted text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
         </div>
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-stroke px-3 py-1.5">
-          <TrendingUp className="w-3.5 h-3.5" />
-          Last 30 days
+        <div className="flex items-center gap-3">
+          {branches.length > 1 && (
+            <div className="flex items-center gap-2 border border-stroke px-3 py-1.5 bg-panel">
+              <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+              <select
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                className="text-xs text-ink bg-transparent outline-none cursor-pointer"
+              >
+                <option value="all">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-stroke px-3 py-1.5">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Last 30 days
+          </div>
         </div>
       </div>
 
