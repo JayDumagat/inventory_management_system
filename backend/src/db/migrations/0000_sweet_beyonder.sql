@@ -59,6 +59,15 @@ CREATE TABLE "tenants" (
 	"receipt_logo_url" text,
 	"receipt_show_logo" boolean DEFAULT false NOT NULL,
 	"tax_rate" numeric(5, 2) DEFAULT '0' NOT NULL,
+	"tin_number" text,
+	"sec_reg_number" text,
+	"dti_reg_number" text,
+	"business_permit_number" text,
+	"is_vat_registered" boolean DEFAULT false NOT NULL,
+	"business_type" text DEFAULT 'sole_proprietorship',
+	"business_address" text,
+	"business_city" text,
+	"business_country" text DEFAULT 'PH',
 	"plan" text DEFAULT 'free' NOT NULL,
 	"plan_expires_at" timestamp,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -127,6 +136,7 @@ CREATE TABLE "products" (
 	"type" "product_type" DEFAULT 'physical' NOT NULL,
 	"track_stock" boolean DEFAULT true NOT NULL,
 	"image_url" text,
+	"currency" text DEFAULT 'USD' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
@@ -385,6 +395,8 @@ CREATE TABLE "customers" (
 	"country" text,
 	"notes" text,
 	"loyalty_points" integer DEFAULT 0 NOT NULL,
+	"data_consent_given" boolean DEFAULT false NOT NULL,
+	"data_consent_date" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );

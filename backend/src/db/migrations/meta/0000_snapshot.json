@@ -1,5 +1,5 @@
 {
-  "id": "d6b4f61a-b978-4396-ab8c-c9f1310438cd",
+  "id": "be142b84-3797-4da1-84d0-fd1c27d8067c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -332,6 +332,63 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'0'"
+        },
+        "tin_number": {
+          "name": "tin_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sec_reg_number": {
+          "name": "sec_reg_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dti_reg_number": {
+          "name": "dti_reg_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_permit_number": {
+          "name": "business_permit_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_vat_registered": {
+          "name": "is_vat_registered",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "business_type": {
+          "name": "business_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'sole_proprietorship'"
+        },
+        "business_address": {
+          "name": "business_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_city": {
+          "name": "business_city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "business_country": {
+          "name": "business_country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'PH'"
         },
         "plan": {
           "name": "plan",
@@ -808,6 +865,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'USD'"
         },
         "is_active": {
           "name": "is_active",
@@ -2934,6 +2998,19 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "data_consent_given": {
+          "name": "data_consent_given",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "data_consent_date": {
+          "name": "data_consent_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
