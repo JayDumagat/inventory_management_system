@@ -28,6 +28,9 @@ interface ProductImage { id: string; objectName: string; url: string; altText?: 
 interface Product {
   id: string; name: string; description?: string; isActive: boolean; type?: string;
   trackStock?: boolean;
+  isPerishable?: boolean;
+  weight?: string | null;
+  dimensions?: string | null;
   currency?: string;
   category?: Category; unit?: Unit; variants: Variant[]; images?: ProductImage[];
 }
@@ -55,6 +58,9 @@ const productSchema = z.object({
   unitId: z.string().optional(),
   type: z.enum(["physical", "digital", "service", "bundle"]).optional(),
   trackStock: z.boolean().optional(),
+  isPerishable: z.boolean().optional(),
+  weight: z.string().optional(),
+  dimensions: z.string().optional(),
   currency: z.string().length(3).optional(),
 });
 const variantSchema = z.object({
@@ -226,9 +232,12 @@ export default function ProductsPage() {
           unitId: product.unit?.id,
           type: (product.type as "physical" | "digital" | "service" | "bundle") ?? "physical",
           trackStock: product.trackStock ?? true,
+          isPerishable: product.isPerishable ?? false,
+          weight: product.weight ?? "",
+          dimensions: product.dimensions ?? "",
           currency: product.currency ?? "USD",
         }
-      : { type: "physical", trackStock: true, currency: "USD" }
+      : { type: "physical", trackStock: true, isPerishable: false, weight: "", dimensions: "", currency: "USD" }
     );
     vForm.reset();
     setProductModal({ open: true, product });
@@ -753,6 +762,14 @@ export default function ProductsPage() {
               <input type="checkbox" {...pForm.register("trackStock")} />
               Track stock for this product
             </label>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" {...pForm.register("isPerishable")} />
+              Perishable product (auto-create batch/lot records on receipt)
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Weight (optional)" placeholder="e.g. 0.5 kg" {...pForm.register("weight")} />
+              <Input label="Dimensions (optional)" placeholder="e.g. 20×10×5 cm" {...pForm.register("dimensions")} />
+            </div>
 
             {/* Images section */}
             <div>
@@ -850,6 +867,14 @@ export default function ProductsPage() {
                   <input type="checkbox" {...pForm.register("trackStock")} />
                   Track stock for this product
                 </label>
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input type="checkbox" {...pForm.register("isPerishable")} />
+                  Perishable product (auto-create batch/lot records on receipt)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Weight (optional)" placeholder="e.g. 0.5 kg" {...pForm.register("weight")} />
+                  <Input label="Dimensions (optional)" placeholder="e.g. 20×10×5 cm" {...pForm.register("dimensions")} />
+                </div>
 
                 {/* Images section */}
                 <div>
