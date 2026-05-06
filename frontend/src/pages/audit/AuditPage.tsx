@@ -166,7 +166,7 @@ export default function AuditPage() {
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Resource ID</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">IP Address</th>
                   <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-muted uppercase tracking-wider">Changes</th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -185,8 +185,14 @@ export default function AuditPage() {
                     <td className="px-6 py-3 font-mono text-xs text-muted">{log.resourceId ? log.resourceId.slice(0, 12) + "…" : "—"}</td>
                     <td className="px-6 py-3 text-muted">{log.ipAddress || "—"}</td>
                     <td className="px-6 py-3 text-muted whitespace-nowrap">{formatDateTime(log.createdAt)}</td>
-                    <td className="px-6 py-3 text-xs text-muted max-w-xs truncate">
-                      {log.newValues ? JSON.stringify(log.newValues).slice(0, 60) + "…" : "—"}
+                    <td className="px-6 py-3">
+                      <button
+                        onClick={() => setDetailLog(log)}
+                        className="p-1.5 text-muted hover:text-ink hover:bg-hover transition-colors"
+                        title="View details"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -195,6 +201,50 @@ export default function AuditPage() {
           </div>
         )}
       </Card>
+
+      {/* Detail modal */}
+      <Modal open={!!detailLog} onClose={() => setDetailLog(null)} title="Audit Log Details" size="lg">
+        {detailLog && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted mb-0.5">Action</p>
+                <Badge variant={actionColor[detailLog.action] || "default"}>{detailLog.action}</Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Resource</p>
+                <p className="font-medium text-ink">{detailLog.resourceType}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Resource ID</p>
+                <p className="font-mono text-xs text-muted break-all">{detailLog.resourceId || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Actor</p>
+                <p className="font-medium text-ink">{actorName(detailLog)}</p>
+                {detailLog.actorEmail && <p className="text-xs text-muted">{detailLog.actorEmail}</p>}
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">Timestamp</p>
+                <p className="text-ink">{formatDateTime(detailLog.createdAt)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted mb-0.5">IP Address</p>
+                <p className="text-ink">{detailLog.ipAddress || "—"}</p>
+              </div>
+            </div>
+
+            {(detailLog.oldValues || detailLog.newValues) && (
+              <div>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Field Changes</p>
+                <div className="max-h-72 overflow-y-auto pr-1">
+                  <DiffView oldValues={detailLog.oldValues} newValues={detailLog.newValues} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
