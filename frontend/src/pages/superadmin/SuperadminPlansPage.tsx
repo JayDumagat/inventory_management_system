@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Input } from "../../components/ui/Input";
 import { useToast } from "../../hooks/useToast";
-import type { PlanDefinition } from "../../types";
+import type { PlanDefinition, PlanLimits } from "../../types";
 import { Pencil } from "lucide-react";
 
 const ALL_KNOWN_FEATURES = [
@@ -56,10 +56,10 @@ export default function SuperadminPlansPage() {
 
   const handleSave = () => {
     if (!editPlan) return;
-    const limits: Record<string, number> = {};
+    const limitsMap: Record<string, number> = {};
     for (const [k, v] of Object.entries(editLimits)) {
       const n = parseFloat(v);
-      if (!isNaN(n)) limits[k] = n;
+      if (!isNaN(n)) limitsMap[k] = n;
     }
     updateMutation.mutate({
       key: editPlan.key,
@@ -68,7 +68,7 @@ export default function SuperadminPlansPage() {
         monthlyPrice: parseFloat(editMonthly) || 0,
         annualPrice: parseFloat(editAnnual) || 0,
         features: editFeatures,
-        limits,
+        limits: limitsMap as unknown as PlanLimits,
       },
     });
   };

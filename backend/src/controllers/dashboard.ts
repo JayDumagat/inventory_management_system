@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
-import { salesOrders, inventory, products } from "../db/schema";
-import { eq, desc, gte, sql, and } from "drizzle-orm";
+import { salesOrders, inventory, products, productVariants } from "../db/schema";
+import { eq, desc, gte, sql, and, inArray } from "drizzle-orm";
 import { cacheGet, cacheSet } from "../lib/redis";
 
 const DASHBOARD_TTL = 60;
@@ -35,8 +35,27 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
       .from(salesOrders)
       .where(orderWhere);
 
+    const tenantVariantIds = db
+      .select({ id: productVariants.id })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(eq(products.tenantId, tenantId));
+
+    const lowStockWhere = branchId
+      ? and(
+          sql`${inventory.quantity} <= ${inventory.reorderPoint}`,
+          sql`${inventory.reorderPoint} > 0`,
+          inArray(inventory.variantId, tenantVariantIds),
+          eq(inventory.branchId, branchId),
+        )
+      : and(
+          sql`${inventory.quantity} <= ${inventory.reorderPoint}`,
+          sql`${inventory.reorderPoint} > 0`,
+          inArray(inventory.variantId, tenantVariantIds),
+        );
+
     const lowStockItems = await db.query.inventory.findMany({
-      where: sql`${inventory.quantity} <= ${inventory.reorderPoint} AND ${inventory.reorderPoint} > 0`,
+      where: lowStockWhere,
       with: { variant: { with: { product: true } }, branch: true },
       limit: 10,
     });
@@ -69,11 +88,7 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
       .groupBy(sql`DATE(created_at)`)
       .orderBy(sql`DATE(created_at)`);
 
-    const tenantLowStock = lowStockItems.filter((i) => {
-      if (i.variant?.product?.tenantId !== tenantId) return false;
-      if (branchId && i.branch?.id !== branchId) return false;
-      return true;
-    });
+    const tenantLowStock = lowStockItems;
 
     const result = {
       stats: {

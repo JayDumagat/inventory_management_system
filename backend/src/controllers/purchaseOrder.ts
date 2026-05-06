@@ -200,7 +200,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
               batchNumber,
               quantity: item.receivedQuantity > 0 ? item.receivedQuantity : item.quantity,
               createdBy: req.user!.id,
-            }).catch(() => {}); // non-fatal
+            }).catch((batchErr) => { console.error("Non-fatal: failed to auto-create batch for variant", item.variantId, batchErr); }); // non-fatal
           }
         }
       }
