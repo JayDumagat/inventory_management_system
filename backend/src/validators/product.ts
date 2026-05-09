@@ -25,7 +25,7 @@ export const productSchema = z.object({
     },
     z
       .string()
-      .refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, { message: "Weight must be a valid number" })
+      .refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, { message: "Weight must be a valid non-negative number" })
       .optional()
       .nullable()
   ),
