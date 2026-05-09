@@ -1,16 +1,38 @@
 import { z } from "zod";
 
+const trimAndNullifyEmpty = (value: unknown): unknown => {
+  if (value === null || value === undefined) return value;
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+};
+
 export const productSchema = z.object({
   name: z.string().min(1, "Product name is required").max(200, "Product name too long"),
   description: z.string().max(2000, "Description too long").optional(),
-  categoryId: z.string().uuid("Invalid category").optional().nullable(),
-  unitId: z.string().uuid("Invalid unit").optional().nullable(),
-  imageUrl: z.string().url("Invalid image URL").optional().nullable(),
+  categoryId: z.preprocess(trimAndNullifyEmpty, z.string().uuid("Invalid category").optional().nullable()),
+  unitId: z.preprocess(trimAndNullifyEmpty, z.string().uuid("Invalid unit").optional().nullable()),
+  imageUrl: z.preprocess(trimAndNullifyEmpty, z.string().url("Invalid image URL").optional().nullable()),
   type: z.enum(["physical", "digital", "service", "bundle"], { message: "Invalid product type" }).optional().default("physical"),
   trackStock: z.boolean().optional(),
   isPerishable: z.boolean().optional(),
-  weight: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().nullable(),
-  dimensions: z.string().max(100, "Dimensions too long").optional().nullable(),
+  weight: z.preprocess(
+    (value) => {
+      const normalized = trimAndNullifyEmpty(value);
+      if (normalized === null || normalized === undefined) return normalized;
+      if (typeof normalized === "number") return String(normalized);
+      return normalized;
+    },
+    z
+      .union([
+        z.string().refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, {
+          message: "Weight must be a valid non-negative number",
+        }),
+        z.null(),
+      ])
+      .optional()
+  ),
+  dimensions: z.preprocess(trimAndNullifyEmpty, z.string().max(100, "Dimensions too long").optional().nullable()),
   currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").transform((v) => v.toUpperCase()).optional().default("USD"),
 });
 
