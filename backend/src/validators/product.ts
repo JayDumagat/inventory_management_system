@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const emptyStringToNull = (value: unknown): unknown => {
+const trimAndNullifyEmpty = (value: unknown): unknown => {
   if (value === null || value === undefined) return value;
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
@@ -10,26 +10,26 @@ const emptyStringToNull = (value: unknown): unknown => {
 export const productSchema = z.object({
   name: z.string().min(1, "Product name is required").max(200, "Product name too long"),
   description: z.string().max(2000, "Description too long").optional(),
-  categoryId: z.preprocess(emptyStringToNull, z.string().uuid("Invalid category").optional().nullable()),
-  unitId: z.preprocess(emptyStringToNull, z.string().uuid("Invalid unit").optional().nullable()),
-  imageUrl: z.preprocess(emptyStringToNull, z.string().url("Invalid image URL").optional().nullable()),
+  categoryId: z.preprocess(trimAndNullifyEmpty, z.string().uuid("Invalid category").optional().nullable()),
+  unitId: z.preprocess(trimAndNullifyEmpty, z.string().uuid("Invalid unit").optional().nullable()),
+  imageUrl: z.preprocess(trimAndNullifyEmpty, z.string().url("Invalid image URL").optional().nullable()),
   type: z.enum(["physical", "digital", "service", "bundle"], { message: "Invalid product type" }).optional().default("physical"),
   trackStock: z.boolean().optional(),
   isPerishable: z.boolean().optional(),
   weight: z.preprocess(
     (value) => {
-      const normalized = emptyStringToNull(value);
+      const normalized = trimAndNullifyEmpty(value);
       if (normalized === null || normalized === undefined) return normalized;
       if (typeof normalized === "number") return String(normalized);
       return normalized;
     },
     z
       .string()
-      .refine((value) => !Number.isNaN(Number(value)), { message: "Weight must be a valid number" })
+      .refine((value) => value.trim().length > 0 && !Number.isNaN(Number(value)), { message: "Weight must be a valid number" })
       .optional()
       .nullable()
   ),
-  dimensions: z.preprocess(emptyStringToNull, z.string().max(100, "Dimensions too long").optional().nullable()),
+  dimensions: z.preprocess(trimAndNullifyEmpty, z.string().max(100, "Dimensions too long").optional().nullable()),
   currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").transform((v) => v.toUpperCase()).optional().default("USD"),
 });
 
