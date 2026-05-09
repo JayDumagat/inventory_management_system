@@ -24,10 +24,13 @@ export const productSchema = z.object({
       return normalized;
     },
     z
-      .string()
-      .refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, { message: "Weight must be a valid non-negative number" })
+      .union([
+        z.string().refine((value) => !Number.isNaN(Number(value)) && Number(value) >= 0, {
+          message: "Weight must be a valid non-negative number",
+        }),
+        z.null(),
+      ])
       .optional()
-      .nullable()
   ),
   dimensions: z.preprocess(trimAndNullifyEmpty, z.string().max(100, "Dimensions too long").optional().nullable()),
   currency: z.string().length(3, "Currency must be a 3-letter ISO 4217 code").transform((v) => v.toUpperCase()).optional().default("USD"),
