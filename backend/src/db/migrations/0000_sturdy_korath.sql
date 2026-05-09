@@ -44,6 +44,7 @@ CREATE TABLE "tenant_users" (
 	"role" "tenant_user_role" DEFAULT 'staff' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"allowed_pages" jsonb DEFAULT '[]'::jsonb,
+	"expires_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -135,6 +136,9 @@ CREATE TABLE "products" (
 	"description" text,
 	"type" "product_type" DEFAULT 'physical' NOT NULL,
 	"track_stock" boolean DEFAULT true NOT NULL,
+	"is_perishable" boolean DEFAULT false NOT NULL,
+	"weight" numeric(10, 3),
+	"dimensions" text,
 	"image_url" text,
 	"currency" text DEFAULT 'USD' NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
