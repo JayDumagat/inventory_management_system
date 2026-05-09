@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Skeleton, SkeletonCard } from "../../components/ui/Skeleton";
 import { Modal } from "../../components/ui/Modal";
+import { CameraBarcodeScanner } from "../../components/barcode/CameraBarcodeScanner";
 import { useFormatCurrency, escapeHtml } from "../../lib/utils";
 import { ShoppingCart, Search, Plus, Minus, Trash2, CreditCard, Receipt, CheckCircle, AlertTriangle, Printer, FileText, Users, Tag, Star, X } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -379,6 +380,18 @@ export default function POSPage() {
     });
   };
 
+  const addScannedCodeToCart = (rawCode: string) => {
+    const code = rawCode.trim().toLowerCase();
+    if (!code) return false;
+    const exact = allVariants.find((v) =>
+      (v.barcode ?? "").toLowerCase() === code || v.sku.toLowerCase() === code
+    );
+    if (!exact) return false;
+    addToCart(exact.id);
+    setSearch("");
+    return true;
+  };
+
   const handleProductClick = (product: Product) => {
     if (!currentBranch) return;
     if (product.variants.length === 1) {
@@ -575,18 +588,21 @@ export default function POSPage() {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key !== "Enter") return;
-              const code = search.trim().toLowerCase();
-              if (!code) return;
-              const exact = allVariants.find((v) =>
-                (v.barcode ?? "").toLowerCase() === code || v.sku.toLowerCase() === code
-              );
-              if (exact) {
-                addToCart(exact.id);
-                setSearch("");
-              }
+              addScannedCodeToCart(search);
             }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500"
           />
+          <div className="mt-2">
+            <CameraBarcodeScanner
+              onDetected={(code) => {
+                if (!addScannedCodeToCart(code)) {
+                  setSearch(code);
+                  toast.error("No matching product found for scanned barcode");
+                }
+              }}
+              label="Scan barcode with camera"
+            />
+          </div>
         </div>
 
         {/* Product grid */}

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { products, productVariants, productAttributes, productAttributeOptions, productImages } from "../db/schema";
 import { eq, and } from "drizzle-orm";
+import { z } from "zod";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { productSchema, variantSchema, attributeSchema, updateAttributeSchema, attributeOptionSchema } from "../validators/product";
@@ -198,12 +199,17 @@ export async function createVariant(req: Request, res: Response): Promise<void> 
       return;
     }
     const body = variantSchema.parse(req.body);
+    const sharedPrice = String(body.price);
+    const sharedCostPrice = String(body.costPrice || "0");
     const [variant] = await db.insert(productVariants).values({
       ...body,
       productId: req.params.productId as string,
-      price: String(body.price),
-      costPrice: String(body.costPrice || "0"),
+      price: sharedPrice,
+      costPrice: sharedCostPrice,
     }).returning();
+    await db.update(productVariants)
+      .set({ price: sharedPrice, updatedAt: new Date() })
+      .where(eq(productVariants.productId, req.params.productId as string));
     res.status(201).json(variant);
   } catch (error) {
     handleControllerError(error, res);
@@ -225,7 +231,13 @@ export async function updateVariant(req: Request, res: Response): Promise<void> 
     if (body.name !== undefined) updateData.name = body.name;
     if (body.sku !== undefined) updateData.sku = body.sku;
     if (body.barcode !== undefined) updateData.barcode = body.barcode ?? null;
-    if (body.price !== undefined) updateData.price = String(body.price);
+    if (body.price !== undefined) {
+      const sharedPrice = String(body.price);
+      await db.update(productVariants)
+        .set({ price: sharedPrice, updatedAt: new Date() })
+        .where(eq(productVariants.productId, req.params.productId as string));
+      updateData.price = sharedPrice;
+    }
     if (body.costPrice !== undefined) updateData.costPrice = String(body.costPrice);
     if (body.attributes !== undefined) updateData.attributes = body.attributes;
     if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl ?? null;
@@ -441,6 +453,20 @@ export async function generateVariantsFromAttributes(req: Request, res: Response
 
     const combinations = buildAttributeCombinations(usableAttrs);
     const existing = await db.select().from(productVariants).where(eq(productVariants.productId, productId));
+    const generateSchema = z.object({
+      price: z.string().or(z.number()).optional(),
+      costPrice: z.string().or(z.number()).optional(),
+    });
+    const generateBody = generateSchema.parse(req.body ?? {});
+    const sharedPrice = generateBody.price !== undefined ? String(generateBody.price) : (existing[0]?.price ?? "0");
+    const sharedCostPrice = generateBody.costPrice !== undefined ? String(generateBody.costPrice) : (existing[0]?.costPrice ?? "0");
+
+    if (generateBody.price !== undefined && existing.length > 0) {
+      await db.update(productVariants)
+        .set({ price: sharedPrice, updatedAt: new Date() })
+        .where(eq(productVariants.productId, productId));
+    }
+
     const existingKeys = new Set(existing.map((v) => serializeAttributeMap((v.attributes ?? {}) as AttributeValueMap)));
 
     const toCreate = combinations.filter((combo) => !existingKeys.has(serializeAttributeMap(combo.map)));
@@ -454,8 +480,8 @@ export async function generateVariantsFromAttributes(req: Request, res: Response
         productId,
         name: combo.values.join(" / "),
         sku: generateVariantSku(product.name, combo.values, existing.length + index + 1),
-        price: "0",
-        costPrice: "0",
+        price: sharedPrice,
+        costPrice: sharedCostPrice,
         attributes: combo.map,
       }))
     ).returning();
