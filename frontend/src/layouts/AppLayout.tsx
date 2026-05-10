@@ -141,13 +141,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }), [myRole, allowedPages, subscriptionData]);
 
   return (
-    <div className="flex min-h-screen md:h-screen overflow-hidden bg-page">
+    <div className="flex h-screen overflow-hidden bg-page">
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-panel/95 backdrop-blur border-r border-stroke flex flex-col transition-transform duration-200 ease-out shadow-xl lg:shadow-none",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0 lg:static lg:flex lg:h-full lg:w-64"
+          "lg:translate-x-0 lg:static lg:flex lg:h-full"
         )}
       >
         {/* Logo / tenant */}
@@ -284,7 +284,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="w-4 h-4" />
           </button>
 
-          <span className="text-sm sm:text-base font-bold text-ink truncate max-w-[12rem] sm:max-w-none">{pageLabel}</span>
+          <span className="text-sm sm:text-base font-bold text-ink truncate max-w-[45vw] sm:max-w-none">{pageLabel}</span>
 
           <div className="flex-1" />
 
