@@ -27,7 +27,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: "system",
-      accent: "olive",
+      accent: "blue",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       currency: "USD",
       dateFormat: "MM/DD/YYYY",

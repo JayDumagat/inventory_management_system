@@ -21,8 +21,7 @@ html.dark {
 }
 
 /* ── Olive Garden Feast (default primary palette) ─────────────── */
-:root,
-html.theme-olive {
+:root {
   --accent-50:  #eff6ff;
   --accent-100: #dbeafe;
   --accent-200: #bfdbfe;
@@ -35,6 +34,16 @@ html.theme-olive {
   --accent-900: #1e3a8a;
 }
 html.theme-olive {
+  --accent-50:  #f4f6e8;
+  --accent-100: #e6eac8;
+  --accent-200: #ccd698;
+  --accent-300: #a8b868;
+  --accent-400: #7c9242;
+  --accent-500: #606c38;
+  --accent-600: #4d562e;
+  --accent-700: #3b4222;
+  --accent-800: #2e3420;
+  --accent-900: #283618;
   --page-bg:    #f5f7fb;
   --surface-bg: #ffffff;
   --border-clr: #dce3ee;
