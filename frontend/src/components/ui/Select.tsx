@@ -21,11 +21,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={cn(
-            "w-full border px-3 py-2 text-sm outline-none transition-colors",
+            "w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-all",
             "bg-panel text-ink",
             error
-              ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500/30"
-              : "border-stroke focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20",
+              ? "border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+              : "border-stroke focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20",
             className
           )}
           {...props}
