@@ -87,7 +87,11 @@ export function CameraBarcodeScanner({ onDetected, label = "Scan with camera", d
             busyRef.current = true;
             try {
               const codes = await detector.detect(video);
-              const value = codes.find((code) => typeof code.rawValue === "string" && code.rawValue.trim().length > 0)?.rawValue?.trim();
+              const detected = codes.find((code) => {
+                if (typeof code.rawValue !== "string") return false;
+                return code.rawValue.trim().length > 0;
+              });
+              const value = typeof detected?.rawValue === "string" ? detected.rawValue.trim() : "";
               if (value) {
                 onDetected(value);
                 setOpen(false);

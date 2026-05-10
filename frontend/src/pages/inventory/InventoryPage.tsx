@@ -250,7 +250,7 @@ export default function InventoryPage() {
       });
       setBarcodeError("");
       bForm.setValue("code", "");
-      setTimeout(() => bForm.setFocus("code"), 0);
+      bForm.setFocus("code");
       toast.success("Stock action applied");
     },
     onError: (error: unknown) => {
