@@ -238,7 +238,10 @@ export async function updateVariant(req: Request, res: Response): Promise<void> 
       const sharedPrice = String(body.price);
       await db.update(productVariants)
         .set({ price: sharedPrice, updatedAt: new Date() })
-        .where(eq(productVariants.productId, req.params.productId as string));
+        .where(and(
+          eq(productVariants.productId, req.params.productId as string),
+          ne(productVariants.id, req.params.variantId as string),
+        ));
       updateData.price = sharedPrice;
     }
     if (body.costPrice !== undefined) updateData.costPrice = String(body.costPrice);
