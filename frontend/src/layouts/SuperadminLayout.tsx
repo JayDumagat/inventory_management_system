@@ -50,7 +50,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-56 bg-panel border-r border-stroke flex flex-col transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-40 w-[var(--sidebar-width)] bg-panel border-r border-stroke flex flex-col transition-transform duration-200",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0 lg:static lg:flex lg:h-full",
         )}
@@ -74,7 +74,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 text-sm font-medium mb-0.5 transition-colors",
+                  "flex items-center gap-2.5 ui-pill px-3 py-2 text-sm font-medium mb-0.5 transition-colors",
                   active
                     ? "bg-primary-600 text-white"
                     : "text-muted hover:bg-hover hover:text-ink",
@@ -108,10 +108,10 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 px-4 h-12 bg-panel border-b border-stroke">
+        <header className="sticky top-0 z-20 ui-header flex items-center gap-3 px-4 bg-panel border-b border-stroke">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-muted hover:bg-hover transition-colors"
+            className="lg:hidden p-1.5 ui-pill text-muted hover:bg-hover transition-colors"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -124,9 +124,9 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           <div className="relative">
             <button
               onClick={() => setProfileOpen((o) => !o)}
-              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors"
+              className="flex items-center gap-2 ui-pill pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors"
             >
-              <div className="w-6 h-6 bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
+              <div className="w-6 h-6 ui-pill bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
                 {initial}
               </div>
               <span className="hidden sm:block text-sm font-medium text-ink max-w-[120px] truncate">
@@ -138,7 +138,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 top-full mt-0 w-52 bg-panel border border-stroke overflow-hidden z-50">
+              <div className="absolute right-0 top-full mt-1 w-52 ui-surface bg-panel border border-stroke overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-stroke">
                   <p className="text-sm font-semibold text-ink truncate">{userName}</p>
                   <p className="text-xs text-muted truncate">{superadmin?.email}</p>
@@ -167,7 +167,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           )}
         </header>
 
-        <main className="flex-1 p-3 sm:p-5 overflow-y-auto">{children}</main>
+        <main className="flex-1 main-content-spacing overflow-y-auto">{children}</main>
       </div>
     </div>
   );

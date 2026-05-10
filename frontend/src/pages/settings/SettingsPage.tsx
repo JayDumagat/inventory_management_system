@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Ca
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
-import { Building2, Globe, Palette, CheckCircle, Trash2, AlertCircle, Sun, Moon, Monitor } from "lucide-react";
+import { Building2, Globe, Palette, CheckCircle, Trash2, AlertCircle, Sun, Moon, Monitor, Sparkles, Square } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useTenantStore } from "../../stores/tenantStore";
-import type { AccentColor, ThemeMode } from "../../stores/themeStore";
+import type { AccentColor, ThemeMode, ThemeStyle } from "../../stores/themeStore";
 
 const ACCENT_SWATCHES: { key: AccentColor; label: string; color: string; bg: string; description: string }[] = [
   { key: "olive",   label: "Olive Garden",   color: "#606c38", bg: "#fefae0", description: "Warm earthy tones" },
@@ -65,6 +65,10 @@ export default function SettingsPage() {
     { value: "light", label: "Light", icon: Sun },
     { value: "dark",  label: "Dark",  icon: Moon },
     { value: "system",label: "System", icon: Monitor },
+  ];
+  const STYLE_OPTIONS: { value: ThemeStyle; label: string; description: string; icon: typeof Sparkles }[] = [
+    { value: "modern", label: "Modern", description: "Rounded + layered", icon: Sparkles },
+    { value: "flat", label: "Flat", description: "No rounded corners", icon: Square },
   ];
 
   return (
@@ -152,6 +156,31 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted truncate">{s.description}</p>
                   </div>
                   {theme.accent === s.key && <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Style variant */}
+          <div>
+            <p className="text-sm font-medium text-ink mb-3">Style</p>
+            <div className="grid grid-cols-2 gap-2">
+              {STYLE_OPTIONS.map(({ value, label, description, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => theme.setStyle(value)}
+                  className={cn(
+                    "flex items-start gap-2.5 p-3 border text-left transition-colors",
+                    theme.style === value
+                      ? "border-primary-600 bg-primary-50"
+                      : "border-stroke bg-panel hover:bg-hover"
+                  )}
+                >
+                  <Icon className={cn("w-4 h-4 mt-0.5", theme.style === value ? "text-primary-600" : "text-muted")} />
+                  <div>
+                    <p className={cn("text-sm font-medium", theme.style === value ? "text-primary-700" : "text-ink")}>{label}</p>
+                    <p className="text-xs text-muted">{description}</p>
+                  </div>
                 </button>
               ))}
             </div>

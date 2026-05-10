@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { X, Sun, Moon, Monitor, Palette, Globe, DollarSign, CheckCircle } from "lucide-react";
+import { X, Sun, Moon, Monitor, Palette, Globe, DollarSign, CheckCircle, Square, Sparkles } from "lucide-react";
 import { useTheme } from "../../contexts/ThemeContext";
-import { type AccentColor, type ThemeMode } from "../../stores/themeStore";
+import { type AccentColor, type ThemeMode, type ThemeStyle } from "../../stores/themeStore";
 import { cn } from "../../lib/utils";
 
 interface PreferencesModalProps {
@@ -59,16 +59,21 @@ const LANGUAGES = [
 export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
   const [tab, setTab] = useState<Tab>("appearance");
   const {
-    mode, accent, timezone, currency, dateFormat, language, compactMode,
-    setMode, setAccent, setTimezone, setCurrency, setDateFormat, setLanguage, setCompactMode,
+    mode, style, accent, timezone, currency, dateFormat, language, compactMode,
+    setMode, setStyle, setAccent, setTimezone, setCurrency, setDateFormat, setLanguage, setCompactMode,
   } = useTheme();
+
+  const STYLE_OPTIONS: { value: ThemeStyle; label: string; description: string; Icon: typeof Sparkles }[] = [
+    { value: "modern", label: "Modern", description: "Soft depth and rounded elements", Icon: Sparkles },
+    { value: "flat", label: "Flat", description: "Microsoft-style sharp edges", Icon: Square },
+  ];
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-panel border border-stroke w-full max-w-lg overflow-hidden">
+      <div className="relative ui-surface ui-card bg-panel border border-stroke w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-stroke">
           <h2 className="text-sm font-semibold text-ink">Preferences</h2>
@@ -126,6 +131,34 @@ export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
                     >
                       <Icon className="w-4 h-4" />
                       {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Interface style */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-3.5 h-3.5 text-muted" />
+                  <p className="text-xs font-semibold text-muted uppercase tracking-wider">Interface Style</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {STYLE_OPTIONS.map(({ value, label, description, Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setStyle(value)}
+                      className={cn(
+                        "flex items-start gap-2.5 p-3 border text-left transition-colors",
+                        style === value
+                          ? "border-primary-500 bg-primary-50"
+                          : "border-stroke hover:bg-hover"
+                      )}
+                    >
+                      <Icon className={cn("w-4 h-4 mt-0.5", style === value ? "text-primary-600" : "text-muted")} />
+                      <div className="min-w-0">
+                        <p className={cn("text-xs font-semibold", style === value ? "text-primary-700" : "text-ink")}>{label}</p>
+                        <p className="text-[10px] text-muted">{description}</p>
+                      </div>
                     </button>
                   ))}
                 </div>
