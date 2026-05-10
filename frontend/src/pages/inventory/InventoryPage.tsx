@@ -879,9 +879,12 @@ export default function InventoryPage() {
           />
           <CameraBarcodeScanner
             onDetected={(code) => {
-              bForm.setValue("code", code, { shouldDirty: true, shouldValidate: true });
-              const values = bForm.getValues();
-              barcodeQuickAction.mutate({ ...values, code });
+              barcodeQuickAction.mutate({
+                code,
+                type: bForm.getValues("type"),
+                quantity: bForm.getValues("quantity"),
+                notes: bForm.getValues("notes"),
+              });
             }}
             disabled={!currentBranch || barcodeQuickAction.isPending}
           />
