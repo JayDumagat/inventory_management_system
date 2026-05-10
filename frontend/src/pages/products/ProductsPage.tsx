@@ -1091,13 +1091,14 @@ export default function ProductsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="Selling price"
+                    label="Product selling price"
                     type="number"
                     step="0.01"
                     min="0.01"
                     placeholder="0.00"
                     {...vForm.register("price")}
                     error={vForm.formState.errors.price?.message}
+                    helperText="Shared selling price for all variants of this product"
                   />
                   <Input
                     label="Cost price"
@@ -1149,13 +1150,14 @@ export default function ProductsPage() {
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Selling price"
+              label="Product selling price"
               type="number"
               step="0.01"
               min="0.01"
               placeholder="0.00"
               {...vForm.register("price")}
               error={vForm.formState.errors.price?.message}
+              helperText="Updating this applies to all variants under the product"
             />
             <Input
               label="Cost price"

@@ -225,10 +225,13 @@ export default function InventoryPage() {
 
   const barcodeQuickAction = useMutation({
     mutationFn: async (data: BarcodeForm) => {
+      if (!currentBranch) {
+        throw new Error("Select a branch first");
+      }
       const variant = await api.get(`/api/tenants/${tid}/inventory/barcode/${encodeURIComponent(data.code)}`).then((r) => r.data);
       const inv = await api.post(`/api/tenants/${tid}/inventory/adjust`, {
         variantId: variant.id,
-        branchId: currentBranch!.id,
+        branchId: currentBranch.id,
         type: data.type,
         quantity: data.quantity,
         notes: data.notes || undefined,
@@ -859,11 +862,12 @@ export default function InventoryPage() {
             <option value="return">Return stock</option>
           </Select>
           <Input
-            label={bForm.watch("type") === "adjustment" ? "Set quantity to" : "Quantity"}
+            label="Quantity"
             type="number"
             min="1"
             {...bForm.register("quantity", { valueAsNumber: true })}
             error={bForm.formState.errors.quantity?.message}
+            helperText={bForm.getValues("type") === "adjustment" ? "For adjustment, this becomes the exact stock quantity." : undefined}
           />
           <Input label="Notes (optional)" {...bForm.register("notes")} />
           <Input
