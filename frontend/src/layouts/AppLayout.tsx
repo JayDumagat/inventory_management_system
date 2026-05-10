@@ -416,7 +416,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-               className="lg:hidden fixed top-3 left-60 z-50 p-1.5 rounded-lg bg-panel border border-stroke text-muted"
+               className="lg:hidden fixed top-3 left-64 z-50 p-1.5 rounded-lg bg-panel border border-stroke text-muted"
              >
               <X className="w-3.5 h-3.5" />
             </button>
