@@ -107,8 +107,17 @@ export function CameraBarcodeScanner({ onDetected, label = "Scan with camera", d
         rafRef.current = requestAnimationFrame(() => {
           void tick();
         });
-      } catch {
-        setError("Unable to start camera scanner. Please allow camera access and try again.");
+      } catch (err: unknown) {
+        const error = err as { name?: string };
+        if (error?.name === "NotAllowedError") {
+          setError("Camera permission was denied. Please allow camera access and try again.");
+        } else if (error?.name === "NotFoundError") {
+          setError("No camera was found on this device.");
+        } else if (error?.name === "NotReadableError") {
+          setError("Camera is currently in use by another application.");
+        } else {
+          setError("Unable to start camera scanner. Please allow camera access and try again.");
+        }
       } finally {
         setIsStarting(false);
       }

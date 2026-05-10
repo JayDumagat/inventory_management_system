@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { products, productVariants, productAttributes, productAttributeOptions, productImages } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { z } from "zod";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
@@ -209,7 +209,10 @@ export async function createVariant(req: Request, res: Response): Promise<void> 
     }).returning();
     await db.update(productVariants)
       .set({ price: sharedPrice, updatedAt: new Date() })
-      .where(eq(productVariants.productId, req.params.productId as string));
+      .where(and(
+        eq(productVariants.productId, req.params.productId as string),
+        ne(productVariants.id, variant.id),
+      ));
     res.status(201).json(variant);
   } catch (error) {
     handleControllerError(error, res);
