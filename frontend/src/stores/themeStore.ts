@@ -2,12 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type ThemeMode = "light" | "dark" | "system";
+export type ThemeStyle = "modern" | "flat";
 export type AccentColor =
   | "olive" | "ocean" | "coastal"
   | "blue" | "violet" | "emerald" | "rose" | "amber" | "teal" | "noir";
 
 interface ThemeState {
   mode: ThemeMode;
+  style: ThemeStyle;
   accent: AccentColor;
   timezone: string;
   currency: string;
@@ -15,6 +17,7 @@ interface ThemeState {
   language: string;
   compactMode: boolean;
   setMode: (mode: ThemeMode) => void;
+  setStyle: (style: ThemeStyle) => void;
   setAccent: (accent: AccentColor) => void;
   setTimezone: (timezone: string) => void;
   setCurrency: (currency: string) => void;
@@ -27,6 +30,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: "system",
+      style: "modern",
       accent: "blue",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       currency: "USD",
@@ -34,6 +38,7 @@ export const useThemeStore = create<ThemeState>()(
       language: "en",
       compactMode: false,
       setMode: (mode) => set({ mode }),
+      setStyle: (style) => set({ style }),
       setAccent: (accent) => set({ accent }),
       setTimezone: (timezone) => set({ timezone }),
       setCurrency: (currency) => set({ currency }),
