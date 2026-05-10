@@ -4,24 +4,36 @@
 
 /* ── Surface & page background variables ─────────────────────── */
 :root {
-  --page-bg:     #f9fafb;
+  --sidebar-width: 16rem;
+  --page-bg:     #f5f7fb;
   --surface-bg:  #ffffff;
-  --border-clr:  #e5e7eb;
-  --text-clr:    #111827;
-  --muted-clr:   #6b7280;
-  --hover-bg:    #f3f4f6;
+  --border-clr:  #dce3ee;
+  --text-clr:    #101828;
+  --muted-clr:   #667085;
+  --hover-bg:    #edf2fa;
 }
 html.dark {
-  --page-bg:     #030712;
-  --surface-bg:  #111827;
-  --border-clr:  #1f2937;
-  --text-clr:    #f9fafb;
-  --muted-clr:   #9ca3af;
-  --hover-bg:    #1f2937;
+  --page-bg:     #0b1220;
+  --surface-bg:  #131c2d;
+  --border-clr:  #243246;
+  --text-clr:    #f3f7ff;
+  --muted-clr:   #9aa8bf;
+  --hover-bg:    #1a2940;
 }
 
 /* ── Olive Garden Feast (default primary palette) ─────────────── */
-:root,
+:root {
+  --accent-50:  #eff6ff;
+  --accent-100: #dbeafe;
+  --accent-200: #bfdbfe;
+  --accent-300: #93c5fd;
+  --accent-400: #60a5fa;
+  --accent-500: #3b82f6;
+  --accent-600: #2563eb;
+  --accent-700: #1d4ed8;
+  --accent-800: #1e40af;
+  --accent-900: #1e3a8a;
+}
 html.theme-olive {
   --accent-50:  #f4f6e8;
   --accent-100: #e6eac8;
@@ -33,22 +45,20 @@ html.theme-olive {
   --accent-700: #3b4222;
   --accent-800: #2e3420;
   --accent-900: #283618;
-}
-html.theme-olive {
-  --page-bg:    #fefae0;
-  --surface-bg: #fffef5;
-  --border-clr: #e0d9a4;
-  --text-clr:   #1a1e0e;
-  --muted-clr:  #6b6440;
-  --hover-bg:   #f6f2c8;
+  --page-bg:    #f5f7fb;
+  --surface-bg: #ffffff;
+  --border-clr: #dce3ee;
+  --text-clr:   #101828;
+  --muted-clr:  #667085;
+  --hover-bg:   #edf2fa;
 }
 html.dark.theme-olive {
-  --page-bg:    #1c2110;
-  --surface-bg: #252d14;
-  --border-clr: #3a4522;
-  --text-clr:   #f0eed8;
-  --muted-clr:  #a0a070;
-  --hover-bg:   #2f3a1a;
+  --page-bg:    #0b1220;
+  --surface-bg: #131c2d;
+  --border-clr: #243246;
+  --text-clr:   #f3f7ff;
+  --muted-clr:  #9aa8bf;
+  --hover-bg:   #1a2940;
 }
 
 /* ── Summer Ocean Breeze ─────────────────────────────────────── */

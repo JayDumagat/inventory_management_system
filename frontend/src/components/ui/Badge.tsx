@@ -4,16 +4,16 @@ import type { ReactNode } from "react";
 interface BadgeProps { children: ReactNode; variant?: "default" | "success" | "warning" | "danger" | "info"; className?: string; }
 
 const variants = {
-  default: "bg-stroke text-ink",
-  success: "bg-green-100 text-green-800",
-  warning: "bg-yellow-100 text-yellow-800",
-  danger:  "bg-red-100 text-red-800",
-  info:    "bg-primary-100 text-primary-800",
+  default: "bg-hover text-ink border border-stroke",
+  success: "bg-green-50 text-green-700 border border-green-200",
+  warning: "bg-yellow-50 text-yellow-700 border border-yellow-200",
+  danger:  "bg-red-50 text-red-700 border border-red-200",
+  info:    "bg-primary-50 text-primary-700 border border-primary-200",
 };
 
 export function Badge({ children, variant = "default", className }: BadgeProps) {
   return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 text-xs font-medium", variants[variant], className)}>
+    <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium", variants[variant], className)}>
       {children}
     </span>
   );
