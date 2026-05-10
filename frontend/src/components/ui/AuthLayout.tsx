@@ -83,7 +83,7 @@ export function AuthLayout({ children, leftContent, formWidth = "sm" }: AuthLayo
 
       {/* ── LEFT: branding panel ────────────────────────────────────── */}
       {/* md:order-first makes it appear LEFT on desktop despite being second in DOM. */}
-      <div className="md:order-first w-full md:w-5/12 lg:w-1/2 bg-primary-600 flex items-center justify-center p-10 py-14 md:py-10 md:min-h-screen relative overflow-hidden">
+      <div className="md:order-first w-full md:w-5/12 lg:w-1/2 bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 flex items-center justify-center p-10 py-14 md:py-10 md:min-h-screen relative overflow-hidden">
         {/* Decorative circles */}
         <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/5 rounded-full pointer-events-none" />
         <div className="absolute -bottom-16 -right-12 w-60 h-60 bg-white/5 rounded-full pointer-events-none" />

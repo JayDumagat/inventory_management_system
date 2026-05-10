@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, type ReactNode } from "react";
-import { useThemeStore, type ThemeMode, type AccentColor } from "../stores/themeStore";
+import { useThemeStore, type ThemeMode, type AccentColor, type ThemeStyle } from "../stores/themeStore";
 import { useCurrencyRatesStore } from "../stores/currencyRatesStore";
 
 interface ThemeContextValue {
   mode: ThemeMode;
+  style: ThemeStyle;
   accent: AccentColor;
   timezone: string;
   currency: string;
@@ -11,6 +12,7 @@ interface ThemeContextValue {
   language: string;
   compactMode: boolean;
   setMode: (mode: ThemeMode) => void;
+  setStyle: (style: ThemeStyle) => void;
   setAccent: (accent: AccentColor) => void;
   setTimezone: (timezone: string) => void;
   setCurrency: (currency: string) => void;
@@ -28,7 +30,7 @@ const ALL_THEMES: AccentColor[] = [
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const store = useThemeStore();
-  const { mode, accent } = store;
+  const { mode, style, accent, compactMode } = store;
   const fetchRates = useCurrencyRatesStore((s) => s.fetchRates);
 
   // Fetch live exchange rates on mount (and whenever the currency changes)
@@ -41,6 +43,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     ALL_THEMES.forEach((t) => root.classList.remove(`theme-${t}`));
     root.classList.add(`theme-${accent}`);
+    root.classList.toggle("style-flat", style === "flat");
+    root.classList.toggle("compact-mode", compactMode);
 
     const applyDark = (dark: boolean) => {
       root.classList.toggle("dark", dark);
@@ -55,7 +59,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       applyDark(mode === "dark");
     }
-  }, [mode, accent]);
+  }, [mode, style, accent, compactMode]);
 
   return (
     <ThemeContext.Provider value={store}>

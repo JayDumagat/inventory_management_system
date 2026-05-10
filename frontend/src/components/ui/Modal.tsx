@@ -25,19 +25,19 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={onClose} />
-      <div className={cn("relative bg-panel border border-stroke rounded-2xl shadow-xl w-full max-h-[90vh] flex flex-col", sizes[size])}>
+      <div className={cn("relative ui-surface ui-card bg-panel border border-stroke w-full max-h-[90vh] flex flex-col", sizes[size])}>
         {title && (
-          <div className="flex items-center justify-between px-4 py-3.5 sm:px-5 sm:py-4 border-b border-stroke flex-shrink-0">
+          <div className="flex items-center justify-between card-content-spacing border-b border-stroke flex-shrink-0">
             <h2 className="text-sm font-semibold text-ink">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-hover transition-colors"
+              className="p-1.5 ui-pill text-muted hover:text-ink hover:bg-hover transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         )}
-        <div className="px-4 py-3.5 sm:px-5 sm:py-4 overflow-y-auto flex-1">{children}</div>
+        <div className="card-content-spacing overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
