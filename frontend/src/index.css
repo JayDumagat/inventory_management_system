@@ -4,6 +4,7 @@
 
 /* ── Surface & page background variables ─────────────────────── */
 :root {
+  --sidebar-width: 16rem;
   --page-bg:     #f5f7fb;
   --surface-bg:  #ffffff;
   --border-clr:  #dce3ee;

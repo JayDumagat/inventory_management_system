@@ -145,7 +145,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-panel/95 backdrop-blur border-r border-stroke flex flex-col transition-transform duration-200 ease-out shadow-xl lg:shadow-none",
+          "fixed inset-y-0 left-0 z-40 w-[var(--sidebar-width)] bg-panel/95 backdrop-blur border-r border-stroke flex flex-col transition-transform duration-200 ease-out shadow-xl lg:shadow-none",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0 lg:static lg:flex lg:h-full"
         )}
@@ -416,7 +416,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-               className="lg:hidden fixed top-3 left-64 z-50 p-1.5 rounded-lg bg-panel border border-stroke text-muted"
+               className="lg:hidden fixed top-3 left-[var(--sidebar-width)] z-50 p-1.5 rounded-lg bg-panel border border-stroke text-muted"
              >
               <X className="w-3.5 h-3.5" />
             </button>
