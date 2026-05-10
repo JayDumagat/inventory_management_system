@@ -16,6 +16,7 @@ import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
 import { formatDateTime, formatDate } from "../../lib/utils";
+import { CameraBarcodeScanner } from "../../components/barcode/CameraBarcodeScanner";
 import { ArrowUpDown, GitBranch, AlertTriangle, ArrowRightLeft, Search, Plus, Pencil, Trash2, FlaskConical } from "lucide-react";
 
 interface InventoryItem {
@@ -59,7 +60,12 @@ const transferSchema = z.object({
 });
 type TransferForm = z.infer<typeof transferSchema>;
 
-const barcodeSchema = z.object({ code: z.string().min(1) });
+const barcodeSchema = z.object({
+  code: z.string().min(1, "Barcode is required"),
+  type: z.enum(["in", "out", "adjustment", "return"]),
+  quantity: z.number().int().min(1),
+  notes: z.string().optional(),
+});
 type BarcodeForm = z.infer<typeof barcodeSchema>;
 
 const batchSchema = z.object({
@@ -106,7 +112,7 @@ export default function InventoryPage() {
   const [transferStep, setTransferStep] = useState<1 | 2>(1);
   const [transferProductId, setTransferProductId] = useState("");
   const [barcodeModal, setBarcodeModal] = useState(false);
-  const [barcodeResult, setBarcodeResult] = useState<{ name?: string; sku?: string; barcode?: string } | null>(null);
+  const [barcodeResult, setBarcodeResult] = useState<{ name?: string; sku?: string; barcode?: string; quantity?: number; type?: string } | null>(null);
   const [barcodeError, setBarcodeError] = useState("");
 
   // Batch state
@@ -150,7 +156,10 @@ export default function InventoryPage() {
 
   const form = useForm<AdjustForm>({ resolver: zodResolver(adjustSchema), defaultValues: { type: "in" } });
   const tForm = useForm<TransferForm>({ resolver: zodResolver(transferSchema), defaultValues: { quantity: 1 } });
-  const bForm = useForm<BarcodeForm>({ resolver: zodResolver(barcodeSchema) });
+  const bForm = useForm<BarcodeForm>({
+    resolver: zodResolver(barcodeSchema),
+    defaultValues: { type: "in", quantity: 1, notes: "" },
+  });
   const batchForm = useForm<BatchForm>({ resolver: zodResolver(batchSchema), defaultValues: { quantity: 0 } });
 
   const closeAdjustModal = () => {
@@ -214,16 +223,40 @@ export default function InventoryPage() {
     onError: () => toast.error("Failed to update reorder alert"),
   });
 
-  const lookupBarcode = useMutation({
-    mutationFn: (code: string) =>
-      api.get(`/api/tenants/${tid}/inventory/barcode/${encodeURIComponent(code)}`).then((r) => r.data),
-    onSuccess: (data) => {
-      setBarcodeResult({ name: data.product?.name + " — " + data.name, sku: data.sku, barcode: data.barcode });
-      setBarcodeError("");
+  const barcodeQuickAction = useMutation({
+    mutationFn: async (data: BarcodeForm) => {
+      if (!currentBranch) {
+        throw new Error("Select a branch first");
+      }
+      const variant = await api.get(`/api/tenants/${tid}/inventory/barcode/${encodeURIComponent(data.code)}`).then((r) => r.data);
+      const inv = await api.post(`/api/tenants/${tid}/inventory/adjust`, {
+        variantId: variant.id,
+        branchId: currentBranch.id,
+        type: data.type,
+        quantity: data.quantity,
+        notes: data.notes || undefined,
+      }).then((r) => r.data as { quantity: number });
+      return { variant, inv, input: data };
     },
-    onError: () => {
+    onSuccess: ({ variant, inv, input }) => {
+      qc.invalidateQueries({ queryKey: ["inventory", tid] });
+      qc.invalidateQueries({ queryKey: ["movements", tid] });
+      setBarcodeResult({
+        name: `${variant.product?.name} — ${variant.name}`,
+        sku: variant.sku,
+        barcode: variant.barcode,
+        quantity: inv.quantity,
+        type: input.type,
+      });
+      setBarcodeError("");
+      bForm.setValue("code", "");
+      bForm.setFocus("code");
+      toast.success("Stock action applied");
+    },
+    onError: (error: unknown) => {
       setBarcodeResult(null);
-      setBarcodeError("No product found with that barcode");
+      const e = error as { response?: { data?: { error?: string } } };
+      setBarcodeError(e?.response?.data?.error ?? "No product found with that barcode");
     },
   });
 
@@ -319,8 +352,18 @@ export default function InventoryPage() {
           <p className="text-muted text-sm mt-1">Track stock levels across all branches</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => { setBarcodeModal(true); setBarcodeResult(null); setBarcodeError(""); bForm.reset(); }} className="gap-2">
-            <Search className="w-4 h-4" /> Barcode lookup
+          <Button
+            variant="outline"
+            onClick={() => {
+              setBarcodeModal(true);
+              setBarcodeResult(null);
+              setBarcodeError("");
+              bForm.reset({ type: "in", quantity: 1, notes: "", code: "" });
+            }}
+            className="gap-2"
+            disabled={!currentBranch}
+          >
+            <Search className="w-4 h-4" /> Barcode quick action
           </Button>
           <Button variant="outline" onClick={() => setTransferModal(true)} className="gap-2">
             <ArrowRightLeft className="w-4 h-4" /> Transfer
@@ -806,14 +849,44 @@ export default function InventoryPage() {
         )}
       </Modal>
 
-      {/* Barcode lookup modal */}
-      <Modal open={barcodeModal} onClose={() => setBarcodeModal(false)} title="Barcode lookup" size="sm">
-        <form onSubmit={bForm.handleSubmit((d) => lookupBarcode.mutate(d.code))} className="flex flex-col gap-4">
+      {/* Barcode quick action modal */}
+      <Modal open={barcodeModal} onClose={() => setBarcodeModal(false)} title="Barcode quick action" size="sm">
+        <form onSubmit={bForm.handleSubmit((d) => barcodeQuickAction.mutate(d))} className="flex flex-col gap-4">
+          {!currentBranch && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">Select a branch first to use quick stock actions.</div>
+          )}
+          <Select label="Action" {...bForm.register("type")}>
+            <option value="in">Increase stock</option>
+            <option value="out">Decrease stock</option>
+            <option value="adjustment">Set stock exactly</option>
+            <option value="return">Return stock</option>
+          </Select>
+          <Input
+            label="Quantity"
+            type="number"
+            min="1"
+            {...bForm.register("quantity", { valueAsNumber: true })}
+            error={bForm.formState.errors.quantity?.message}
+            helperText={bForm.getValues("type") === "adjustment" ? "For adjustment, this becomes the exact stock quantity." : undefined}
+          />
+          <Input label="Notes (optional)" {...bForm.register("notes")} />
           <Input
             label="Barcode / QR code"
             placeholder="Scan or type barcode"
             autoFocus
             {...bForm.register("code")}
+            error={bForm.formState.errors.code?.message}
+          />
+          <CameraBarcodeScanner
+            onDetected={(code) => {
+              barcodeQuickAction.mutate({
+                code,
+                type: bForm.getValues("type"),
+                quantity: bForm.getValues("quantity"),
+                notes: bForm.getValues("notes"),
+              });
+            }}
+            disabled={!currentBranch || barcodeQuickAction.isPending}
           />
           {barcodeError && (
             <div className="p-3 bg-red-50 border border-red-200 text-sm text-red-700">{barcodeError}</div>
@@ -821,13 +894,15 @@ export default function InventoryPage() {
           {barcodeResult && (
             <div className="p-3 bg-green-50 border border-green-200 text-sm text-green-800">
               <div className="font-medium">{barcodeResult.name}</div>
-              <div className="text-xs text-green-700 mt-0.5">SKU: {barcodeResult.sku} · Barcode: {barcodeResult.barcode}</div>
+              <div className="text-xs text-green-700 mt-0.5">
+                SKU: {barcodeResult.sku} · Barcode: {barcodeResult.barcode} · Action: {barcodeResult.type} · Stock now: {barcodeResult.quantity}
+              </div>
             </div>
           )}
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => setBarcodeModal(false)}>Close</Button>
-            <Button type="submit" loading={lookupBarcode.isPending}>
-              <Search className="w-4 h-4" /> Lookup
+            <Button type="submit" loading={barcodeQuickAction.isPending} disabled={!currentBranch}>
+              <Search className="w-4 h-4" /> Apply
             </Button>
           </div>
         </form>

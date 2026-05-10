@@ -257,7 +257,19 @@ export default function ProductsPage() {
   };
 
   const openVariantModal = (productId: string, variant?: Variant) => {
-    vForm.reset(variant ? { name: variant.name, sku: variant.sku, barcode: variant.barcode ?? "", price: variant.price, costPrice: variant.costPrice } : {});
+    const product = products.find((p) => p.id === productId);
+    const sharedPrice = product?.variants[0]?.price ?? "";
+    const sharedCostPrice = product?.variants[0]?.costPrice ?? "";
+    vForm.reset(variant ? {
+      name: variant.name,
+      sku: variant.sku,
+      barcode: variant.barcode ?? "",
+      price: variant.price,
+      costPrice: variant.costPrice,
+    } : {
+      price: sharedPrice,
+      costPrice: sharedCostPrice,
+    });
     setVariantModal({ open: true, productId, variant });
   };
 
@@ -1037,7 +1049,10 @@ export default function ProductsPage() {
                       if (!draftProductId) return;
                       setIsGeneratingVariants(true);
                       try {
-                        const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/variants/generate`);
+                        const res = await api.post(`/api/tenants/${tid}/products/${draftProductId}/variants/generate`, {
+                          price: vForm.getValues("price") || "0",
+                          costPrice: vForm.getValues("costPrice") || "0",
+                        });
                         qc.invalidateQueries({ queryKey: ["products", tid] });
                         toast.success(`${res.data.created ?? 0} variant(s) generated`);
                       } catch (err: unknown) {
@@ -1076,13 +1091,14 @@ export default function ProductsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="Selling price"
+                    label="Product selling price"
                     type="number"
                     step="0.01"
                     min="0.01"
                     placeholder="0.00"
                     {...vForm.register("price")}
                     error={vForm.formState.errors.price?.message}
+                    helperText="Shared selling price for all variants of this product"
                   />
                   <Input
                     label="Cost price"
@@ -1134,13 +1150,14 @@ export default function ProductsPage() {
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Selling price"
+              label="Product selling price"
               type="number"
               step="0.01"
               min="0.01"
               placeholder="0.00"
               {...vForm.register("price")}
               error={vForm.formState.errors.price?.message}
+              helperText="Updating this applies to all variants under the product"
             />
             <Input
               label="Cost price"
@@ -1266,7 +1283,10 @@ export default function ProductsPage() {
                     if (!attrProductId) return;
                     setIsGeneratingVariants(true);
                     try {
-                      const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/variants/generate`);
+                      const res = await api.post(`/api/tenants/${tid}/products/${attrProductId}/variants/generate`, {
+                        price: vForm.getValues("price") || "0",
+                        costPrice: vForm.getValues("costPrice") || "0",
+                      });
                       qc.invalidateQueries({ queryKey: ["products", tid] });
                       toast.success(`${res.data.created ?? 0} variant(s) generated`);
                     } catch (err: unknown) {
