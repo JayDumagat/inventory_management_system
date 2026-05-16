@@ -12,7 +12,7 @@ import { formatDate } from "../../lib/utils";
 import { useSuperadminStore } from "../../stores/superadminStore";
 
 const ALL_PAGES = [
-  "dashboard", "tenants", "subscriptions", "plans", "tickets", "reports", "audit-logs",
+  "dashboard", "tenants", "subscriptions", "plans", "tickets", "reports", "settings", "audit-logs",
 ];
 
 export default function SuperadminStaffPage() {

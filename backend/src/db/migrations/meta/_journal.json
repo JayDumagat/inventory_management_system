@@ -8,6 +8,13 @@
       "when": 1778106832441,
       "tag": "0000_sturdy_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778880000000,
+      "tag": "0008_platform_settings",
+      "breakpoints": true
     }
   ]
 }

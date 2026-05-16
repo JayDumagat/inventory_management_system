@@ -554,6 +554,13 @@ export interface SuperadminTenantDetail {
   memberCount: number;
 }
 
+export interface PlatformSetting {
+  provider: "stripe" | "smtp" | "sms";
+  config: Record<string, unknown>;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 export interface PlatformReports {
   totalTenants: number;
   newTenantsLast30Days: number;

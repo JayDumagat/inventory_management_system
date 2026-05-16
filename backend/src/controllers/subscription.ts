@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import {
-  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig, integrations, invoices, invoiceItems,
+  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig, invoices, invoiceItems,
 } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
@@ -10,9 +10,9 @@ import { changePlanSchema, addAddonSchema, removeAddonSchema } from "../validato
 import { getPlanDef, getLimit, hasFeature, PLAN_DEFINITIONS, PlanKey } from "../lib/planConfig";
 import { getCount } from "../lib/usageCounter";
 import { getCatalogPlan, listCatalogPlans, updateCatalogPlan } from "../lib/planCatalog";
-import { testIntegrationConnection } from "../lib/integrationHealth";
 import { generateInvoiceNumber } from "../utils/helpers";
-import { sendTenantEmail } from "../services/email";
+import { sendPlatformEmail } from "../services/platformEmail";
+import { ensurePlatformStripeReady } from "../services/platformPayment";
 
 function addMonths(date: Date, months: number): Date {
   const copy = new Date(date);
@@ -24,20 +24,6 @@ function getNextBillingDate(planKey: string): Date | null {
   const plan = getPlanDef(planKey);
   if (plan.monthlyPrice <= 0) return null;
   return addMonths(new Date(), 1);
-}
-
-async function ensureStripeReadyForPaidPlan(tenantId: string): Promise<{ ok: boolean; error?: string }> {
-  const [stripe] = await db.select().from(integrations).where(and(
-    eq(integrations.tenantId, tenantId),
-    eq(integrations.provider, "stripe"),
-    eq(integrations.isEnabled, true),
-  )).limit(1);
-
-  if (!stripe) return { ok: false, error: "Stripe payment provider is not connected for this tenant" };
-
-  const tested = await testIntegrationConnection("stripe", (stripe.config ?? {}) as Record<string, unknown>);
-  if (!tested.ok) return { ok: false, error: tested.message };
-  return { ok: true };
 }
 
 async function createAndEmailSubscriptionInvoice(input: {
@@ -75,7 +61,7 @@ async function createAndEmailSubscriptionInvoice(input: {
     totalPrice: String(plan.monthlyPrice),
   });
 
-  const emailResult = await sendTenantEmail(input.tenantId, {
+  const emailResult = await sendPlatformEmail({
     to: input.userEmail,
     subject: `Subscription invoice ${invoice.invoiceNumber}`,
     text: `Hi,\n\nYour subscription has been updated to ${plan.name}.\nInvoice: ${invoice.invoiceNumber}\nAmount: $${plan.monthlyPrice.toFixed(2)}\n\nThank you.`,
@@ -205,7 +191,7 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
 
     const paidPlan = !body.scheduleForPeriodEnd && ((await getCatalogPlan(body.planKey)) ?? getPlanDef(body.planKey)).monthlyPrice > 0;
     if (paidPlan) {
-      const stripeCheck = await ensureStripeReadyForPaidPlan(tenantId);
+      const stripeCheck = await ensurePlatformStripeReady();
       if (!stripeCheck.ok) {
         res.status(402).json({ error: stripeCheck.error ?? "Stripe is not configured" });
         return;
