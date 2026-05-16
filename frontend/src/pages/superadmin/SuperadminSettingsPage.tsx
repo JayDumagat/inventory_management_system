@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 import { superadminApi } from "../../api/superadminClient";
@@ -41,27 +41,10 @@ export default function SuperadminSettingsPage() {
     queryFn: () => superadminApi.get("/api/superadmin/settings").then((r) => r.data),
   });
 
-  useEffect(() => {
-    const map = new Map(data.map((entry) => [entry.provider, entry]));
-    setForm({
-      stripe: {
-        secretKey: ((map.get("stripe")?.config.secretKey as string) || ""),
-      },
-      smtp: {
-        host: ((map.get("smtp")?.config.host as string) || ""),
-        port: ((map.get("smtp")?.config.port as string) || ""),
-        username: ((map.get("smtp")?.config.username as string) || ""),
-        password: ((map.get("smtp")?.config.password as string) || ""),
-        fromEmail: ((map.get("smtp")?.config.fromEmail as string) || ""),
-        fromName: ((map.get("smtp")?.config.fromName as string) || ""),
-      },
-      sms: {
-        accountSid: ((map.get("sms")?.config.accountSid as string) || ""),
-        authToken: ((map.get("sms")?.config.authToken as string) || ""),
-        fromNumber: ((map.get("sms")?.config.fromNumber as string) || ""),
-      },
-    });
-  }, [data]);
+  const settingsMap = useMemo(
+    () => new Map(data.map((entry) => [entry.provider, entry])),
+    [data],
+  );
 
   const saveMutation = useMutation({
     mutationFn: ({ provider, config }: { provider: "stripe" | "smtp" | "sms"; config: Record<string, unknown> }) =>
@@ -106,7 +89,7 @@ export default function SuperadminSettingsPage() {
             type="password"
             value={form.stripe.secretKey}
             onChange={(e) => setForm((prev) => ({ ...prev, stripe: { ...prev.stripe, secretKey: e.target.value } }))}
-            placeholder="sk_live_..."
+            placeholder={(settingsMap.get("stripe")?.config.secretKey as string) || "sk_live_..."}
           />
           <div className="flex gap-2 justify-end">
             <Button
@@ -132,12 +115,12 @@ export default function SuperadminSettingsPage() {
             <p className="text-sm font-semibold text-ink">Email (SMTP)</p>
             <p className="text-xs text-muted mt-0.5">Used for subscription invoice and platform emails</p>
           </div>
-          <Input label="Host" value={form.smtp.host} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, host: e.target.value } }))} />
-          <Input label="Port" value={form.smtp.port} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, port: e.target.value } }))} />
-          <Input label="Username" value={form.smtp.username} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, username: e.target.value } }))} />
-          <Input label="Password" type="password" value={form.smtp.password} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, password: e.target.value } }))} />
-          <Input label="From Email" value={form.smtp.fromEmail} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, fromEmail: e.target.value } }))} />
-          <Input label="From Name" value={form.smtp.fromName} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, fromName: e.target.value } }))} />
+          <Input label="Host" value={form.smtp.host} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, host: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.host as string) || ""} />
+          <Input label="Port" value={form.smtp.port} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, port: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.port as string) || ""} />
+          <Input label="Username" value={form.smtp.username} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, username: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.username as string) || ""} />
+          <Input label="Password" type="password" value={form.smtp.password} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, password: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.password as string) || ""} />
+          <Input label="From Email" value={form.smtp.fromEmail} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, fromEmail: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.fromEmail as string) || ""} />
+          <Input label="From Name" value={form.smtp.fromName} onChange={(e) => setForm((prev) => ({ ...prev, smtp: { ...prev.smtp, fromName: e.target.value } }))} placeholder={(settingsMap.get("smtp")?.config.fromName as string) || ""} />
           <div className="flex gap-2 justify-end">
             <Button
               variant="secondary"
@@ -172,9 +155,9 @@ export default function SuperadminSettingsPage() {
             <p className="text-sm font-semibold text-ink">SMS (Twilio)</p>
             <p className="text-xs text-muted mt-0.5">Used for platform SMS notifications</p>
           </div>
-          <Input label="Account SID" value={form.sms.accountSid} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, accountSid: e.target.value } }))} />
-          <Input label="Auth Token" type="password" value={form.sms.authToken} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, authToken: e.target.value } }))} />
-          <Input label="From Number" value={form.sms.fromNumber} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, fromNumber: e.target.value } }))} placeholder="+15551234567" />
+          <Input label="Account SID" value={form.sms.accountSid} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, accountSid: e.target.value } }))} placeholder={(settingsMap.get("sms")?.config.accountSid as string) || ""} />
+          <Input label="Auth Token" type="password" value={form.sms.authToken} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, authToken: e.target.value } }))} placeholder={(settingsMap.get("sms")?.config.authToken as string) || ""} />
+          <Input label="From Number" value={form.sms.fromNumber} onChange={(e) => setForm((prev) => ({ ...prev, sms: { ...prev.sms, fromNumber: e.target.value } }))} placeholder={(settingsMap.get("sms")?.config.fromNumber as string) || "+15551234567"} />
           <div className="flex gap-2 justify-end">
             <Button
               variant="secondary"

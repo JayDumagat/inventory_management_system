@@ -3,7 +3,7 @@ import { db } from "../db";
 import {
   tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig, invoices, invoiceItems,
 } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { changePlanSchema, addAddonSchema, removeAddonSchema } from "../validators/subscription";
