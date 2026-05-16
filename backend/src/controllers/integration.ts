@@ -6,6 +6,7 @@ import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { upsertIntegrationSchema, SUPPORTED_PROVIDERS } from "../validators/integration";
 import { cacheGet, cacheSet, cacheDel } from "../lib/redis";
+import { testIntegrationConnection } from "../lib/integrationHealth";
 
 export const listIntegrations = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -82,6 +83,39 @@ export const upsertIntegration = async (req: Request, res: Response): Promise<vo
     await createAuditLog({ tenantId: req.tenantContext!.tenantId, userId: req.user!.id, action: "update", resourceType: "integration", resourceId: integration.id });
     await cacheDel(`integrations:${req.tenantContext!.tenantId}`);
     res.json(integration);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
+};
+
+export const testIntegration = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const provider = req.params.provider as string;
+    if (!SUPPORTED_PROVIDERS.includes(provider)) {
+      res.status(400).json({ error: "Unsupported provider" });
+      return;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(integrations)
+      .where(and(
+        eq(integrations.tenantId, req.tenantContext!.tenantId),
+        eq(integrations.provider, provider),
+      ))
+      .limit(1);
+
+    if (!existing || !existing.isEnabled) {
+      res.status(400).json({ error: `${provider} integration is not enabled` });
+      return;
+    }
+
+    const result = await testIntegrationConnection(provider, (existing.config ?? {}) as Record<string, unknown>);
+    if (!result.ok) {
+      res.status(400).json(result);
+      return;
+    }
+    res.json(result);
   } catch (error) {
     handleControllerError(error, res);
   }

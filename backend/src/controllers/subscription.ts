@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import {
-  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig,
+  tenantSubscriptions, subscriptionAddons, subscriptionHistory, tenants, loyaltyConfig, integrations, invoices, invoiceItems,
 } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
@@ -9,6 +9,84 @@ import { handleControllerError } from "../utils/errors";
 import { changePlanSchema, addAddonSchema, removeAddonSchema } from "../validators/subscription";
 import { getPlanDef, getLimit, hasFeature, PLAN_DEFINITIONS } from "../lib/planConfig";
 import { getCount } from "../lib/usageCounter";
+import { getCatalogPlan, listCatalogPlans, updateCatalogPlan } from "../lib/planCatalog";
+import { testIntegrationConnection } from "../lib/integrationHealth";
+import { generateInvoiceNumber } from "../utils/helpers";
+import { sendTenantEmail } from "../services/email";
+
+function addMonths(date: Date, months: number): Date {
+  const copy = new Date(date);
+  copy.setMonth(copy.getMonth() + months);
+  return copy;
+}
+
+function getNextBillingDate(planKey: string): Date | null {
+  const plan = getPlanDef(planKey);
+  if (plan.monthlyPrice <= 0) return null;
+  return addMonths(new Date(), 1);
+}
+
+async function ensureStripeReadyForPaidPlan(tenantId: string): Promise<{ ok: boolean; error?: string }> {
+  const [stripe] = await db.select().from(integrations).where(and(
+    eq(integrations.tenantId, tenantId),
+    eq(integrations.provider, "stripe"),
+    eq(integrations.isEnabled, true),
+  )).limit(1);
+
+  if (!stripe) return { ok: false, error: "Stripe payment provider is not connected for this tenant" };
+
+  const tested = await testIntegrationConnection("stripe", (stripe.config ?? {}) as Record<string, unknown>);
+  if (!tested.ok) return { ok: false, error: tested.message };
+  return { ok: true };
+}
+
+async function createAndEmailSubscriptionInvoice(input: {
+  tenantId: string;
+  userId: string;
+  userEmail: string;
+  planKey: string;
+}) {
+  const plan = getPlanDef(input.planKey);
+  if (plan.monthlyPrice <= 0) return { invoiceId: null, emailSent: false, emailError: null };
+
+  const [tenant] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1);
+  const invoiceNumber = await generateInvoiceNumber(input.tenantId);
+
+  const [invoice] = await db.insert(invoices).values({
+    tenantId: input.tenantId,
+    invoiceNumber,
+    customerName: tenant?.name ?? "Tenant account",
+    customerEmail: input.userEmail,
+    subtotal: String(plan.monthlyPrice),
+    taxAmount: "0",
+    discountAmount: "0",
+    totalAmount: String(plan.monthlyPrice),
+    notes: `Subscription charge for ${plan.name} plan`,
+    dueDate: getNextBillingDate(input.planKey)?.toISOString().slice(0, 10),
+    createdBy: input.userId,
+    status: "sent",
+  }).returning();
+
+  await db.insert(invoiceItems).values({
+    invoiceId: invoice.id,
+    description: `${plan.name} subscription (monthly)`,
+    quantity: 1,
+    unitPrice: String(plan.monthlyPrice),
+    totalPrice: String(plan.monthlyPrice),
+  });
+
+  const emailResult = await sendTenantEmail(input.tenantId, {
+    to: input.userEmail,
+    subject: `Subscription invoice ${invoice.invoiceNumber}`,
+    text: `Hi,\n\nYour subscription has been updated to ${plan.name}.\nInvoice: ${invoice.invoiceNumber}\nAmount: $${plan.monthlyPrice.toFixed(2)}\n\nThank you.`,
+  });
+
+  return {
+    invoiceId: invoice.id,
+    emailSent: emailResult.sent,
+    emailError: emailResult.sent ? null : emailResult.reason ?? "Email delivery failed",
+  };
+}
 
 // ─── Get current subscription ─────────────────────────────────────────────────
 export async function getSubscription(req: Request, res: Response): Promise<void> {
@@ -26,12 +104,12 @@ export async function getSubscription(req: Request, res: Response): Promise<void
         planKey: tenant?.plan ?? "free",
         status: "active",
       }).returning();
-      const planDef = getPlanDef(created.planKey);
+      const planDef = (await getCatalogPlan(created.planKey)) ?? getPlanDef(created.planKey);
       res.json({ subscription: created, plan: planDef, addons: [], usage: {} });
       return;
     }
 
-    const planDef = getPlanDef(sub.planKey);
+    const planDef = (await getCatalogPlan(sub.planKey)) ?? getPlanDef(sub.planKey);
     const addons = await db.select().from(subscriptionAddons)
       .where(eq(subscriptionAddons.tenantId, tenantId));
 
@@ -103,7 +181,7 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
 
     // Downgrade validation: check current usage won't exceed new plan limits
     if (!body.scheduleForPeriodEnd) {
-      const newPlanDef = getPlanDef(body.planKey);
+      const newPlanDef = (await getCatalogPlan(body.planKey)) ?? getPlanDef(body.planKey);
       const addonLimits = (sub.addonLimits ?? {}) as Record<string, number>;
 
       for (const [resource, limit] of Object.entries(newPlanDef.limits) as [string, number][]) {
@@ -122,11 +200,25 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
       }
     }
 
+    const nextBillingDate = body.scheduleForPeriodEnd ? sub.currentPeriodEnd : getNextBillingDate(body.planKey);
+    const targetPlanKey = body.scheduleForPeriodEnd ? sub.planKey : body.planKey;
+
+    const paidPlan = !body.scheduleForPeriodEnd && ((await getCatalogPlan(body.planKey)) ?? getPlanDef(body.planKey)).monthlyPrice > 0;
+    if (paidPlan) {
+      const stripeCheck = await ensureStripeReadyForPaidPlan(tenantId);
+      if (!stripeCheck.ok) {
+        res.status(402).json({ error: stripeCheck.error ?? "Stripe is not configured" });
+        return;
+      }
+    }
+
     // Apply the plan change
     const [updated] = await db.update(tenantSubscriptions)
       .set({
-        planKey: body.scheduleForPeriodEnd ? sub.planKey : body.planKey,
+        planKey: targetPlanKey,
         cancelAtPeriodEnd: body.scheduleForPeriodEnd,
+        ...(body.scheduleForPeriodEnd ? {} : { currentPeriodStart: new Date() }),
+        currentPeriodEnd: nextBillingDate,
         updatedAt: new Date(),
       })
       .where(eq(tenantSubscriptions.tenantId, tenantId))
@@ -135,7 +227,11 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
     // Keep tenants.plan in sync for backward compatibility + loyalty disable on downgrade
     await db.transaction(async (tx) => {
       await tx.update(tenants)
-        .set({ plan: body.scheduleForPeriodEnd ? fromPlan : body.planKey, updatedAt: new Date() })
+        .set({
+          plan: targetPlanKey,
+          planExpiresAt: nextBillingDate,
+          updatedAt: new Date(),
+        })
         .where(eq(tenants.id, tenantId));
 
       if (!body.scheduleForPeriodEnd && !hasFeature(body.planKey, "loyalty")) {
@@ -165,7 +261,21 @@ export async function changePlan(req: Request, res: Response): Promise<void> {
       newValues: { planKey: body.planKey, scheduleForPeriodEnd: body.scheduleForPeriodEnd },
     });
 
-    res.json({ subscription: updated, plan: getPlanDef(updated.planKey) });
+    const invoiceResult = await createAndEmailSubscriptionInvoice({
+      tenantId,
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      planKey: updated.planKey,
+    });
+
+    res.json({
+      subscription: updated,
+      plan: (await getCatalogPlan(updated.planKey)) ?? getPlanDef(updated.planKey),
+      billing: {
+        nextBillingDate: updated.currentPeriodEnd,
+      },
+      invoice: invoiceResult,
+    });
   } catch (error) {
     handleControllerError(error, res);
   }
@@ -288,7 +398,12 @@ export async function removeAddon(req: Request, res: Response): Promise<void> {
 
 // ─── List available plans ─────────────────────────────────────────────────────
 export async function listPlans(_req: Request, res: Response): Promise<void> {
-  res.json(Object.values(PLAN_DEFINITIONS));
+  try {
+    const plans = await listCatalogPlans();
+    res.json(plans);
+  } catch (error) {
+    handleControllerError(error, res);
+  }
 }
 
 // ─── Superadmin: update a plan definition (in-memory override) ───────────────
@@ -304,18 +419,21 @@ export async function updatePlanDefinition(req: Request, res: Response): Promise
     };
 
     const existing = PLAN_DEFINITIONS[planKey as keyof typeof PLAN_DEFINITIONS];
-    if (!existing) {
+    if (!existing && !(await getCatalogPlan(planKey))) {
       res.status(404).json({ error: "Plan not found" });
       return;
     }
 
-    if (name !== undefined) existing.name = name;
-    if (monthlyPrice !== undefined) existing.monthlyPrice = monthlyPrice;
-    if (annualPrice !== undefined) existing.annualPrice = annualPrice;
-    if (Array.isArray(features)) existing.features = features;
-    if (limits !== undefined) Object.assign(existing.limits, limits);
+    if (existing) {
+      if (name !== undefined) existing.name = name;
+      if (monthlyPrice !== undefined) existing.monthlyPrice = monthlyPrice;
+      if (annualPrice !== undefined) existing.annualPrice = annualPrice;
+      if (Array.isArray(features)) existing.features = features;
+      if (limits !== undefined) Object.assign(existing.limits, limits);
+    }
 
-    res.json(existing);
+    const updated = await updateCatalogPlan(planKey, { name, monthlyPrice, annualPrice, features, limits });
+    res.json(updated ?? existing ?? (await getCatalogPlan(planKey)));
   } catch (error) {
     handleControllerError(error, res);
   }
