@@ -12,13 +12,14 @@ type PartialPlanUpdate = {
 };
 
 function toPlanDefinition(row: typeof planCatalog.$inferSelect): PlanDefinition {
+  const limits = (row.limits ?? {}) as Record<string, number>;
   return {
     key: row.key as PlanKey,
     name: row.name,
     monthlyPrice: Number(row.monthlyPrice),
     annualPrice: Number(row.annualPrice),
     features: Array.isArray(row.features) ? row.features : [],
-    limits: (row.limits ?? {}) as PlanDefinition["limits"],
+    limits: limits as unknown as PlanDefinition["limits"],
   };
 }
 
@@ -29,7 +30,7 @@ function defaultCatalogRows() {
     monthlyPrice: String(p.monthlyPrice),
     annualPrice: String(p.annualPrice),
     features: p.features,
-    limits: p.limits,
+    limits: { ...p.limits } as Record<string, number>,
     isActive: true,
   }));
 }

@@ -7,7 +7,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { changePlanSchema, addAddonSchema, removeAddonSchema } from "../validators/subscription";
-import { getPlanDef, getLimit, hasFeature, PLAN_DEFINITIONS } from "../lib/planConfig";
+import { getPlanDef, getLimit, hasFeature, PLAN_DEFINITIONS, PlanKey } from "../lib/planConfig";
 import { getCount } from "../lib/usageCounter";
 import { getCatalogPlan, listCatalogPlans, updateCatalogPlan } from "../lib/planCatalog";
 import { testIntegrationConnection } from "../lib/integrationHealth";
@@ -418,18 +418,14 @@ export async function updatePlanDefinition(req: Request, res: Response): Promise
       limits?: Record<string, number>;
     };
 
-    const existing = PLAN_DEFINITIONS[planKey as keyof typeof PLAN_DEFINITIONS];
+    const hasStaticPlan = Object.prototype.hasOwnProperty.call(PLAN_DEFINITIONS, planKey);
+    const existing = hasStaticPlan
+      ? PLAN_DEFINITIONS[planKey as PlanKey]
+      : null;
+
     if (!existing && !(await getCatalogPlan(planKey))) {
       res.status(404).json({ error: "Plan not found" });
       return;
-    }
-
-    if (existing) {
-      if (name !== undefined) existing.name = name;
-      if (monthlyPrice !== undefined) existing.monthlyPrice = monthlyPrice;
-      if (annualPrice !== undefined) existing.annualPrice = annualPrice;
-      if (Array.isArray(features)) existing.features = features;
-      if (limits !== undefined) Object.assign(existing.limits, limits);
     }
 
     const updated = await updateCatalogPlan(planKey, { name, monthlyPrice, annualPrice, features, limits });
