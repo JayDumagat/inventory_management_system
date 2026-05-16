@@ -52,6 +52,7 @@ import SuperadminTicketsPage from "./pages/superadmin/SuperadminTicketsPage";
 import SuperadminStaffPage from "./pages/superadmin/SuperadminStaffPage";
 import SuperadminAuditLogsPage from "./pages/superadmin/SuperadminAuditLogsPage";
 import SuperadminReportsPage from "./pages/superadmin/SuperadminReportsPage";
+import SuperadminSettingsPage from "./pages/superadmin/SuperadminSettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -193,6 +194,14 @@ export default function App() {
               element={
                 <SuperadminRoute page="reports">
                   <SuperadminReportsPage />
+                </SuperadminRoute>
+              }
+            />
+            <Route
+              path="/superadmin/settings"
+              element={
+                <SuperadminRoute page="settings">
+                  <SuperadminSettingsPage />
                 </SuperadminRoute>
               }
             />

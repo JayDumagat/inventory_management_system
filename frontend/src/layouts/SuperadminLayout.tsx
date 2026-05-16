@@ -3,7 +3,7 @@ import { useSuperadminStore } from "../stores/superadminStore";
 import { cn } from "../lib/utils";
 import {
   LayoutDashboard, Users, CreditCard, Tag, TicketCheck,
-  ClipboardList, BarChart2, LogOut, ChevronDown, ShieldCheck, Menu, X,
+  ClipboardList, BarChart2, LogOut, ChevronDown, ShieldCheck, Menu, X, Settings2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -14,6 +14,7 @@ const ALL_NAV_ITEMS = [
   { href: "/superadmin/plans", label: "Plans", page: "plans", icon: Tag },
   { href: "/superadmin/tickets", label: "Tickets", page: "tickets", icon: TicketCheck },
   { href: "/superadmin/reports", label: "Reports", page: "reports", icon: BarChart2 },
+  { href: "/superadmin/settings", label: "Settings", page: "settings", icon: Settings2 },
   { href: "/superadmin/staff", label: "Staff", page: "staff", icon: Users, ownerOnly: true },
   { href: "/superadmin/audit-logs", label: "Audit Logs", page: "audit-logs", icon: ClipboardList },
 ];
