@@ -1,71 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Package, X, ArrowLeft } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Package, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "../../stores/authStore";
 import { useTenantStore } from "../../stores/tenantStore";
 import { api } from "../../api/client";
-
-const PLANS = [
-  {
-    key: "free",
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Perfect for getting started",
-    features: [
-      { text: "1 location / branch", included: true },
-      { text: "Up to 100 products", included: true },
-      { text: "Basic reports", included: true },
-      { text: "POS included", included: true },
-      { text: "Sales orders", included: true },
-      { text: "Advanced analytics", included: false },
-      { text: "Invoicing", included: false },
-      { text: "API access", included: false },
-      { text: "Priority support", included: false },
-      { text: "Unlimited branches", included: false },
-    ],
-  },
-  {
-    key: "pro",
-    name: "Pro",
-    price: "$29",
-    period: "per month",
-    description: "For growing businesses",
-    popular: true,
-    features: [
-      { text: "Up to 5 locations", included: true },
-      { text: "Unlimited products", included: true },
-      { text: "Advanced analytics", included: true },
-      { text: "Invoicing", included: true },
-      { text: "API access", included: true },
-      { text: "POS included", included: true },
-      { text: "Sales orders", included: true },
-      { text: "Purchase orders", included: true },
-      { text: "Priority email support", included: true },
-      { text: "Unlimited branches", included: false },
-    ],
-  },
-  {
-    key: "enterprise",
-    name: "Enterprise",
-    price: "$99",
-    period: "per month",
-    description: "For large organisations",
-    features: [
-      { text: "Unlimited locations", included: true },
-      { text: "Unlimited products", included: true },
-      { text: "Advanced analytics", included: true },
-      { text: "Invoicing", included: true },
-      { text: "Full API access", included: true },
-      { text: "White label", included: true },
-      { text: "Custom integrations", included: true },
-      { text: "Dedicated support", included: true },
-      { text: "SLA guarantee", included: true },
-      { text: "Custom onboarding", included: true },
-    ],
-  },
-];
+import type { PlanDefinition } from "../../types";
 
 export default function PricingPage() {
   const { user } = useAuthStore();
@@ -74,6 +14,10 @@ export default function PricingPage() {
   const navigate = useNavigate();
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [successPlan, setSuccessPlan] = useState<string | null>(null);
+  const { data: plans = [] } = useQuery<PlanDefinition[]>({
+    queryKey: ["pricing-plans"],
+    queryFn: () => api.get("/api/subscription/plans").then((r) => r.data),
+  });
 
   const currentPlan = (currentTenant as { plan?: string })?.plan ?? "free";
 
@@ -148,26 +92,27 @@ export default function PricingPage() {
       {/* Plans */}
       <section className="max-w-5xl mx-auto px-6 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PLANS.map((plan) => {
+          {plans.map((plan) => {
             const isCurrent = currentPlan === plan.key;
             const isUpgrading = upgrading === plan.key;
+            const isPopular = plan.key === "pro";
             return (
               <div
                 key={plan.key}
                 className={`border relative flex flex-col ${
-                  plan.popular
+                  isPopular
                     ? "border-blue-500 ring-2 ring-blue-500"
                     : isCurrent
                     ? "border-green-400"
                     : "border-gray-200"
                 }`}
               >
-                {plan.popular && (
+                {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-blue-600 text-white text-xs font-semibold whitespace-nowrap">
                     Most popular
                   </div>
                 )}
-                {isCurrent && !plan.popular && (
+                {isCurrent && !isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-green-600 text-white text-xs font-semibold whitespace-nowrap">
                     Current plan
                   </div>
@@ -176,22 +121,20 @@ export default function PricingPage() {
                 <div className="p-6 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-500 mb-1">{plan.name}</p>
                   <div className="flex items-end gap-1 mb-1">
-                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                    <span className="text-sm text-gray-400 mb-1.5">/{plan.period}</span>
+                    <span className="text-4xl font-bold text-gray-900">${plan.monthlyPrice}</span>
+                    <span className="text-sm text-gray-400 mb-1.5">/{plan.monthlyPrice > 0 ? "month" : "forever"}</span>
                   </div>
-                  <p className="text-sm text-gray-500">{plan.description}</p>
+                  <p className="text-sm text-gray-500">
+                    {plan.monthlyPrice === 0 ? "Perfect for getting started" : `Billed monthly · $${plan.annualPrice}/year option`}
+                  </p>
                 </div>
 
                 <div className="p-6 flex-1">
                   <ul className="space-y-3">
-                    {plan.features.map((feat) => (
-                      <li key={feat.text} className="flex items-start gap-2 text-sm">
-                        {feat.included ? (
-                          <Check className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <X className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" />
-                        )}
-                        <span className={feat.included ? "text-gray-700" : "text-gray-400"}>{feat.text}</span>
+                    {plan.features.slice(0, 10).map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <Check className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700">{feature.replace(/_/g, " ")}</span>
                       </li>
                     ))}
                   </ul>
@@ -207,7 +150,7 @@ export default function PricingPage() {
                       onClick={() => handleSelectPlan(plan.key)}
                       disabled={isUpgrading}
                       className={`w-full py-2.5 text-center text-sm font-semibold transition-colors disabled:opacity-60 ${
-                        plan.popular
+                        isPopular
                           ? "bg-blue-600 text-white hover:bg-blue-700"
                           : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                       }`}

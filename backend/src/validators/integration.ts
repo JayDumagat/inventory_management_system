@@ -10,5 +10,5 @@ export const upsertIntegrationSchema = z.object({
 export const SUPPORTED_PROVIDERS = [
   "shopify", "woocommerce", "quickbooks", "xero", "stripe",
   "paypal", "mailchimp", "slack", "zapier", "webhook",
-  "minio", "redis",
+  "minio", "redis", "smtp", "twilio",
 ];

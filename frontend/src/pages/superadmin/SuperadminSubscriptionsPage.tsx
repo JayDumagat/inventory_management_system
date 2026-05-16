@@ -6,7 +6,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
 import { Badge } from "../../components/ui/Badge";
 import { useToast } from "../../hooks/useToast";
-import type { SuperadminTenantRow } from "../../types";
+import type { PlanDefinition, SuperadminTenantRow } from "../../types";
 import { Search, Edit2 } from "lucide-react";
 import { formatDate } from "../../lib/utils";
 
@@ -39,6 +39,10 @@ export default function SuperadminSubscriptionsPage() {
       superadminApi
         .get("/api/superadmin/tenants", { params: { search, page, perPage: 25 } })
         .then((r) => r.data),
+  });
+  const { data: plans = [] } = useQuery<PlanDefinition[]>({
+    queryKey: ["superadmin-plans-for-subs"],
+    queryFn: () => superadminApi.get("/api/superadmin/plans").then((r) => r.data),
   });
 
   const overrideMut = useMutation({
@@ -167,9 +171,11 @@ export default function SuperadminSubscriptionsPage() {
             value={newPlan}
             onChange={(e) => setNewPlan(e.target.value)}
           >
-            <option value="free">Free</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
+            {plans.map((plan) => (
+              <option key={plan.key} value={plan.key}>
+                {plan.name}
+              </option>
+            ))}
           </Select>
 
           <Select

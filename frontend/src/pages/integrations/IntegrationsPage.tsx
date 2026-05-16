@@ -11,7 +11,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import { useToast } from "../../hooks/useToast";
-import { Link2, Link2Off, Settings, Plug } from "lucide-react";
+import { Link2, Link2Off, Settings, Plug, ShieldCheck } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface Integration {
@@ -35,6 +35,8 @@ const PROVIDER_META: Record<string, { label: string; description: string; catego
   webhook:     { label: "Webhook",      description: "Send real-time event data to any URL via HTTP webhook",    category: "Developer",   color: "bg-gray-50 border-gray-200" },
   minio:       { label: "MinIO",        description: "Store and serve files (images, documents) via MinIO object storage", category: "Storage", color: "bg-red-50 border-red-200" },
   redis:       { label: "Redis",        description: "High-performance in-memory caching for faster API responses", category: "Infrastructure", color: "bg-rose-50 border-rose-200" },
+  smtp:        { label: "SMTP",         description: "Send subscription invoices and notifications via your SMTP server", category: "Notifications", color: "bg-emerald-50 border-emerald-200" },
+  twilio:      { label: "Twilio SMS",   description: "Send SMS updates and alerts using Twilio",                 category: "Notifications", color: "bg-sky-50 border-sky-200" },
 };
 
 const configSchema = z.object({
@@ -46,6 +48,15 @@ const configSchema = z.object({
   bucket: z.string().optional(),
   useSSL: z.boolean().optional(),
   connectionUrl: z.string().optional(),
+  host: z.string().optional(),
+  secure: z.boolean().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  fromEmail: z.string().optional(),
+  fromName: z.string().optional(),
+  accountSid: z.string().optional(),
+  authToken: z.string().optional(),
+  secretKey: z.string().optional(),
 });
 type ConfigForm = z.infer<typeof configSchema>;
 
@@ -100,6 +111,15 @@ export default function IntegrationsPage() {
       bucket: (integration.config?.bucket as string) || "",
       useSSL: (integration.config?.useSSL as boolean) || false,
       connectionUrl: (integration.config?.connectionUrl as string) || "",
+      host: (integration.config?.host as string) || "",
+      secure: (integration.config?.secure as boolean) || false,
+      username: (integration.config?.username as string) || "",
+      password: (integration.config?.password as string) || "",
+      fromEmail: (integration.config?.fromEmail as string) || "",
+      fromName: (integration.config?.fromName as string) || "",
+      accountSid: (integration.config?.accountSid as string) || "",
+      authToken: (integration.config?.authToken as string) || "",
+      secretKey: (integration.config?.secretKey as string) || "",
     });
     setConfigModal(integration);
   };
@@ -119,10 +139,29 @@ export default function IntegrationsPage() {
           bucket: data.bucket || undefined,
           useSSL: data.useSSL,
           connectionUrl: data.connectionUrl || undefined,
+          host: data.host || undefined,
+          secure: data.secure ?? undefined,
+          username: data.username || undefined,
+          password: data.password || undefined,
+          fromEmail: data.fromEmail || undefined,
+          fromName: data.fromName || undefined,
+          accountSid: data.accountSid || undefined,
+          authToken: data.authToken || undefined,
+          secretKey: data.secretKey || undefined,
         },
       },
     });
   };
+
+  const testConnection = useMutation({
+    mutationFn: (provider: string) => api.post(`/api/tenants/${tid}/integrations/${provider}/test`).then((r) => r.data),
+    onSuccess: (_result, provider) => {
+      const label = PROVIDER_META[provider]?.label ?? provider;
+      toast.success(`${label} connection successful`);
+    },
+    onError: (err: { response?: { data?: { error?: string; message?: string } } }) =>
+      toast.error(err.response?.data?.error ?? err.response?.data?.message ?? "Connection test failed"),
+  });
 
   const grouped = Object.entries(
     integrations.reduce<Record<string, Integration[]>>((acc, i) => {
@@ -231,8 +270,8 @@ export default function IntegrationsPage() {
           )}
 
           {/* MinIO-specific fields */}
-          {configModal?.provider === "minio" ? (
-            <>
+           {configModal?.provider === "minio" ? (
+             <>
               <Input
                 label="MinIO Endpoint"
                 placeholder="localhost or minio.example.com"
@@ -260,16 +299,34 @@ export default function IntegrationsPage() {
                 {...form.register("bucket")}
               />
             </>
-          ) : configModal?.provider === "redis" ? (
-            <>
+           ) : configModal?.provider === "redis" ? (
+             <>
               <Input
                 label="Redis Connection URL"
                 placeholder="redis://localhost:6379"
                 {...form.register("connectionUrl")}
               />
             </>
-          ) : (
-            <>
+           ) : configModal?.provider === "smtp" ? (
+             <>
+               <Input label="SMTP Host" placeholder="smtp.example.com" {...form.register("host")} />
+               <Input label="Port" placeholder="587" {...form.register("port")} />
+               <Input label="Username" placeholder="smtp-user" {...form.register("username")} />
+               <Input label="Password" type="password" placeholder="smtp-password" {...form.register("password")} />
+               <Input label="From Email" placeholder="billing@example.com" {...form.register("fromEmail")} />
+               <Input label="From Name" placeholder="Inventra Billing" {...form.register("fromName")} />
+             </>
+           ) : configModal?.provider === "twilio" ? (
+             <>
+               <Input label="Account SID" placeholder="ACxxxxxxxxxxxxxxxxxx" {...form.register("accountSid")} />
+               <Input label="Auth Token" type="password" placeholder="Twilio auth token" {...form.register("authToken")} />
+             </>
+           ) : configModal?.provider === "stripe" ? (
+             <>
+               <Input label="Stripe Secret Key" type="password" placeholder="sk_live_..." {...form.register("secretKey")} />
+             </>
+           ) : (
+             <>
               <Input
                 label="Webhook URL"
                 placeholder="https://your-app.com/webhook"
@@ -296,6 +353,18 @@ export default function IntegrationsPage() {
             API keys and secrets are stored securely and are only used to communicate with the external service.
           </p>
           <div className="flex gap-3 justify-end pt-2">
+            {configModal && ["smtp", "twilio", "stripe"].includes(configModal.provider) && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="gap-1.5"
+                onClick={() => testConnection.mutate(configModal.provider)}
+                loading={testConnection.isPending}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Test connection
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={() => { setConfigModal(null); form.reset(); }}>Cancel</Button>
             <Button type="submit" loading={update.isPending}>Save configuration</Button>
           </div>
