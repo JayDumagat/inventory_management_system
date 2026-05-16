@@ -23,6 +23,11 @@ import {
 } from "../controllers/tickets";
 import { superadminAuditLogs } from "../controllers/superadminAudit";
 import { listPlans, updatePlanDefinition } from "../controllers/subscription";
+import {
+  listPlatformSettings,
+  upsertPlatformSetting,
+  testPlatformSetting,
+} from "../controllers/superadminSettings";
 
 const router = Router();
 
@@ -51,6 +56,11 @@ router.patch(
 // ─── Plans ────────────────────────────────────────────────────────────────────
 router.get("/plans", requireSuperadminPage("plans"), listPlans);
 router.patch("/plans/:planKey", requireSuperadminPage("plans"), updatePlanDefinition);
+
+// ─── Platform settings ────────────────────────────────────────────────────────
+router.get("/settings", requireSuperadminPage("settings"), listPlatformSettings);
+router.put("/settings/:provider", requireSuperadminPage("settings"), upsertPlatformSetting);
+router.post("/settings/:provider/test", requireSuperadminPage("settings"), testPlatformSetting);
 
 // ─── Tickets ──────────────────────────────────────────────────────────────────
 router.get("/tickets", requireSuperadminPage("tickets"), superadminListTickets);

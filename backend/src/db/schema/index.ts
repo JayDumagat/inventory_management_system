@@ -21,3 +21,4 @@ export * from "./subscriptions";
 export * from "./promotions";
 export * from "./loyalty";
 export * from "./superadmin";
+export * from "./platformSettings";
