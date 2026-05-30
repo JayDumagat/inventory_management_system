@@ -17,6 +17,7 @@ export async function listTenants(req: Request, res: Response): Promise<void> {
           description: tenants.description,
           taxRate: tenants.taxRate,
           logoUrl: tenants.logoUrl,
+          brandingAccent: tenants.brandingAccent,
           receiptTemplate: tenants.receiptTemplate,
           receiptFooterMessage: tenants.receiptFooterMessage,
           receiptLogoUrl: tenants.receiptLogoUrl,
@@ -157,12 +158,13 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
     }
 
     const wantsBrandingChange = body.name !== undefined || body.logoUrl !== undefined;
+    const wantsBrandingAccentChange = body.brandingAccent !== undefined;
     const wantsReceiptChange =
       body.receiptTemplate !== undefined ||
       body.receiptFooterMessage !== undefined ||
       body.receiptLogoUrl !== undefined ||
       body.receiptShowLogo !== undefined;
-    if (wantsBrandingChange || wantsReceiptChange) {
+    if (wantsBrandingChange || wantsBrandingAccentChange || wantsReceiptChange) {
       const [sub] = await db
         .select({ planKey: tenantSubscriptions.planKey })
         .from(tenantSubscriptions)
@@ -172,9 +174,9 @@ export async function updateTenant(req: Request, res: Response): Promise<void> {
         .from(tenants)
         .where(eq(tenants.id, tenantId));
       const planKey = sub?.planKey ?? tenantPlan?.plan;
-      if (wantsBrandingChange && !hasFeature(planKey ?? "free", "custom_branding")) {
+      if ((wantsBrandingChange || wantsBrandingAccentChange) && !hasFeature(planKey ?? "free", "custom_branding")) {
         res.status(402).json({
-          error: "Updating organization name and logo requires the Pro or Enterprise plan",
+          error: "Updating organization name, logo, or brand color requires the Pro or Enterprise plan",
           feature: "custom_branding",
           currentPlan: planKey ?? "free",
           upgradeRequired: true,

@@ -113,31 +113,49 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
-          <p className="text-muted text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {branches.length > 1 && (
-            <div className="flex items-center gap-2 border border-stroke px-3 py-1.5 bg-panel">
-              <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
-              <select
-                value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="text-xs text-ink bg-transparent outline-none cursor-pointer"
-              >
-                <option value="all">All Branches</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-stroke px-3 py-1.5">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Last 30 days
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Overview</p>
+            <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
+            <p className="text-muted text-sm mt-0.5">Welcome back to {currentTenant?.name}</p>
           </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {branches.length > 1 && (
+              <div className="flex items-center gap-2 border border-stroke px-3 py-1.5 bg-panel">
+                <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                  className="text-xs text-ink bg-transparent outline-none cursor-pointer"
+                >
+                  <option value="all">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted border border-stroke px-3 py-1.5">
+              <TrendingUp className="w-3.5 h-3.5" />
+              Last 30 days
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Link to="/pos" className="border border-stroke bg-panel px-4 py-3 hover:bg-hover transition-colors">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Fast lane</p>
+            <p className="text-sm font-medium text-ink">Open POS</p>
+          </Link>
+          <Link to="/inventory" className="border border-stroke bg-panel px-4 py-3 hover:bg-hover transition-colors">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Control room</p>
+            <p className="text-sm font-medium text-ink">Review stock</p>
+          </Link>
+          <Link to="/customers" className="border border-stroke bg-panel px-4 py-3 hover:bg-hover transition-colors">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Relationships</p>
+            <p className="text-sm font-medium text-ink">Open customers</p>
+          </Link>
         </div>
       </div>
 
@@ -146,12 +164,12 @@ export default function DashboardPage() {
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 py-4">
-              <div className={`w-10 h-10 border flex items-center justify-center flex-shrink-0 ${s.color}`}>
+                <div className={`w-10 h-10 border flex items-center justify-center flex-shrink-0 ${s.color}`}>
                 <s.icon className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-xl font-bold text-ink">{s.value}</p>
-                <p className="text-xs text-muted">{s.label}</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -236,7 +254,7 @@ export default function DashboardPage() {
               key={item.id}
               to={item.href}
               aria-label={`Sponsored: ${item.title}`}
-              className="border border-stroke rounded-lg bg-panel overflow-hidden block hover:bg-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="border border-stroke bg-panel overflow-hidden block hover:bg-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <img src={item.image} alt="" aria-hidden="true" className="w-full h-32 object-cover border-b border-stroke" />
               <div className="p-3 space-y-2">

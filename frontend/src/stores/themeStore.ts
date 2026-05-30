@@ -30,7 +30,7 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       mode: "system",
-      style: "modern",
+      style: "flat",
       accent: "blue",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       currency: "USD",

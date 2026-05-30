@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,13 @@ interface Customer {
   dataConsentGiven?: boolean;
 }
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
@@ -59,11 +66,16 @@ export default function CustomersPage() {
   const form = useForm<CustomerForm>({ resolver: zodResolver(schema) });
   const toast = useToast();
 
-  const { data: customers = [], isLoading } = useQuery<Customer[]>({
-    queryKey: ["customers", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/customers`).then((r) => r.data),
+  const { data: customerPage, isLoading } = useQuery<PaginatedResponse<Customer>>({
+    queryKey: ["customers", tid, search, page],
+    queryFn: () => api.get(`/api/tenants/${tid}/customers`, { params: { page, perPage: PAGE_SIZE, search: search || undefined } }).then((r) => r.data),
     enabled: !!tid,
   });
+
+  const customers = customerPage?.data ?? [];
+  const totalCustomers = customerPage?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   const save = useMutation({
     mutationFn: (data: CustomerForm) =>
@@ -114,23 +126,6 @@ export default function CustomersPage() {
     if (valid) setStep(2);
   };
 
-  const filtered = useMemo(
-    () => customers.filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.email ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.phone ?? "").includes(search) ||
-      (c.city ?? "").toLowerCase().includes(search.toLowerCase())
-    ),
-    [customers, search]
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedFiltered = useMemo(
-    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [filtered, currentPage]
-  );
-
   if (isLoading) return (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
@@ -145,11 +140,12 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Relationships</p>
           <h1 className="text-2xl font-bold text-ink">Customers</h1>
           <p className="text-muted text-sm mt-1">
-            {customers.length} customer{customers.length !== 1 ? "s" : ""}
+            {totalCustomers} customer{totalCustomers !== 1 ? "s" : ""}
           </p>
         </div>
         <Button onClick={() => openModal()} className="gap-2 self-start sm:self-auto">
@@ -157,8 +153,12 @@ export default function CustomersPage() {
         </Button>
       </div>
 
+      <p className="text-sm text-muted max-w-2xl">
+        Capture the details you actually need for follow-up, history, and compliance without adding extra steps to the save flow.
+      </p>
+
       {/* Search */}
-      {customers.length > 0 && (
+      {totalCustomers > 0 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
@@ -171,30 +171,8 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Summary cards */}
-      {customers.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-panel border border-stroke p-4">
-            <p className="text-2xl font-bold text-ink">{customers.length}</p>
-            <p className="text-xs text-muted mt-0.5">Total customers</p>
-          </div>
-          <div className="bg-panel border border-stroke p-4">
-            <p className="text-2xl font-bold text-ink">
-              {customers.filter((c) => c.email).length}
-            </p>
-            <p className="text-xs text-muted mt-0.5">With email</p>
-          </div>
-          <div className="bg-panel border border-stroke p-4 col-span-2 sm:col-span-1">
-            <p className="text-2xl font-bold text-ink">
-              {new Set(customers.map((c) => c.country).filter(Boolean)).size}
-            </p>
-            <p className="text-xs text-muted mt-0.5">Countries</p>
-          </div>
-        </div>
-      )}
-
       {/* Empty states */}
-      {customers.length === 0 ? (
+      {totalCustomers === 0 ? (
         <div className="bg-panel border border-stroke">
           <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
             <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
@@ -207,7 +185,7 @@ export default function CustomersPage() {
             <Button onClick={() => openModal()}>Add your first customer</Button>
           </div>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : customers.length === 0 ? (
         <div className="bg-panel border border-stroke">
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <AlertCircle className="w-8 h-8 text-muted mb-3" />
@@ -230,7 +208,7 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {pagedFiltered.map((c) => (
+                {customers.map((c) => (
                   <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
@@ -289,7 +267,7 @@ export default function CustomersPage() {
 
           {/* Mobile cards */}
           <div className="md:hidden bg-panel border border-stroke divide-y divide-stroke">
-            {pagedFiltered.map((c) => (
+            {customers.map((c) => (
               <div key={c.id} className="px-4 py-3 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <div className="w-9 h-9 bg-primary-50 border border-primary-200 flex items-center justify-center text-primary-700 font-bold text-sm flex-shrink-0 mt-0.5">
@@ -325,9 +303,9 @@ export default function CustomersPage() {
           </div>
         </>
       )}
-      {filtered.length > 0 && (
+      {totalCustomers > 0 && (
         <Pagination
-          totalItems={filtered.length}
+          totalItems={totalCustomers}
           page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}

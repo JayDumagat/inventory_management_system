@@ -77,19 +77,28 @@ export function AuthLayout({ children, leftContent, formWidth = "sm" }: AuthLayo
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* ── RIGHT: form panel ───────────────────────────────────────── */}
       {/* Appears first in DOM → top on mobile, right on desktop. */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-page overflow-y-auto">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-page overflow-y-auto border-b md:border-b-0 md:border-l border-stroke">
         <div className={cn("w-full py-6 md:py-0", maxW)}>{children}</div>
       </div>
 
       {/* ── LEFT: branding panel ────────────────────────────────────── */}
       {/* md:order-first makes it appear LEFT on desktop despite being second in DOM. */}
-      <div className="md:order-first w-full md:w-5/12 lg:w-1/2 bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800 flex items-center justify-center p-10 py-14 md:py-10 md:min-h-screen relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/5 rounded-full pointer-events-none" />
-        <div className="absolute -bottom-16 -right-12 w-60 h-60 bg-white/5 rounded-full pointer-events-none" />
+      <div className="md:order-first w-full md:w-5/12 lg:w-1/2 bg-panel flex items-center justify-center p-8 sm:p-10 md:p-12 md:min-h-screen relative overflow-hidden border-b md:border-b-0 border-stroke">
+        <div className="absolute inset-x-0 top-0 h-1 bg-primary-600" />
+        <div className="absolute inset-y-0 right-0 w-px bg-stroke/70" />
 
-        <div className="relative z-10 w-full max-w-xs">
+        <div className="relative z-10 w-full max-w-md space-y-8">
           {leftContent ?? <AuthBranding />}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border border-stroke bg-page p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2">Focus</p>
+              <p className="text-sm text-ink">Clear actions, fewer decisions, less friction.</p>
+            </div>
+            <div className="border border-stroke bg-page p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-2">Flow</p>
+              <p className="text-sm text-ink">Structured layouts that reduce scanning effort.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

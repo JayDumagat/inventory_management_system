@@ -540,6 +540,10 @@ export default function ProductsPage() {
         </Button>
       </div>
 
+      <p className="text-sm text-muted max-w-2xl">
+        Create the product first, then add variants, attributes, and images only when they change the catalog.
+      </p>
+
       {/* Search bar */}
       {products.length > 0 && (
         <div className="relative">
@@ -562,8 +566,8 @@ export default function ProductsPage() {
               <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
                 <Package className="w-7 h-7 text-primary-500" />
               </div>
-              <h3 className="text-base font-semibold text-ink mb-1">No products yet</h3>
-              <p className="text-sm text-muted max-w-xs mb-6">Start building your catalog by adding your first product</p>
+              <h3 className="text-base font-semibold text-ink mb-1">Create your first product</h3>
+              <p className="text-sm text-muted max-w-xs mb-6">Build the catalog from a single item, then expand into variants and images.</p>
               <Button onClick={() => openProductModal()}>Add your first product</Button>
             </div>
           </CardContent>

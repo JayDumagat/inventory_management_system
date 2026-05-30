@@ -64,7 +64,7 @@ export function SubmitTicketModal({
     <Modal open={open} onClose={handleClose} title="Help & Support" size="md">
       {submitted ? (
         <div className="text-center py-6">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <div className="w-12 h-12 bg-green-100 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>

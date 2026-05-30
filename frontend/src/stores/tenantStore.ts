@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { AccentColor } from "./themeStore";
 
 interface Tenant {
   id: string;
@@ -10,6 +11,7 @@ interface Tenant {
   role: string;
   allowedPages?: string[] | null;
   plan?: string;
+  brandingAccent?: AccentColor;
   receiptTemplate?: "compact" | "detailed";
   receiptFooterMessage?: string;
   // Philippine regulatory compliance fields

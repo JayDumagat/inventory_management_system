@@ -346,8 +346,9 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Stock control</p>
           <h1 className="text-2xl font-bold text-ink">Inventory</h1>
           <p className="text-muted text-sm mt-1">Track stock levels across all branches</p>
         </div>
@@ -363,7 +364,7 @@ export default function InventoryPage() {
             className="gap-2"
             disabled={!currentBranch}
           >
-            <Search className="w-4 h-4" /> Barcode quick action
+            <Search className="w-4 h-4" /> Barcode action
           </Button>
           <Button variant="outline" onClick={() => setTransferModal(true)} className="gap-2">
             <ArrowRightLeft className="w-4 h-4" /> Transfer
@@ -371,6 +372,21 @@ export default function InventoryPage() {
           <Button onClick={() => setAdjustModal(true)} className="gap-2" disabled={!currentBranch}>
             <ArrowUpDown className="w-4 h-4" /> Adjust stock
           </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="border border-stroke bg-panel px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Speed</p>
+          <p className="text-sm text-ink">Use barcode action for fast stock updates.</p>
+        </div>
+        <div className="border border-stroke bg-panel px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Transfer</p>
+          <p className="text-sm text-ink">Move stock between branches without leaving the page.</p>
+        </div>
+        <div className="border border-stroke bg-panel px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Control</p>
+          <p className="text-sm text-ink">Adjust reorder alerts from the stock table.</p>
         </div>
       </div>
 

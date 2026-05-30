@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -129,6 +129,7 @@ export default function OrganizationPage() {
   const [orgDesc, setOrgDesc] = useState(currentTenant?.description || "");
   const [orgTaxRate, setOrgTaxRate] = useState((currentTenant as { taxRate?: string } | null)?.taxRate || "0");
   const [orgLogo, setOrgLogo] = useState((currentTenant as { logoUrl?: string })?.logoUrl || "");
+  const [brandingAccent, setBrandingAccent] = useState((currentTenant as { brandingAccent?: AccentColor } | null)?.brandingAccent || "blue");
   const [receiptTemplate, setReceiptTemplate] = useState<"compact" | "detailed">(sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate));
   const [receiptFooterMessage, setReceiptFooterMessage] = useState(
     (currentTenant as { receiptFooterMessage?: string } | null)?.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER
@@ -153,6 +154,10 @@ export default function OrganizationPage() {
   const [savingOrg, setSavingOrg] = useState(false);
   const [orgSuccess, setOrgSuccess] = useState(false);
   const [orgError, setOrgError] = useState("");
+
+  useEffect(() => {
+    setBrandingAccent((currentTenant as { brandingAccent?: AccentColor } | null)?.brandingAccent || "blue");
+  }, [currentTenant?.id, currentTenant?.brandingAccent]);
 
   // Team tab state
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -278,6 +283,8 @@ export default function OrganizationPage() {
         if (orgName !== currentTenant.name) payload.name = orgName;
         const currentLogo = (currentTenant as { logoUrl?: string }).logoUrl || "";
         if (orgLogo !== currentLogo) payload.logoUrl = orgLogo || undefined;
+        const currentBrandingAccent = (currentTenant as { brandingAccent?: AccentColor } | null)?.brandingAccent || "blue";
+        if (brandingAccent !== currentBrandingAccent) payload.brandingAccent = brandingAccent;
       }
       if (canEditReceiptDesign) {
         const currentReceiptTemplate = sanitizeReceiptTemplate((currentTenant as { receiptTemplate?: string } | null)?.receiptTemplate);
@@ -318,9 +325,12 @@ export default function OrganizationPage() {
         name: updated.name ?? currentTenant.name,
         description: updated.description ?? currentTenant.description,
         taxRate: updated.taxRate ?? (currentTenant as { taxRate?: string }).taxRate,
-      } as typeof currentTenant & { logoUrl?: string };
+      } as typeof currentTenant & { logoUrl?: string; brandingAccent?: AccentColor };
       if (Object.prototype.hasOwnProperty.call(updated, "logoUrl")) {
         nextTenant.logoUrl = updated.logoUrl ?? undefined;
+      }
+      if (Object.prototype.hasOwnProperty.call(updated, "brandingAccent")) {
+        nextTenant.brandingAccent = updated.brandingAccent ?? undefined;
       }
       if (Object.prototype.hasOwnProperty.call(updated, "receiptTemplate")) {
         (nextTenant as { receiptTemplate?: "compact" | "detailed" }).receiptTemplate = sanitizeReceiptTemplate(updated.receiptTemplate);
@@ -619,7 +629,7 @@ export default function OrganizationPage() {
                 disabled={!canEditSidebarBranding}
               />
               {!canEditSidebarBranding && (
-                <p className="text-xs text-amber-700">Logo customization requires the Pro or Enterprise plan.</p>
+                <p className="text-xs text-amber-700">Logo and brand color customization require the Pro or Enterprise plan.</p>
               )}
               {sanitizeImageUrl(orgLogo) && (
                 <div className="flex items-center gap-3 p-3 border border-stroke bg-page">
@@ -656,30 +666,33 @@ export default function OrganizationPage() {
             </div>
 
             <div>
-              <p className="text-sm font-medium text-ink mb-3">Color palette</p>
+              <p className="text-sm font-medium text-ink mb-3">Brand color</p>
+              <p className="text-xs text-muted mb-3">This color is applied to the tenant workspace. Public pages stay blue.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {ACCENT_SWATCHES.map((s) => (
                   <button
                     key={s.key}
-                    onClick={() => theme.setAccent(s.key)}
+                    onClick={() => setBrandingAccent(s.key)}
                     className={cn(
                       "flex items-center gap-3 p-3 border text-left transition-colors",
-                      theme.accent === s.key
+                      brandingAccent === s.key
                         ? "border-primary-600 bg-primary-50"
-                        : "border-stroke bg-panel hover:bg-hover"
+                        : "border-stroke bg-panel hover:bg-hover",
+                      !canEditSidebarBranding && "opacity-60 cursor-not-allowed"
                     )}
+                    disabled={!canEditSidebarBranding}
                   >
                     <div className="flex flex-shrink-0 items-center gap-1">
                       <div className="w-5 h-5 border border-black/10" style={{ background: s.color }} />
                       <div className="w-5 h-5 border border-black/10" style={{ background: s.bg }} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={cn("text-sm font-medium truncate", theme.accent === s.key ? "text-primary-700" : "text-ink")}>
+                      <p className={cn("text-sm font-medium truncate", brandingAccent === s.key ? "text-primary-700" : "text-ink")}>
                         {s.label}
                       </p>
                       <p className="text-xs text-muted truncate">{s.description}</p>
                     </div>
-                    {theme.accent === s.key && <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />}
+                    {brandingAccent === s.key && <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />}
                   </button>
                 ))}
               </div>

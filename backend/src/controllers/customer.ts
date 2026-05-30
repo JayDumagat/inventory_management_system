@@ -1,17 +1,45 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { customers } from "../db/schema";
-import { eq, and, or, ilike } from "drizzle-orm";
+import { SQL, eq, and, or, ilike, count, asc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { customerSchema, customerSearchSchema } from "../validators/customer";
+import { parsePaginationParams } from "../utils/pagination";
 
 export async function listCustomers(req: Request, res: Response): Promise<void> {
   try {
+    const tenantId = req.tenantContext!.tenantId;
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const { page, perPage, offset } = parsePaginationParams(req.query, { perPage: 10, maxPerPage: 100 });
+    const conditions: SQL[] = [
+      eq(customers.tenantId, tenantId),
+    ];
+
+    if (search.length > 0) {
+      const pattern = `%${search}%`;
+
+      const searchCondition = or(
+        ilike(customers.name, pattern),
+        ilike(customers.email, pattern),
+        ilike(customers.phone, pattern),
+        ilike(customers.city, pattern),
+      );
+
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    const where = and(...conditions);
     const list = await db.select().from(customers)
-      .where(eq(customers.tenantId, req.tenantContext!.tenantId))
-      .orderBy(customers.name);
-    res.json(list);
+      .where(where)
+      .orderBy(asc(customers.name))
+      .limit(perPage)
+      .offset(offset);
+
+    const [{ total }] = await db.select({ total: count() }).from(customers).where(where);
+    res.json({ data: list, total, page, perPage });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }

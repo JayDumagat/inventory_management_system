@@ -87,9 +87,15 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Reports</h1>
-        <p className="text-muted text-sm mt-1">Analytics and insights for your business</p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Reporting</p>
+          <h1 className="text-2xl font-bold text-ink">Reports</h1>
+          <p className="text-muted text-sm mt-1">Analytics and insights for your business</p>
+        </div>
+        <p className="text-sm text-muted max-w-2xl lg:text-right">
+          Use the tabs to switch between sales, inventory, and product analysis, then narrow the date range only when you need a sharper slice.
+        </p>
       </div>
 
       {/* Tab bar */}
@@ -115,7 +121,11 @@ export default function ReportsPage() {
 
       {/* Date range (sales + products tabs) */}
       {(tab === "sales" || tab === "products") && (
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap border border-stroke bg-panel px-4 py-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Date range</p>
+            <p className="text-xs text-muted">Use a tighter range to spot trends faster.</p>
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted font-medium">From</label>
             <input

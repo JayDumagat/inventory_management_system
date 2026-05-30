@@ -64,7 +64,7 @@ export function PreferencesModal({ open, onClose }: PreferencesModalProps) {
   } = useTheme();
 
   const STYLE_OPTIONS: { value: ThemeStyle; label: string; description: string; Icon: typeof Sparkles }[] = [
-    { value: "modern", label: "Modern", description: "Soft depth and rounded elements", Icon: Sparkles },
+    { value: "modern", label: "Modern", description: "Soft depth and layered surfaces", Icon: Sparkles },
     { value: "flat", label: "Flat", description: "Microsoft-style sharp edges", Icon: Square },
   ];
 

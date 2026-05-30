@@ -143,9 +143,15 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Analytics</h1>
-        <p className="text-muted text-sm mt-1">Last 30 days performance overview</p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Performance</p>
+          <h1 className="text-2xl font-bold text-ink">Analytics</h1>
+          <p className="text-muted text-sm mt-1">Last 30 days performance overview</p>
+        </div>
+        <p className="text-sm text-muted max-w-2xl lg:text-right">
+          Focus on the few metrics that change decisions: revenue, stock risk, and the products actually moving.
+        </p>
       </div>
 
       {/* KPI Cards */}

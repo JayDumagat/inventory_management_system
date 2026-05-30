@@ -28,7 +28,7 @@ export default {
         hover:   "var(--hover-bg)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        sans: ["Segoe UI", "Segoe UI Variable", "Inter", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
       },
     },
   },

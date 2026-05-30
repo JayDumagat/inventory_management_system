@@ -12,7 +12,7 @@ import { Input } from "../../components/ui/Input";
 import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { Plus, Pencil, Trash2, GitBranch } from "lucide-react";
+import { Plus, Pencil, Trash2, GitBranch, AlertCircle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 
@@ -43,6 +43,7 @@ export default function BranchesPage() {
   const tid = currentTenant?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const [modal, setModal] = useState<{ open: boolean; branch?: Branch }>({ open: false });
+  const [deleteTarget, setDeleteTarget] = useState<Branch | null>(null);
   const toast = useToast();
 
   const { data: branches = [], isLoading } = useQuery<Branch[]>({
@@ -89,6 +90,7 @@ export default function BranchesPage() {
       if (currentBranch?.id === id) {
         setCurrentBranch(null);
       }
+        setDeleteTarget(null);
       toast.success("Branch deleted");
     },
     onError: () => toast.error("Failed to delete branch"),
@@ -111,9 +113,7 @@ export default function BranchesPage() {
   };
 
   const handleDelete = (branch: Branch) => {
-    if (confirm(`Delete branch "${branch.name}"? This action cannot be undone.`)) {
-      remove.mutate(branch.id);
-    }
+    setDeleteTarget(branch);
   };
 
   if (isLoading) return (
@@ -141,6 +141,9 @@ export default function BranchesPage() {
           <Plus className="w-4 h-4" /> Add branch
         </Button>
       </div>
+      <p className="text-sm text-muted max-w-2xl">
+        Add a branch when stock, staff, or checkout behavior needs to be separated by location.
+      </p>
 
       {branches.length === 0 ? (
         <Card>
@@ -149,8 +152,8 @@ export default function BranchesPage() {
               <div className="w-14 h-14 bg-primary-50 border border-primary-200 flex items-center justify-center mb-5">
                 <GitBranch className="w-7 h-7 text-primary-500" />
               </div>
-              <h3 className="text-base font-semibold text-ink mb-1">No branches yet</h3>
-              <p className="text-sm text-muted max-w-xs mb-6">Add branches to organize your inventory by location</p>
+              <h3 className="text-base font-semibold text-ink mb-1">Set up your first branch</h3>
+              <p className="text-sm text-muted max-w-xs mb-6">Start with one physical location so stock and staff have a clear home.</p>
               <Button onClick={() => openModal()}>Add your first branch</Button>
             </div>
           </CardContent>
@@ -207,12 +210,7 @@ export default function BranchesPage() {
                         <Button variant="ghost" size="sm" onClick={() => openModal(b)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(b)}
-                          disabled={remove.isPending}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(b)} disabled={remove.isPending}>
                           <Trash2 className="w-4 h-4 text-red-400" />
                         </Button>
                       </div>
@@ -259,6 +257,30 @@ export default function BranchesPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete branch" size="sm">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink">
+                Delete &ldquo;{deleteTarget?.name}&rdquo;?
+              </p>
+              <p className="text-sm text-muted mt-1">
+                This removes the branch record. Existing inventory should be reassigned before deletion.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="danger" loading={remove.isPending} onClick={() => deleteTarget && remove.mutate(deleteTarget.id)}>
+              Delete
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
                         return (
                           <div
                             key={n}
-                            className={`flex-1 rounded-full transition-all ${n <= strength.score ? strength.color : "bg-stroke"}`}
+                            className={`flex-1 transition-all ${n <= strength.score ? strength.color : "bg-stroke"}`}
                           />
                         );
                       })}

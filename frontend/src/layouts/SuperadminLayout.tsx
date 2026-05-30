@@ -57,7 +57,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
         )}
       >
         <div className="px-4 py-4 border-b border-stroke flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-primary-700 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 bg-primary-700 flex items-center justify-center flex-shrink-0 border border-primary-700">
             <ShieldCheck className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -75,10 +75,10 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  "flex items-center gap-2.5 ui-pill px-3 py-2 text-sm font-medium mb-0.5 transition-colors",
+                  "flex items-center gap-2.5 px-3 py-2 text-sm font-medium mb-0.5 transition-colors border-l-2",
                   active
-                    ? "bg-primary-600 text-white"
-                    : "text-muted hover:bg-hover hover:text-ink",
+                    ? "bg-primary-50 text-primary-800 border-primary-600"
+                    : "text-muted border-transparent hover:bg-hover hover:text-ink",
                 )}
               >
                 <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -112,7 +112,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
         <header className="sticky top-0 z-20 ui-header flex items-center gap-3 px-4 bg-panel border-b border-stroke">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 ui-pill text-muted hover:bg-hover transition-colors"
+            className="lg:hidden p-1.5 text-muted hover:bg-hover transition-colors border border-transparent"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -125,9 +125,9 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           <div className="relative">
             <button
               onClick={() => setProfileOpen((o) => !o)}
-              className="flex items-center gap-2 ui-pill pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors"
+              className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors border border-stroke"
             >
-              <div className="w-6 h-6 ui-pill bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs">
+              <div className="w-6 h-6 bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs border border-primary-200">
                 {initial}
               </div>
               <span className="hidden sm:block text-sm font-medium text-ink max-w-[120px] truncate">

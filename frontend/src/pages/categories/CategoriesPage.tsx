@@ -12,10 +12,11 @@ import { Card, CardContent } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Pagination } from "../../components/ui/Pagination";
 import { Skeleton, SkeletonTable } from "../../components/ui/Skeleton";
-import { Plus, Pencil, Trash2, Tag, Search, FolderTree, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Search, AlertCircle } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 
 interface Category { id: string; name: string; description?: string; parentId?: string | null; }
+interface PaginatedResponse<T> { data: T[]; total: number; page: number; perPage: number; }
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -56,11 +57,28 @@ export default function CategoriesPage() {
   const [page, setPage] = useState(1);
   const toast = useToast();
 
-  const { data: categories = [], isLoading } = useQuery<Category[]>({
-    queryKey: ["categories", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/categories`).then((r) => r.data),
+  const { data: categoryPage, isLoading } = useQuery<PaginatedResponse<Category>>({
+    queryKey: ["categories", tid, search, page],
+    queryFn: () => api.get(`/api/tenants/${tid}/categories`, {
+      params: { page, perPage: PAGE_SIZE, search: search || undefined },
+    }).then((r) => r.data),
     enabled: !!tid,
   });
+
+  const { data: categoryOptions = [] } = useQuery<Category[]>({
+    queryKey: ["category-options", tid],
+    queryFn: () => api.get(`/api/tenants/${tid}/categories`, { params: { page: 1, perPage: 100 } }).then((r) => r.data.data),
+    enabled: !!tid,
+  });
+
+  const categories = categoryPage?.data ?? [];
+  const totalCategories = categoryPage?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCategories / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const currentCategoryOptions = useMemo(
+    () => categoryOptions.filter((c) => c.id !== modal.category?.id),
+    [categoryOptions, modal.category?.id]
+  );
 
   const form = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -68,13 +86,13 @@ export default function CategoriesPage() {
     mutationFn: (data: FormData) => modal.category
       ? api.patch(`/api/tenants/${tid}/categories/${modal.category.id}`, data)
       : api.post(`/api/tenants/${tid}/categories`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setModal({ open: false }); form.reset(); toast.success("Category saved"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); qc.invalidateQueries({ queryKey: ["category-options", tid] }); setModal({ open: false }); form.reset(); toast.success("Category saved"); },
     onError: () => toast.error("Failed to save category"),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/api/tenants/${tid}/categories/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); setDeleteConfirm(null); toast.success("Category deleted"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["categories", tid] }); qc.invalidateQueries({ queryKey: ["category-options", tid] }); setDeleteConfirm(null); toast.success("Category deleted"); },
     onError: () => toast.error("Failed to delete category"),
   });
 
@@ -83,32 +101,7 @@ export default function CategoriesPage() {
     setModal({ open: true, category });
   };
 
-  const filtered = useMemo(
-    () => categories.filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.description ?? "").toLowerCase().includes(search.toLowerCase())
-    ),
-    [categories, search]
-  );
-
-  const topLevelAll = useMemo(() => filtered.filter((c) => !c.parentId), [filtered]);
-  const totalPages = Math.max(1, Math.ceil(topLevelAll.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const topLevel = useMemo(
-    () => topLevelAll.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [topLevelAll, currentPage]
-  );
-  const visibleTopIds = useMemo(() => new Set(topLevel.map((c) => c.id)), [topLevel]);
-  const subCategories = useMemo(
-    () => filtered.filter((c) => !!c.parentId && visibleTopIds.has(c.parentId)),
-    [filtered, visibleTopIds]
-  );
-  const mobileCategories = useMemo(
-    () => topLevel.flatMap((top) => [top, ...subCategories.filter((s) => s.parentId === top.id)]),
-    [topLevel, subCategories]
-  );
-  const topCount = categories.filter((c) => !c.parentId).length;
-  const subCount = categories.filter((c) => !!c.parentId).length;
+  const parentLookup = useMemo(() => new Map(categoryOptions.map((c) => [c.id, c.name])), [categoryOptions]);
 
   if (isLoading) return (
   <div className="space-y-4">
@@ -129,7 +122,7 @@ export default function CategoriesPage() {
         <div>
           <h1 className="text-2xl font-bold text-ink">Categories</h1>
           <p className="text-muted text-sm mt-1">
-            {topCount} top-level · {subCount} sub-categor{subCount === 1 ? "y" : "ies"}
+            {totalCategories} categor{totalCategories === 1 ? "y" : "ies"}
           </p>
         </div>
         <Button onClick={() => openModal()} className="gap-2 self-start sm:self-auto">
@@ -137,47 +130,12 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      {/* Stat cards */}
-      {categories.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <Card>
-            <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary-50 border border-primary-200 flex items-center justify-center flex-shrink-0">
-                <FolderTree className="w-4 h-4 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-ink">{categories.length}</p>
-                <p className="text-xs text-muted">Total</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
-                <Tag className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-ink">{topCount}</p>
-                <p className="text-xs text-muted">Top-level</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-50 border border-green-200 flex items-center justify-center flex-shrink-0">
-                <Tag className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-ink">{subCount}</p>
-                <p className="text-xs text-muted">Sub-categories</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <p className="text-sm text-muted max-w-2xl">
+        Keep the category tree shallow unless a parent adds real value for sorting, filtering, or inventory grouping.
+      </p>
 
       {/* Search bar */}
-      {categories.length > 0 && (
+      {totalCategories > 0 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
@@ -191,7 +149,7 @@ export default function CategoriesPage() {
       )}
 
       {/* Empty state */}
-      {categories.length === 0 ? (
+      {totalCategories === 0 ? (
         <Card>
           <CardContent className="p-0">
             <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -204,7 +162,7 @@ export default function CategoriesPage() {
             </div>
           </CardContent>
         </Card>
-      ) : filtered.length === 0 ? (
+      ) : categories.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="w-8 h-8 text-muted mx-auto mb-3" />
@@ -214,8 +172,7 @@ export default function CategoriesPage() {
         </Card>
       ) : (
         <Card>
-          {/* Desktop table */}
-          <div className="hidden sm:block overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-stroke text-left">
@@ -226,7 +183,7 @@ export default function CategoriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {topLevel.map((c) => (
+                {categories.map((c) => (
                   <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
@@ -238,90 +195,29 @@ export default function CategoriesPage() {
                     </td>
                     <td className="px-5 py-3 text-muted">{c.description || "—"}</td>
                     <td className="px-5 py-3">
-                      <span className="text-xs bg-stroke text-ink px-2 py-0.5">
-                        Top level
-                      </span>
+                      {c.parentId ? (
+                        <span className="text-sm text-ink">{parentLookup.get(c.parentId) ?? "—"}</span>
+                      ) : (
+                        <span className="text-xs bg-stroke text-ink px-2 py-0.5">Top level</span>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       <CategoryActions c={c} onEdit={openModal} onDelete={setDeleteConfirm} />
                     </td>
                   </tr>
                 ))}
-                {subCategories.map((c) => {
-                  const parent = categories.find((p) => p.id === c.parentId);
-                  return (
-                    <tr key={c.id} className="border-b border-stroke hover:bg-hover transition-colors">
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2.5 pl-5">
-                          <div className="w-6 h-6 bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
-                            <Tag className="w-3 h-3 text-blue-600" />
-                          </div>
-                          <span className="font-medium text-ink">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 text-muted">{c.description || "—"}</td>
-                      <td className="px-5 py-3">
-                        {parent ? (
-                          <div className="flex items-center gap-1.5">
-                            <Tag className="w-3 h-3 text-muted flex-shrink-0" />
-                            <span className="text-sm text-ink">{parent.name}</span>
-                          </div>
-                        ) : "—"}
-                      </td>
-                      <td className="px-5 py-3">
-                        <CategoryActions c={c} onEdit={openModal} onDelete={setDeleteConfirm} />
-                      </td>
-                    </tr>
-                  );
-                })}
               </tbody>
             </table>
           </div>
-
-          {/* Mobile card list */}
-          <div className="sm:hidden divide-y divide-stroke">
-            {mobileCategories.map((c) => {
-              const parent = c.parentId ? categories.find((p) => p.id === c.parentId) : null;
-              const isTop = !c.parentId;
-              return (
-                <div key={c.id} className="px-4 py-3 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-8 h-8 border flex items-center justify-center flex-shrink-0 mt-0.5 ${isTop ? "bg-primary-50 border-primary-200" : "bg-blue-50 border-blue-200"}`}>
-                      <Tag className={`w-3.5 h-3.5 ${isTop ? "text-primary-600" : "text-blue-600"}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-ink truncate">{c.name}</p>
-                      {c.description && (
-                        <p className="text-xs text-muted mt-0.5 truncate">{c.description}</p>
-                      )}
-                      <div className="mt-1">
-                        {parent ? (
-                          <div className="flex items-center gap-1">
-                            <Tag className="w-3 h-3 text-muted flex-shrink-0" />
-                            <span className="text-xs text-muted">{parent.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] bg-stroke text-ink px-1.5 py-0.5">
-                            Top level
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <CategoryActions c={c} onEdit={openModal} onDelete={setDeleteConfirm} />
-                </div>
-              );
-            })}
-          </div>
         </Card>
       )}
-      {filtered.length > 0 && (
+      {totalCategories > 0 && (
         <Pagination
-          totalItems={topLevelAll.length}
+          totalItems={totalCategories}
           page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
-          itemLabel="top-level categories"
+          itemLabel="categories"
         />
       )}
 
@@ -332,7 +228,7 @@ export default function CategoriesPage() {
           <Input label="Description" placeholder="Optional description" {...form.register("description")} />
           <Select label="Parent category" {...form.register("parentId")}>
             <option value="">None (top-level)</option>
-            {categories.filter((c) => c.id !== modal.category?.id).map((c) => (
+            {currentCategoryOptions.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>

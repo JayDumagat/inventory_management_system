@@ -11,6 +11,7 @@ export const createTenantSchema = z.object({
   description: z.string().optional(),
   taxRate: z.number().min(0).max(100).optional(),
   logoUrl: z.string().url().optional().or(z.literal("")),
+  brandingAccent: z.enum(["olive", "ocean", "coastal", "blue", "violet", "emerald", "rose", "amber", "teal", "noir"]).optional(),
   receiptTemplate: z.enum(["compact", "detailed"]).optional(),
   receiptFooterMessage: z.string().max(200).optional(),
   receiptLogoUrl: httpUrlSchema.optional().or(z.literal("")),

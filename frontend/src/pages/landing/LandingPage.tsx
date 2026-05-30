@@ -103,7 +103,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium mb-8">
-          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+          <span className="w-1.5 h-1.5 bg-blue-600" />
           Multi-tenant inventory management
         </div>
         <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight tracking-tight">

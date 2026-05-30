@@ -1,20 +1,46 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { invoices, invoiceItems, salesOrders } from "../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { SQL, eq, and, desc, count, ilike, or } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { invoiceSchema, updateInvoiceSchema } from "../validators/invoice";
 import { generateInvoiceNumber } from "../utils/helpers";
+import { parsePaginationParams } from "../utils/pagination";
 
 export const listInvoices = async (req: Request, res: Response): Promise<void> => {
   try {
+    const tenantId = req.tenantContext!.tenantId;
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const { page, perPage, offset } = parsePaginationParams(req.query, { perPage: 10, maxPerPage: 100 });
+    const conditions: SQL[] = [
+      eq(invoices.tenantId, tenantId),
+    ];
+
+    if (search.length > 0) {
+      const pattern = `%${search}%`;
+
+      const searchCondition = or(
+        ilike(invoices.invoiceNumber, pattern),
+        ilike(invoices.customerName, pattern),
+        ilike(invoices.customerEmail, pattern),
+      );
+
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    const where = and(...conditions);
     const list = await db.query.invoices.findMany({
-      where: eq(invoices.tenantId, req.tenantContext!.tenantId),
+      where,
       with: { items: true, order: true, branch: true },
       orderBy: [desc(invoices.createdAt)],
+      limit: perPage,
+      offset,
     });
-    res.json(list);
+    const [{ total }] = await db.select({ total: count() }).from(invoices).where(where);
+    res.json({ data: list, total, page, perPage });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }

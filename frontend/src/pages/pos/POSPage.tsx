@@ -563,12 +563,36 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-5 h-full">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem] items-start h-full">
       {/* Product grid */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">Point of Sale</h1>
-          <p className="text-muted text-sm mt-1">{currentBranch ? currentBranch.name : "No branch selected"}</p>
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Sales floor</p>
+              <h1 className="text-2xl font-bold text-ink">Point of Sale</h1>
+              <p className="text-muted text-sm mt-1">{currentBranch ? currentBranch.name : "No branch selected"}</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted border border-stroke px-3 py-1.5 bg-panel">
+              <Search className="w-3.5 h-3.5" />
+              Type or scan to add items
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="border border-stroke bg-panel px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Step 1</p>
+              <p className="text-sm text-ink">Search, scan, or click a product.</p>
+            </div>
+            <div className="border border-stroke bg-panel px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Step 2</p>
+              <p className="text-sm text-ink">Review the cart on the right.</p>
+            </div>
+            <div className="border border-stroke bg-panel px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Step 3</p>
+              <p className="text-sm text-ink">Complete payment and print the receipt.</p>
+            </div>
+          </div>
         </div>
 
         {!currentBranch && (
@@ -579,7 +603,8 @@ export default function POSPage() {
         )}
 
         {/* Search */}
-        <div className="relative">
+        <div className="border border-stroke bg-panel p-4 space-y-3">
+          <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             type="text"
@@ -592,17 +617,16 @@ export default function POSPage() {
             }}
             className="w-full pl-9 pr-4 py-2 text-sm border border-stroke bg-panel text-ink placeholder:text-muted focus:outline-none focus:border-primary-500"
           />
-          <div className="mt-2">
-            <CameraBarcodeScanner
-              onDetected={(code) => {
-                if (!addScannedCodeToCart(code)) {
-                  setSearch(code);
-                  toast.error("No matching product found for scanned barcode");
-                }
-              }}
-              label="Scan barcode with camera"
-            />
           </div>
+          <CameraBarcodeScanner
+            onDetected={(code) => {
+              if (!addScannedCodeToCart(code)) {
+                setSearch(code);
+                toast.error("No matching product found for scanned barcode");
+              }
+            }}
+            label="Scan barcode with camera"
+          />
         </div>
 
         {/* Product grid */}
@@ -638,7 +662,7 @@ export default function POSPage() {
       </div>
 
       {/* Cart */}
-      <div className="lg:w-80 flex flex-col bg-panel border border-stroke">
+      <div className="flex flex-col bg-panel border border-stroke lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100dvh-7rem)]">
         <div className="px-4 py-3 border-b border-stroke flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-muted" />

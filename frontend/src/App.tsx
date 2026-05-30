@@ -69,21 +69,21 @@ function SuperadminRoute({ children, page }: { children: React.ReactNode; page?:
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              borderRadius: "var(--radius-md)",
-              fontSize: "14px",
-              border: "1px solid var(--border-clr)",
-              background: "var(--surface-bg)",
-              color: "var(--text-clr)",
-            },
-          }}
-        />
-        <BrowserRouter>
+      <BrowserRouter>
+        <ThemeProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                borderRadius: "var(--radius-md)",
+                fontSize: "14px",
+                border: "1px solid var(--border-clr)",
+                background: "var(--surface-bg)",
+                color: "var(--text-clr)",
+              },
+            }}
+          />
           <Routes>
             {/* Public */}
             <Route path="/" element={<LandingPage />} />
@@ -212,8 +212,8 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

@@ -1,15 +1,46 @@
 import { Request, Response } from "express";
 import { db } from "../db";
 import { categories, products } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { SQL, eq, and, count, ilike, or, asc } from "drizzle-orm";
 import { createAuditLog } from "../services/audit";
 import { handleControllerError } from "../utils/errors";
 import { categorySchema } from "../validators/category";
+import { parsePaginationParams } from "../utils/pagination";
 
 export async function listCategories(req: Request, res: Response): Promise<void> {
   try {
-    const list = await db.select().from(categories).where(eq(categories.tenantId, req.tenantContext!.tenantId));
-    res.json(list);
+    const tenantId = req.tenantContext!.tenantId;
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const { page, perPage, offset } = parsePaginationParams(req.query, { perPage: 10, maxPerPage: 100 });
+    const conditions: SQL[] = [
+      eq(categories.tenantId, tenantId),
+    ];
+
+    if (search.length > 0) {
+      const pattern = `%${search}%`;
+
+      const searchCondition = or(
+        ilike(categories.name, pattern),
+        ilike(categories.description, pattern)
+      );
+
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+
+    const where = and(...conditions);
+    const list = await db
+      .select()
+      .from(categories)
+      .where(where)
+      .orderBy(asc(categories.name))
+      .limit(perPage)
+      .offset(offset);
+
+    const [{ total }] = await db.select({ total: count() }).from(categories).where(where);
+    res.json({ data: list, total, page, perPage });
   } catch {
     res.status(500).json({ error: "Internal server error" });
   }

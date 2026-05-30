@@ -24,7 +24,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           type={type}
           className={cn(
-            "w-full ui-field border text-sm outline-none transition-all",
+            "w-full ui-field border text-sm outline-none transition-colors",
             "bg-panel text-ink",
             "placeholder:text-muted",
             error

@@ -190,8 +190,9 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Order flow</p>
           <h1 className="text-2xl font-bold text-ink">Sales Orders</h1>
           <p className="text-muted text-sm mt-1">{orders.length} orders</p>
         </div>
@@ -199,6 +200,10 @@ export default function OrdersPage() {
           <Plus className="w-4 h-4" /> New order
         </Button>
       </div>
+
+      <p className="text-sm text-muted max-w-2xl">
+        Create the order in one pass, keep status changes in the row actions, and use refunds only when the flow cannot be corrected upstream.
+      </p>
 
       {!currentBranch && (
         <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">

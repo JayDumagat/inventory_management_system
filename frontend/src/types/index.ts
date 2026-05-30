@@ -8,6 +8,7 @@ export interface Tenant {
   taxRate?: string;
   role: string;
   logoUrl?: string;
+  brandingAccent?: "olive" | "ocean" | "coastal" | "blue" | "violet" | "emerald" | "rose" | "amber" | "teal" | "noir";
   receiptTemplate?: "compact" | "detailed";
   receiptFooterMessage?: string;
   receiptLogoUrl?: string;

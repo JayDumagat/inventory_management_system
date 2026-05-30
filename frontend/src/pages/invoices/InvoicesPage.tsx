@@ -50,6 +50,13 @@ interface SalesOrder {
   status: string;
 }
 
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
 const STATUS_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
   draft: "default",
   sent: "info",
@@ -81,11 +88,16 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const toast = useToast();
 
-  const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
-    queryKey: ["invoices", tid],
-    queryFn: () => api.get(`/api/tenants/${tid}/invoices`).then((r) => r.data),
+  const { data: invoicePage, isLoading } = useQuery<PaginatedResponse<Invoice>>({
+    queryKey: ["invoices", tid, search, page],
+    queryFn: () => api.get(`/api/tenants/${tid}/invoices`, { params: { page, perPage: PAGE_SIZE, search: search || undefined } }).then((r) => r.data),
     enabled: !!tid,
   });
+
+  const invoices = invoicePage?.data ?? [];
+  const totalInvoices = invoicePage?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalInvoices / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   const { data: orders = [] } = useQuery<SalesOrder[]>({
     queryKey: ["sales-orders", tid],
@@ -225,20 +237,7 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
   }
 
   const confirmedOrders = orders.filter((o) => o.status !== "draft" && o.status !== "cancelled");
-  const filteredInvoices = useMemo(
-    () => invoices.filter((inv) =>
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (inv.customerName ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (inv.customerEmail ?? "").toLowerCase().includes(search.toLowerCase())
-    ),
-    [invoices, search]
-  );
-  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedInvoices = useMemo(
-    () => filteredInvoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [filteredInvoices, currentPage]
-  );
+  const pagedInvoices = useMemo(() => invoices, [invoices]);
 
   if (isLoading) return (
   <div className="space-y-4">
@@ -254,16 +253,21 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Billing</p>
           <h1 className="text-2xl font-bold text-ink">Invoices</h1>
-          <p className="text-muted text-sm mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</p>
+          <p className="text-muted text-sm mt-0.5">{totalInvoices} invoice{totalInvoices !== 1 ? "s" : ""}</p>
         </div>
         <Button onClick={() => { resetForm(); setCreateOpen(true); }} size="sm" className="self-start sm:self-auto">
           <Plus className="w-3.5 h-3.5 mr-1.5" /> New Invoice
         </Button>
       </div>
-      {invoices.length > 0 && (
+
+      <p className="text-sm text-muted max-w-2xl">
+        Create invoices from orders when possible, keep status updates inline, and use print or delete only from the row that needs attention.
+      </p>
+      {totalInvoices > 0 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
@@ -276,7 +280,7 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
         </div>
       )}
 
-      {invoices.length === 0 ? (
+      {totalInvoices === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
             <FileText className="w-10 h-10 text-muted mx-auto mb-3" />
@@ -287,7 +291,7 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
             </Button>
           </CardContent>
         </Card>
-      ) : filteredInvoices.length === 0 ? (
+      ) : invoices.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="w-8 h-8 text-muted mx-auto mb-3" />
@@ -390,9 +394,9 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
           </div>
         </Card>
       )}
-      {filteredInvoices.length > 0 && (
+      {totalInvoices > 0 && (
         <Pagination
-          totalItems={filteredInvoices.length}
+          totalItems={totalInvoices}
           page={currentPage}
           pageSize={PAGE_SIZE}
           onPageChange={setPage}
@@ -403,10 +407,9 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
       {/* Create Modal */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Invoice" size="lg">
         <div className="p-5 space-y-4">
-          {/* From order shortcut */}
           {confirmedOrders.length > 0 && (
-            <div className="p-3 bg-page border border-stroke space-y-2">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider">Quick create from sales order</p>
+            <div className="flex flex-col gap-2 border border-stroke bg-panel px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Start from a sales order</p>
               <div className="flex gap-2">
                 <select
                   value={fromOrderId}
@@ -421,9 +424,7 @@ ${isVatRegistered ? `<div style="font-size:10px;color:#555;margin-top:8px">This 
                   ))}
                 </select>
               </div>
-              {fromOrderId && (
-                <p className="text-xs text-muted">Invoice will be auto-filled from the selected order.</p>
-              )}
+              {fromOrderId && <p className="text-xs text-muted">Invoice fields will be filled from the selected order.</p>}
             </div>
           )}
 

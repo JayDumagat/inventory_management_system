@@ -73,9 +73,15 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Settings</h1>
-        <p className="text-muted text-sm mt-1">Configure application preferences</p>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted mb-1">Preferences</p>
+          <h1 className="text-2xl font-bold text-ink">Settings</h1>
+          <p className="text-muted text-sm mt-1">Configure application preferences</p>
+        </div>
+        <p className="text-sm text-muted max-w-xl lg:text-right">
+          Keep the defaults stable so the workspace feels predictable and users spend fewer clicks on routine work.
+        </p>
       </div>
 
       {/* Link to Organization Settings */}

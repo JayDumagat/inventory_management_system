@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { useThemeStore, type ThemeMode, type AccentColor, type ThemeStyle } from "../stores/themeStore";
 import { useCurrencyRatesStore } from "../stores/currencyRatesStore";
+import { useTenantStore } from "../stores/tenantStore";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -28,9 +30,24 @@ const ALL_THEMES: AccentColor[] = [
   "blue", "violet", "emerald", "rose", "amber", "teal", "noir"
 ];
 
+const PUBLIC_THEME_PATHS = [
+  "/",
+  "/pricing",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/accept-invite",
+  "/privacy-policy",
+  "/terms",
+  "/superadmin",
+];
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const store = useThemeStore();
   const { mode, style, accent, compactMode } = store;
+  const location = useLocation();
+  const { currentTenant } = useTenantStore();
   const fetchRates = useCurrencyRatesStore((s) => s.fetchRates);
 
   // Fetch live exchange rates on mount (and whenever the currency changes)
@@ -40,9 +57,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    const path = location.pathname.toLowerCase();
+    const isPublicSurface = PUBLIC_THEME_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+    const effectiveAccent = isPublicSurface ? "blue" : currentTenant?.brandingAccent ?? accent;
 
     ALL_THEMES.forEach((t) => root.classList.remove(`theme-${t}`));
-    root.classList.add(`theme-${accent}`);
+    root.classList.add(`theme-${effectiveAccent}`);
     root.classList.toggle("style-flat", style === "flat");
     root.classList.toggle("compact-mode", compactMode);
 
@@ -59,7 +79,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       applyDark(mode === "dark");
     }
-  }, [mode, style, accent, compactMode]);
+  }, [mode, style, accent, compactMode, location.pathname, currentTenant?.brandingAccent]);
 
   return (
     <ThemeContext.Provider value={store}>

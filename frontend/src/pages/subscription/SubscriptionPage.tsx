@@ -50,10 +50,10 @@ function UsageBar({ current, limit, label }: { current: number; limit: number; l
         </span>
       </div>
       {!isUnlimited && (
-        <div className="h-1.5 bg-stroke rounded-full overflow-hidden">
+        <div className="h-1.5 bg-stroke overflow-hidden">
           <div
             className={cn(
-              "h-full rounded-full transition-all",
+              "h-full transition-all",
               isAtLimit ? "bg-red-500" : isNearLimit ? "bg-amber-500" : "bg-primary-500"
             )}
             style={{ width: `${pct}%` }}
@@ -149,7 +149,7 @@ export default function SubscriptionPage() {
         <CardContent>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <span className={cn("px-3 py-1 text-sm font-semibold border rounded-full", PLAN_COLORS[currentPlanKey] ?? PLAN_COLORS.free)}>
+              <span className={cn("px-3 py-1 text-sm font-semibold border", PLAN_COLORS[currentPlanKey] ?? PLAN_COLORS.free)}>
                 {plan.name}
               </span>
               <Badge variant={subscription.status === "active" ? "success" : "warning"}>

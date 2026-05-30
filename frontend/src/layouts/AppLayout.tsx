@@ -145,7 +145,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-[var(--sidebar-width)] bg-panel/95 backdrop-blur border-r border-stroke flex flex-col transition-transform duration-200 ease-out shadow-xl lg:shadow-none",
+          "fixed inset-y-0 left-0 z-40 w-[var(--sidebar-width)] bg-panel border-r border-stroke flex flex-col transition-transform duration-200 ease-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0 lg:static lg:flex lg:h-full"
         )}
@@ -153,11 +153,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Logo / tenant */}
         <div className="px-4 py-4 border-b border-stroke">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-hidden border border-stroke bg-primary-600">
               {hasCustomBranding && tenantLogoUrl && /^https?:\/\//i.test(tenantLogoUrl) ? (
                 <img src={tenantLogoUrl} alt={currentTenant?.name} className="w-7 h-7 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               ) : (
-                <div className="w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center">
+                <div className="w-7 h-7 flex items-center justify-center">
                   <Package className="w-4 h-4 text-white" />
                 </div>
               )}
@@ -182,10 +182,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                  className={cn(
-                   "flex items-center gap-2.5 ui-pill px-3 py-2.5 text-sm font-medium mb-1 transition-all",
+                   "flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium mb-1 transition-colors border-l-2",
                   active
-                    ? "bg-primary-600 text-white shadow-sm"
-                    : "text-muted hover:bg-hover hover:text-ink"
+                    ? "bg-primary-50 text-primary-800 border-primary-600"
+                    : "text-muted border-transparent hover:bg-hover hover:text-ink"
                 )}
               >
                 <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -201,7 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="relative" ref={branchRef}>
               <button
                 onClick={() => { setBranchDropdownOpen((o) => !o); setBranchSearch(""); }}
-                className="flex items-center gap-2 w-full ui-pill px-2.5 py-2.5 border border-stroke bg-page hover:bg-hover transition-colors text-left"
+                className="flex items-center gap-2 w-full px-2.5 py-2.5 border border-stroke bg-page hover:bg-hover transition-colors text-left"
               >
                 <GitBranch className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                 <span className="flex-1 text-xs font-medium text-ink truncate">
@@ -210,9 +210,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <ChevronDown className={cn("w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform", branchDropdownOpen && "rotate-180")} />
               </button>
               {branchDropdownOpen && (
-                 <div className="absolute left-0 right-0 bottom-full mb-1 z-50 ui-surface bg-panel border border-stroke overflow-hidden shadow-lg">
+                  <div className="absolute left-0 right-0 bottom-full mb-1 z-50 ui-surface bg-panel border border-stroke overflow-hidden">
                   <div className="p-2 border-b border-stroke">
-                      <div className="flex items-center gap-1.5 ui-pill px-2 py-1.5 border border-stroke bg-page">
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 border border-stroke bg-page">
                       <Search className="w-3 h-3 text-muted flex-shrink-0" />
                       <input
                         autoFocus
@@ -276,10 +276,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-          <header className="sticky top-0 z-20 ui-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 bg-panel/90 backdrop-blur border-b border-stroke">
+          <header className="sticky top-0 z-20 ui-header flex items-center gap-2 sm:gap-3 px-3 sm:px-4 bg-panel border-b border-stroke">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 ui-pill text-muted hover:bg-hover transition-colors"
+            className="lg:hidden p-2 text-muted hover:bg-hover transition-colors border border-transparent"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -293,7 +293,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <button
               aria-label="Help & Support"
               onClick={() => setTicketOpen(true)}
-                className="p-2 ui-pill text-muted hover:bg-hover transition-colors"
+                className="p-2 text-muted hover:bg-hover transition-colors border border-transparent"
               title="Help & Support"
             >
               <HelpCircle className="w-4 h-4" />
@@ -304,15 +304,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <button
                 aria-label="Notifications"
                 onClick={() => setNotifOpen((o) => !o)}
-                 className="relative p-2 ui-pill text-muted hover:bg-hover transition-colors"
+                 className="relative p-2 text-muted hover:bg-hover transition-colors border border-transparent"
               >
                 <Bell className="w-4 h-4" />
                 {unreadNotifications.length > 0 && (
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500" />
                 )}
               </button>
               {notifOpen && (
-                 <div className="absolute right-0 top-full mt-1 w-[min(92vw,22rem)] ui-surface ui-card bg-panel border border-stroke overflow-hidden z-50 shadow-lg">
+                 <div className="absolute right-0 top-full mt-1 w-[min(92vw,22rem)] ui-surface ui-card bg-panel border border-stroke overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-stroke flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-ink">Notifications</p>
                     {unreadNotifications.length > 0 && (
@@ -358,9 +358,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((o) => !o)}
-               className="flex items-center gap-2 ui-pill pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors"
+               className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 hover:bg-hover transition-colors border border-stroke"
              >
-                <div className="w-7 h-7 ui-pill bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0">
+                <div className="w-7 h-7 bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs flex-shrink-0 border border-primary-200">
                 {userInitial}
               </div>
               <span className="hidden sm:block text-sm font-medium text-ink max-w-[120px] truncate">
@@ -370,7 +370,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
 
             {profileOpen && (
-                <div className="absolute right-0 top-full mt-1 w-[min(90vw,13rem)] ui-surface ui-card bg-panel border border-stroke overflow-hidden z-50 shadow-lg">
+                <div className="absolute right-0 top-full mt-1 w-[min(90vw,13rem)] ui-surface ui-card bg-panel border border-stroke overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-stroke">
                   <p className="text-sm font-semibold text-ink truncate">{userName}</p>
                   <p className="text-xs text-muted truncate">{user?.email}</p>
@@ -416,7 +416,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
-               className="lg:hidden fixed top-3 left-[calc(var(--sidebar-width)+1px)] z-50 p-1.5 ui-pill bg-panel border border-stroke text-muted"
+              className="lg:hidden fixed top-3 left-[calc(var(--sidebar-width)+1px)] z-50 p-1.5 bg-panel border border-stroke text-muted"
              >
               <X className="w-3.5 h-3.5" />
             </button>
